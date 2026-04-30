@@ -1,0 +1,22 @@
+{
+  "name": "claspscxseamless-pern-migration",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Migration workspace for rebuilding the legacy Google Apps Script app as a PERN stack app.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm --prefix client run dev",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build:client": "npm --prefix client run build",
+    "start:server": "npm --prefix server start",
+    "test": "npm --prefix server test && npm --prefix client test",
+    "test:server": "npm --prefix server test",
+    "test:client": "npm --prefix client test",
+    "db:migrate": "npm --prefix server run db:migrate",
+    "db:seed": "npm --prefix server run db:seed"
+  }
+}

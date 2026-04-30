@@ -1,0 +1,196 @@
+<main class="shell">
+  <section class="hero">
+    <p class="eyebrow">เวปไซต์ปรับรูปแบบเอกสาร seamless for dmis</p>
+    <h3>เวปไซต์สำหรับอัปโหลดไฟล์จาก seamless เพื่อปรับรูปแบบเอกสารและเก็บลง google drive อัตโนมัติ</h3>
+    <p class="intro">
+      ผู้ใช้งานต้องอัปโหลดเอกสาร จาก เวป seamless for dmis ของ สปสช.ทั้งหมด 2 ไฟล์ต่อสัปดาห์ได้แก่เอกสารแจกแจงการชดเชยรายบุคคล (individual)
+      และ เอกสารสรุปการชดเชยทั้งหมด่ (summary) และทำการอัปโหลดลงในช่องที่ระบุ หากเกิดความผิดพลาดใดๆที่เกี่ยวข้องกับกระบวนการอัปโหลดเอกสาร เช่น อัปโหลดผิดไฟล์ อัปโหลดไฟล์ซ้ำ
+      กรุณาแจ้งเภสัชอู๋ (ผู้ดูแลระบบ) เบอร์โทรติดต่อ 062-796-6956
+    </p>
+  </section>
+
+  <section class="panel">
+    <p class="panel-eyebrow">ขั้นตอนที่ 1 อัปโหลดไฟล์แจกแจงการชดเชยรายคน</p>
+    <h2>Individual Formatter</h2>
+    <p class="panel-copy">
+       สำหรับไฟล์ที่มีรูปแบบชื่อไฟล์ REP_individual_INS_202604..... เท่านั้น (ผู้ใช้สามารถอัปโหลดได้ทีละหลายไฟล์พร้อมกัน)
+    </p>
+
+    <form id="upload-form-individual" class="upload-form">
+      <input id="formatter-mode-individual" name="formatterMode" type="hidden" value="individual" />
+
+      <label class="field" for="workbook-individual">
+        <span>Workbook files (.xlsx)</span>
+        <input
+          id="workbook-individual"
+          name="workbook-individual"
+          type="file"
+          accept=".xlsx"
+          multiple
+          required
+        />
+      </label>
+
+      <p id="selected-file-individual" class="selected-file">ยังไม่มีการอัปโหลดไฟล์ลง</p>
+
+      <button id="submit-button-individual" type="submit">เตรียมพร้อมพรีวิว</button>
+    </form>
+
+    <section class="status-panel" aria-live="polite">
+      <p id="status-individual" class="status" data-state="idle">กรุณาเลือกไฟล์เพื่อเริ่ม</p>
+      <ul id="warnings-individual" class="warnings" hidden></ul>
+
+      <div id="result-individual" class="result" hidden>
+        <p id="result-summary-individual"></p>
+        <p><a id="preview-link-individual" href="#" target="_blank" rel="noopener">เปิดหน้าพรีวิวเวิร์คบุ๊ค</a></p>
+        <ul id="results-list-individual" class="results-list"></ul>
+      </div>
+    </section>
+  </section>
+
+  <section class="panel">
+    <p class="panel-eyebrow">ขั้นตอนที่ 2 อัปโหลดไฟล์สรุปจำนวนการชดชยทั้งหมดในรอบนั้นๆ</p>
+    <h2>Summary Formatter</h2>
+    <p class="panel-copy">
+     สำหรับไฟล์ที่มีรูปแบบชื่อไฟล์ rep_summary_zone0... เท่านั้น (ผู้ใช้สามารถอัปโหลดได้ทีละหลายไฟล์พร้อมกัน)
+    </p>
+
+    <form id="upload-form-summary" class="upload-form">
+      <input id="formatter-mode-summary" name="formatterMode" type="hidden" value="summary" />
+
+      <label class="field" for="workbook-summary">
+        <span>Workbook files (.xlsx)</span>
+        <input
+          id="workbook-summary"
+          name="workbook-summary"
+          type="file"
+          accept=".xlsx"
+          multiple
+          required
+        />
+      </label>
+
+      <p id="selected-file-summary" class="selected-file">ยังไม่มีการอัปโหลดไฟล์ลง</p>
+
+      <button id="submit-button-summary" type="submit">เตรียมพร้อมพรีวิว</button>
+    </form>
+
+    <section class="status-panel" aria-live="polite">
+      <p id="status-summary" class="status" data-state="idle">กรุณาเลือกไฟล์เพื่อเริ่ม</p>
+      <ul id="warnings-summary" class="warnings" hidden></ul>
+
+      <div id="result-summary-panel" class="result" hidden>
+        <p id="result-summary-summary"></p>
+        <p><a id="preview-link-summary" href="#" target="_blank" rel="noopener">เปิดหน้าพรีวิวเวิร์คบุ๊ค</a></p>
+        <ul id="results-list-summary" class="results-list"></ul>
+      </div>
+    </section>
+  </section>
+
+  <section class="panel history-panel">
+    <p class="panel-eyebrow">ประวัติการจัดการไฟล์</p>
+    <div class="history-heading">
+      <div>
+        <h2>รายการประวัติการดำเนินการ</h2>
+      </div>
+      <button id="history-refresh-button" type="button">รีเฟรช</button>
+    </div>
+
+    <form id="history-filter-form" class="history-filters">
+      <label class="history-filter-field" for="history-report-type">
+        <span>Report Type</span>
+        <select id="history-report-type" name="reportType">
+          <option value="">ทั้งหมด</option>
+          <option value="summary">สรุปจำนวนการชดชยทั้งหมดในรอบนั้นๆ(Summary)</option>
+          <option value="individual">แจกแจงการชดเชยรายคน(Individual)</option>
+        </select>
+      </label>
+
+      <label class="history-filter-field" for="history-report-date">
+        <span>วันที่ของรายงาน</span>
+        <input id="history-report-date" name="reportDate" type="text" inputmode="numeric" placeholder="YYYYMMDD" />
+      </label>
+
+      <label class="history-filter-field" for="history-printed-status">
+        <span>ปริ้นท์ส่งพี่เอแล้ว</span>
+        <select id="history-printed-status" name="printed">
+          <option value="">ทั้งหมด</option>
+          <option value="true">ปริ้นท์ส่งพี่เอแล้ว</option>
+          <option value="false">ยังไม่ได้ปริ้นท์ส่งพี่เอ</option>
+        </select>
+      </label>
+
+      <button id="history-apply-button" type="submit">เริ่มกรองการค้นหา</button>
+      <button id="history-clear-button" type="button">ล้างการกรองเพิ่อค้นหา</button>
+    </form>
+
+    <section class="history-dashboard">
+      <div class="history-dashboard-heading">
+        <div>
+          <h3 class="history-subtitle">หน้าสรุปสถานะ</h3>
+          <p class="panel-copy">
+            สำหรับผู้ใช้งานในการเชตสถานะว่าแอดมินปริ้นเอกสารส่งพี่เอแล้วหรือยัง
+          </p>
+        </div>
+      </div>
+
+      <div id="history-dashboard-empty" class="history-empty" hidden>
+        ยังไม่มีรายงานสรุป
+      </div>
+
+      <div id="history-dashboard-wrap" class="history-table-wrap history-dashboard-wrap" hidden>
+        <table class="history-dashboard-table">
+          <thead>
+            <tr>
+              <th>วันที่รายงาน</th>
+              <th>เอกสารของสาขา</th>
+              <th>Summary</th>
+              <th>Individual</th>
+              <th>การอัปโหลดทั้งหมด</th>
+              <th>รายงานที่ปริ้นท์แล้วทั้งหมด</th>
+              <th>รายงานที่ย้งไม่ได้ปริ้นท์</th>
+            </tr>
+          </thead>
+          <tbody id="history-dashboard-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="history-view-toggle" role="tablist" aria-label="History View">
+      <button id="history-view-table" class="history-view-button" type="button" data-view="table" aria-pressed="true">Table View</button>
+      <button id="history-view-grouped" class="history-view-button secondary" type="button" data-view="grouped" aria-pressed="false">Grouped View</button>
+    </div>
+
+    <section class="status-panel history-status-panel" aria-live="polite">
+      <p id="history-status" class="status" data-state="idle">กำลังโหลด</p>
+
+      <div id="history-empty" class="history-empty" hidden>
+        ไม่พบการค้นหาที่ตรงกับการกรองนี้
+      </div>
+
+      <div id="history-table-wrap" class="history-table-wrap" hidden>
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>ชื่อไฟล์</th>
+              <th>ประเภทรายงาน</th>
+              <th>วันที่รายงาน</th>
+              <th>เอกสารของสาขา</th>
+              <th>อัปโหลดเมื่อ</th>
+              <th>ปริ้นท์ส่งพี่เอแล้ว</th>
+              <th>ปริ้นท์ส่งพี่เอเมื่อ</th>
+              <th>ลิงค์ดูไฟล์ใน google drive</th>
+              <th>แหล่งเก็บไฟล์</th>
+              <th>การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body"></tbody>
+        </table>
+      </div>
+
+      <div id="history-grouped-wrap" class="history-grouped-wrap" hidden>
+        <div id="history-grouped-body" class="history-grouped-body"></div>
+      </div>
+    </section>
+  </section>
+</main>

@@ -1,0 +1,27 @@
+{
+  "name": "seamless-x-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Express API skeleton for the Seamless X PERN migration.",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test tests/*.test.js",
+    "db:migrate": "node src/db/run-migrations.js",
+    "db:seed": "node src/db/run-seeds.js",
+    "db:seed:force": "node src/db/run-seeds.js --force"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
+    "express": "^5.1.0",
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

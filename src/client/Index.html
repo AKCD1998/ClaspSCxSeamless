@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <?!= include('src/client/Styles'); ?>
+  </head>
+  <body>
+    <?!= include('src/client/App'); ?>
+    <script>
+      window.SX_BOOTSTRAP = <?!= JSON.stringify(bootstrap); ?>;
+    </script>
+    <?!= include('src/client/Client.js'); ?>
+  </body>
+</html>

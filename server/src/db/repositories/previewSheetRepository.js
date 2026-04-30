@@ -1,0 +1,49 @@
+const { query } = require('../pool');
+
+function executor(client) {
+  return client || { query };
+}
+
+async function createPreviewSheet(sheet, client = null) {
+  const db = executor(client);
+  const result = await db.query(
+    `
+      INSERT INTO preview_sheets (
+        preview_file_id,
+        upload_id,
+        processing_record_id,
+        sheet_name,
+        sheet_order,
+        legacy_sheet_id,
+        legacy_spreadsheet_id,
+        metadata
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+      RETURNING *
+    `,
+    [
+      sheet.previewFileId,
+      sheet.uploadId || null,
+      sheet.processingRecordId || null,
+      sheet.sheetName,
+      sheet.sheetOrder,
+      sheet.legacySheetId || null,
+      sheet.legacySpreadsheetId || null,
+      JSON.stringify(sheet.metadata || {}),
+    ],
+  );
+
+  return result.rows[0];
+}
+
+async function listPreviewSheets(previewFileId, client = null) {
+  const db = executor(client);
+  const result = await db.query(
+    'SELECT * FROM preview_sheets WHERE preview_file_id = $1 ORDER BY sheet_order',
+    [previewFileId],
+  );
+
+  return result.rows;
+}
+
+module.exports = { createPreviewSheet, listPreviewSheets };

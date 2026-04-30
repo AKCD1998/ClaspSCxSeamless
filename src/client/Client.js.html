@@ -1,0 +1,1224 @@
+<script>
+  (function() {
+    var bootstrap = window.SX_BOOTSTRAP || {};
+    var retentionHours = document.getElementById('retention-hours');
+    if (retentionHours) {
+      retentionHours.textContent = String(bootstrap.retentionHours || 12);
+    }
+
+    bindUploadPanel({
+      formId: 'upload-form-individual',
+      fileInputId: 'workbook-individual',
+      formatterModeId: 'formatter-mode-individual',
+      submitButtonId: 'submit-button-individual',
+      statusId: 'status-individual',
+      selectedFileId: 'selected-file-individual',
+      warningsId: 'warnings-individual',
+      resultId: 'result-individual',
+      resultSummaryId: 'result-summary-individual',
+      previewLinkId: 'preview-link-individual',
+      resultsListId: 'results-list-individual',
+      idleMessage: 'กรุณาเลือกไฟล์เพื่อเริ่ม'
+    });
+
+    bindUploadPanel({
+      formId: 'upload-form-summary',
+      fileInputId: 'workbook-summary',
+      formatterModeId: 'formatter-mode-summary',
+      submitButtonId: 'submit-button-summary',
+      statusId: 'status-summary',
+      selectedFileId: 'selected-file-summary',
+      warningsId: 'warnings-summary',
+      resultId: 'result-summary-panel',
+      resultSummaryId: 'result-summary-summary',
+      previewLinkId: 'preview-link-summary',
+      resultsListId: 'results-list-summary',
+      idleMessage: 'กรุณาเลือกไฟล์เพื่อเริ่ม'
+    });
+
+    var historyController = bindHistoryPanel();
+
+    function bindUploadPanel(config) {
+      var form = document.getElementById(config.formId);
+      var fileInput = document.getElementById(config.fileInputId);
+      var formatterModeInput = document.getElementById(config.formatterModeId);
+      var submitButton = document.getElementById(config.submitButtonId);
+      var statusElement = document.getElementById(config.statusId);
+      var selectedFileElement = document.getElementById(config.selectedFileId);
+      var warningsElement = document.getElementById(config.warningsId);
+      var resultElement = document.getElementById(config.resultId);
+      var resultSummaryElement = document.getElementById(config.resultSummaryId);
+      var previewLinkElement = document.getElementById(config.previewLinkId);
+      var resultsListElement = document.getElementById(config.resultsListId);
+
+      if (
+        !form ||
+        !fileInput ||
+        !formatterModeInput ||
+        !submitButton ||
+        !statusElement ||
+        !selectedFileElement ||
+        !warningsElement ||
+        !resultElement ||
+        !resultSummaryElement ||
+        !previewLinkElement ||
+        !resultsListElement
+      ) {
+        return;
+      }
+
+      fileInput.addEventListener('change', function() {
+        updateSelectedFilesLabel(selectedFileElement, getSelectedFiles(fileInput));
+        clearFeedback(warningsElement, resultElement, resultSummaryElement, previewLinkElement, resultsListElement);
+      });
+
+      form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        var files = getSelectedFiles(fileInput);
+        if (!files.length) {
+          setStatus(statusElement, 'กรุณาเลือกไฟล์ .xlsx อย่างน้อย 1 ไฟล์ก่อนอัปโหลด', 'error');
+          return;
+        }
+
+        if (files.length > (bootstrap.maxBatchFiles || 20)) {
+          setStatus(
+            statusElement,
+            'กรุณาเลือกไฟล์ไม่เกิน ' + (bootstrap.maxBatchFiles || 20) + ' ไฟล์ต่อครั้ง',
+            'error'
+          );
+          return;
+        }
+
+        setBusy(submitButton, fileInput, true, files.length);
+        clearFeedback(warningsElement, resultElement, resultSummaryElement, previewLinkElement, resultsListElement);
+        setStatus(statusElement, 'กำลังเตรียมพรีวิว ' + files.length + ' ไฟล์...', 'working');
+
+        try {
+          var batchResult = await processFilesSequentially(
+            files,
+            formatterModeInput.value,
+            statusElement
+          );
+          renderBatchResult(
+            batchResult,
+            warningsElement,
+            resultElement,
+            resultSummaryElement,
+            previewLinkElement,
+            resultsListElement,
+            statusElement
+          );
+        } catch (error) {
+          setStatus(statusElement, (error && error.message) || 'ประมวลผลไฟล์ไม่สำเร็จ', 'error');
+        } finally {
+          setBusy(submitButton, fileInput, false, 0);
+        }
+      });
+    }
+
+    async function processFilesSequentially(files, formatterMode, statusElement) {
+      var successes = [];
+      var failures = [];
+      var batchFileCount = files.length;
+      var previewState = {
+        spreadsheetId: '',
+        url: ''
+      };
+
+      for (var index = 0; index < files.length; index += 1) {
+        var file = files[index];
+
+        try {
+          setStatus(
+            statusElement,
+            'กำลังประมวลผลไฟล์ที่ ' + (index + 1) + ' จาก ' + files.length + ': ' + file.name,
+            'working'
+          );
+          var payload = await processSingleWorkbook(
+            file,
+            formatterMode,
+            previewState.spreadsheetId,
+            batchFileCount
+          );
+          if (payload.previewSpreadsheetId) {
+            previewState.spreadsheetId = payload.previewSpreadsheetId;
+            previewState.url = payload.previewUrl;
+          }
+          successes.push(payload);
+        } catch (error) {
+          failures.push({
+            fileName: file.name,
+            message: (error && error.message) || 'ประมวลผลไฟล์ไม่สำเร็จ'
+          });
+        }
+      }
+
+      return {
+        successes: successes,
+        failures: failures,
+        previewState: previewState
+      };
+    }
+
+    function processSingleWorkbook(file, formatterMode, previewSpreadsheetId, batchFileCount) {
+      return readFileAsPayload(file).then(function(filePayload) {
+        return new Promise(function(resolve, reject) {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .processWorkbookPayload({
+              file: filePayload,
+              formatterMode: formatterMode,
+              previewSpreadsheetId: previewSpreadsheetId || '',
+              batchFileCount: Number(batchFileCount) || 1
+            });
+        });
+      });
+    }
+
+    function readFileAsPayload(file) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+
+        reader.onload = function(event) {
+          var dataUrl = event && event.target ? event.target.result : '';
+          var separatorIndex = typeof dataUrl === 'string' ? dataUrl.indexOf(',') : -1;
+
+          if (separatorIndex === -1) {
+            reject(new Error('ไม่สามารถเตรียมไฟล์สำหรับอัปโหลดได้'));
+            return;
+          }
+
+          resolve({
+            originalFilename: file.name,
+            mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            size: file.size || 0,
+            base64: dataUrl.slice(separatorIndex + 1)
+          });
+        };
+
+        reader.onerror = function() {
+          reject(new Error('ไม่สามารถอ่านไฟล์ในเบราว์เซอร์ได้'));
+        };
+
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderBatchResult(
+      batchResult,
+      warningsElement,
+      resultElement,
+      resultSummaryElement,
+      previewLinkElement,
+      resultsListElement,
+      statusElement
+    ) {
+      var successes = batchResult.successes || [];
+      var failures = batchResult.failures || [];
+      var warningItems = collectWarningItems(successes, failures);
+
+      renderWarnings(warningsElement, warningItems);
+      renderResults(
+        resultElement,
+        resultSummaryElement,
+        previewLinkElement,
+        resultsListElement,
+        successes,
+        failures,
+        batchResult.previewState || {}
+      );
+      setStatus(statusElement, buildBatchStatus(successes, failures, warningItems.length), getBatchState(successes, failures, warningItems.length));
+
+      if (historyController) {
+        historyController.reload();
+      }
+    }
+
+    function collectWarningItems(successes, failures) {
+      var items = [];
+
+      for (var index = 0; index < successes.length; index += 1) {
+        var success = successes[index];
+        var warnings = success.warnings || [];
+        for (var warningIndex = 0; warningIndex < warnings.length; warningIndex += 1) {
+          items.push(success.filename + ': ' + warnings[warningIndex]);
+        }
+      }
+
+      for (index = 0; index < failures.length; index += 1) {
+        items.push('ไม่สำเร็จ ' + failures[index].fileName + ': ' + failures[index].message);
+      }
+
+      return items;
+    }
+
+    function renderWarnings(warningsElement, items) {
+      warningsElement.innerHTML = '';
+
+      if (!items.length) {
+        warningsElement.hidden = true;
+        return;
+      }
+
+      for (var index = 0; index < items.length; index += 1) {
+        var item = document.createElement('li');
+        item.textContent = items[index];
+        warningsElement.appendChild(item);
+      }
+
+      warningsElement.hidden = false;
+    }
+
+    function renderResults(resultElement, summaryElement, previewLinkElement, resultsListElement, successes, failures, previewState) {
+      resultsListElement.innerHTML = '';
+
+      if (!successes.length) {
+        resultElement.hidden = true;
+        summaryElement.textContent = '';
+        previewLinkElement.href = '#';
+        return;
+      }
+
+      summaryElement.textContent =
+        successes.length +
+        ' ไฟล์พร้อมใช้งาน กรุณาเปิดหน้าพรีวิวเวิร์คบุ๊คก่อน หากต้องการไฟล์แยกสาขาสามารถใช้ลิงค์ดาวน์โหลดด้านล่างได้' +
+        (failures.length ? ' มีไฟล์ไม่สำเร็จ ' + failures.length + ' ไฟล์' : '');
+      previewLinkElement.href = previewState.url || '#';
+      previewLinkElement.textContent = 'เปิดหน้าพรีวิวเวิร์คบุ๊ค';
+
+      for (var index = 0; index < successes.length; index += 1) {
+        var payload = successes[index];
+        var item = document.createElement('li');
+        var link = document.createElement('a');
+        var meta = document.createElement('div');
+
+        link.href = payload.downloadUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = payload.filename;
+
+        meta.className = 'result-meta';
+        meta.textContent =
+          'รูปแบบ: ' +
+          payload.variant +
+          '. ตรวจพบ: ' +
+          payload.detectedVariant +
+          '. รหัสไฟล์ใน Drive: ' +
+          payload.driveFileId +
+          '.';
+
+        item.appendChild(link);
+        item.appendChild(meta);
+        resultsListElement.appendChild(item);
+      }
+
+      resultElement.hidden = false;
+    }
+
+    function buildBatchStatus(successes, failures, warningCount) {
+      var successCount = successes.length;
+      var failureCount = failures.length;
+
+      if (!successCount) {
+        return 'ไม่มีไฟล์ที่ประมวลผลสำเร็จ';
+      }
+
+      if (!failureCount && !warningCount) {
+        return 'เสร็จสิ้น มีไฟล์พร้อมใช้งาน ' + successCount + ' ไฟล์ด้านล่าง';
+      }
+
+      return (
+        'เสร็จสิ้น มีไฟล์พร้อมใช้งาน ' +
+        successCount +
+        ' ไฟล์' +
+        (warningCount ? ' คำเตือน: ' + warningCount + ' รายการ' : '') +
+        (failureCount ? ' ไม่สำเร็จ: ' + failureCount + ' ไฟล์' : '')
+      );
+    }
+
+    function getBatchState(successes, failures, warningCount) {
+      if (!successes.length) {
+        return 'error';
+      }
+
+      if (failures.length || warningCount) {
+        return 'warning';
+      }
+
+      return 'success';
+    }
+
+    function clearFeedback(warningsElement, resultElement, resultSummaryElement, previewLinkElement, resultsListElement) {
+      warningsElement.innerHTML = '';
+      warningsElement.hidden = true;
+      resultElement.hidden = true;
+      resultSummaryElement.textContent = '';
+      previewLinkElement.href = '#';
+      resultsListElement.innerHTML = '';
+    }
+
+    function setStatus(statusElement, message, state) {
+      statusElement.textContent = message;
+      statusElement.dataset.state = state;
+    }
+
+    function setBusy(submitButton, fileInput, isBusy, fileCount) {
+      submitButton.disabled = isBusy;
+      fileInput.disabled = isBusy;
+      submitButton.textContent = isBusy
+        ? 'กำลังเตรียม' + (fileCount > 1 ? ' ' + fileCount + ' ไฟล์...' : 'พรีวิว...')
+        : 'เตรียมพร้อมพรีวิว';
+    }
+
+    function getSelectedFiles(fileInput) {
+      return filterWorkbookFiles(Array.prototype.slice.call(fileInput.files || []));
+    }
+
+    function filterWorkbookFiles(files) {
+      return files.filter(function(file) {
+        return /\.xlsx$/i.test(file.name || '');
+      });
+    }
+
+    function updateSelectedFilesLabel(selectedFileElement, files) {
+      if (!files.length) {
+        selectedFileElement.textContent = 'ยังไม่มีการอัปโหลดไฟล์ลง';
+        return;
+      }
+
+      if (files.length === 1) {
+        selectedFileElement.textContent = 'เลือกไฟล์แล้ว: ' + files[0].name;
+        return;
+      }
+
+      var previewNames = files.slice(0, 3).map(function(file) {
+        return file.name;
+      }).join(', ');
+      var remainingCount = files.length - 3;
+
+      selectedFileElement.textContent = remainingCount > 0
+        ? 'เลือกแล้ว ' + files.length + ' ไฟล์: ' + previewNames + ', +' + remainingCount + ' ไฟล์เพิ่มเติม'
+        : 'เลือกแล้ว ' + files.length + ' ไฟล์: ' + previewNames;
+    }
+
+    function bindHistoryPanel() {
+      var form = document.getElementById('history-filter-form');
+      var reportTypeInput = document.getElementById('history-report-type');
+      var reportDateInput = document.getElementById('history-report-date');
+      var printedStatusInput = document.getElementById('history-printed-status');
+      var refreshButton = document.getElementById('history-refresh-button');
+      var applyButton = document.getElementById('history-apply-button');
+      var clearButton = document.getElementById('history-clear-button');
+      var tableViewButton = document.getElementById('history-view-table');
+      var groupedViewButton = document.getElementById('history-view-grouped');
+      var dashboardEmptyElement = document.getElementById('history-dashboard-empty');
+      var dashboardWrapElement = document.getElementById('history-dashboard-wrap');
+      var dashboardBodyElement = document.getElementById('history-dashboard-body');
+      var statusElement = document.getElementById('history-status');
+      var emptyElement = document.getElementById('history-empty');
+      var tableWrapElement = document.getElementById('history-table-wrap');
+      var tableBodyElement = document.getElementById('history-table-body');
+      var groupedWrapElement = document.getElementById('history-grouped-wrap');
+      var groupedBodyElement = document.getElementById('history-grouped-body');
+
+      if (
+        !form ||
+        !reportTypeInput ||
+        !reportDateInput ||
+        !printedStatusInput ||
+        !refreshButton ||
+        !applyButton ||
+        !clearButton ||
+        !tableViewButton ||
+        !groupedViewButton ||
+        !dashboardEmptyElement ||
+        !dashboardWrapElement ||
+        !dashboardBodyElement ||
+        !statusElement ||
+        !emptyElement ||
+        !tableWrapElement ||
+        !tableBodyElement ||
+        !groupedWrapElement ||
+        !groupedBodyElement
+      ) {
+        return null;
+      }
+
+      var historyState = {
+        reportTypeInput: reportTypeInput,
+        reportDateInput: reportDateInput,
+        printedStatusInput: printedStatusInput,
+        refreshButton: refreshButton,
+        applyButton: applyButton,
+        clearButton: clearButton,
+        tableViewButton: tableViewButton,
+        groupedViewButton: groupedViewButton,
+        dashboardEmptyElement: dashboardEmptyElement,
+        dashboardWrapElement: dashboardWrapElement,
+        dashboardBodyElement: dashboardBodyElement,
+        statusElement: statusElement,
+        emptyElement: emptyElement,
+        tableWrapElement: tableWrapElement,
+        tableBodyElement: tableBodyElement,
+        groupedWrapElement: groupedWrapElement,
+        groupedBodyElement: groupedBodyElement,
+        currentView: 'table',
+        latestRecords: [],
+        latestDashboardRecords: [],
+        reload: loadProcessingHistory
+      };
+
+      reportDateInput.addEventListener('input', function() {
+        reportDateInput.value = String(reportDateInput.value || '').replace(/[^0-9]/g, '').slice(0, 8);
+      });
+
+      form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        loadProcessingHistory();
+      });
+
+      refreshButton.addEventListener('click', function() {
+        loadProcessingHistory();
+      });
+
+      clearButton.addEventListener('click', function() {
+        clearHistoryFilters(historyState);
+        loadProcessingHistory({
+          successMessage: 'ล้างการกรองแล้ว'
+        });
+      });
+
+      tableViewButton.addEventListener('click', function() {
+        setHistoryView(historyState, 'table');
+      });
+
+      groupedViewButton.addEventListener('click', function() {
+        setHistoryView(historyState, 'grouped');
+      });
+
+      loadProcessingHistory();
+
+      return historyState;
+
+      function loadProcessingHistory(options) {
+        var requestOptions = options || {};
+        var filters = buildHistoryFilters(reportTypeInput, reportDateInput, printedStatusInput);
+
+        setHistoryBusy(refreshButton, applyButton, clearButton, true);
+        setStatus(statusElement, 'กำลังโหลดประวัติการจัดการไฟล์...', 'working');
+
+        return fetchProcessingHistory({})
+          .then(function(records) {
+            historyState.latestDashboardRecords = records || [];
+            historyState.latestRecords = filterProcessingHistoryRecords(
+              historyState.latestDashboardRecords,
+              filters
+            );
+            renderHistoryDashboard(historyState, historyState.latestDashboardRecords);
+            renderHistoryResults(historyState, historyState.latestRecords);
+            setStatus(
+              statusElement,
+              requestOptions.successMessage ||
+                (historyState.latestRecords.length
+                ? 'พบประวัติการดำเนินการ ' + historyState.latestRecords.length + ' รายการ'
+                : 'ไม่พบประวัติการดำเนินการ'),
+              requestOptions.successMessage ? 'success' : historyState.latestRecords.length ? 'success' : 'warning'
+            );
+
+            return historyState.latestRecords;
+          })
+          .catch(function(error) {
+            historyState.latestRecords = [];
+            historyState.latestDashboardRecords = [];
+            clearHistoryResults(historyState);
+            clearHistoryDashboard(historyState);
+            setStatus(
+              statusElement,
+              (error && error.message) || 'ไม่สามารถโหลดประวัติการจัดการไฟล์ได้',
+              'error'
+            );
+          })
+          .finally(function() {
+            setHistoryBusy(refreshButton, applyButton, clearButton, false);
+          });
+      }
+    }
+
+    function fetchProcessingHistory(filters) {
+      return new Promise(function(resolve, reject) {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject)
+          .fetchProcessingHistory(filters || {});
+      });
+    }
+
+    function filterProcessingHistoryRecords(records, filters) {
+      var normalizedFilters = filters || {};
+      var reportType = String(normalizedFilters.reportType || '').trim();
+      var reportDate = String(normalizedFilters.reportDate || '').trim();
+      var printed = normalizeHistoryFilterBoolean(normalizedFilters.printed);
+
+      return (records || []).filter(function(record) {
+        if (reportType && record.reportType !== reportType) {
+          return false;
+        }
+
+        if (reportDate && record.reportDate !== reportDate) {
+          return false;
+        }
+
+        if (printed !== null && !!record.printed !== printed) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
+    function normalizeHistoryFilterBoolean(value) {
+      if (value === null || typeof value === 'undefined' || String(value).trim() === '') {
+        return null;
+      }
+
+      var text = String(value || '').trim().toLowerCase();
+
+      return text === 'true' || text === '1' || text === 'yes';
+    }
+
+    function buildHistoryFilters(reportTypeInput, reportDateInput, printedStatusInput) {
+      var filters = {};
+      var reportType = String(reportTypeInput.value || '').trim();
+      var reportDate = String(reportDateInput.value || '').trim();
+      var printed = String(printedStatusInput.value || '').trim();
+
+      if (reportType) {
+        filters.reportType = reportType;
+      }
+
+      if (reportDate) {
+        filters.reportDate = reportDate;
+      }
+
+      if (printed) {
+        filters.printed = printed;
+      }
+
+      return filters;
+    }
+
+    function clearHistoryFilters(historyState) {
+      historyState.reportTypeInput.value = '';
+      historyState.reportDateInput.value = '';
+      historyState.printedStatusInput.value = '';
+    }
+
+    function setHistoryView(historyState, view) {
+      historyState.currentView = view === 'grouped' ? 'grouped' : 'table';
+      historyState.tableViewButton.className =
+        'history-view-button' + (historyState.currentView === 'table' ? '' : ' secondary');
+      historyState.groupedViewButton.className =
+        'history-view-button' + (historyState.currentView === 'grouped' ? '' : ' secondary');
+      historyState.tableViewButton.setAttribute('aria-pressed', historyState.currentView === 'table' ? 'true' : 'false');
+      historyState.groupedViewButton.setAttribute('aria-pressed', historyState.currentView === 'grouped' ? 'true' : 'false');
+      renderHistoryResults(historyState, historyState.latestRecords || []);
+    }
+
+    function setHistoryBusy(refreshButton, applyButton, clearButton, isBusy) {
+      refreshButton.disabled = isBusy;
+      applyButton.disabled = isBusy;
+      clearButton.disabled = isBusy;
+    }
+
+    function clearHistoryDashboard(historyState) {
+      historyState.dashboardBodyElement.innerHTML = '';
+      historyState.dashboardEmptyElement.hidden = false;
+      historyState.dashboardWrapElement.hidden = true;
+    }
+
+    function clearHistoryResults(historyState) {
+      historyState.tableBodyElement.innerHTML = '';
+      historyState.groupedBodyElement.innerHTML = '';
+      historyState.emptyElement.hidden = false;
+      historyState.tableWrapElement.hidden = true;
+      historyState.groupedWrapElement.hidden = true;
+    }
+
+    function renderHistoryDashboard(historyState, records) {
+      var groups = groupRecordsByReportDate(records);
+      var activeReportDate = String(historyState.reportDateInput.value || '').trim();
+
+      historyState.dashboardBodyElement.innerHTML = '';
+
+      if (!groups.length) {
+        historyState.dashboardEmptyElement.hidden = false;
+        historyState.dashboardWrapElement.hidden = true;
+        return;
+      }
+
+      historyState.dashboardEmptyElement.hidden = true;
+      historyState.dashboardWrapElement.hidden = false;
+
+      for (var index = 0; index < groups.length; index += 1) {
+        historyState.dashboardBodyElement.appendChild(
+          buildHistoryDashboardRow(groups[index], activeReportDate, historyState)
+        );
+      }
+    }
+
+    function renderHistoryResults(historyState, records) {
+      historyState.tableBodyElement.innerHTML = '';
+      historyState.groupedBodyElement.innerHTML = '';
+
+      if (!records.length) {
+        historyState.emptyElement.hidden = false;
+        historyState.tableWrapElement.hidden = true;
+        historyState.groupedWrapElement.hidden = true;
+        return;
+      }
+
+      historyState.emptyElement.hidden = true;
+
+      if (historyState.currentView === 'grouped') {
+        historyState.tableWrapElement.hidden = true;
+        historyState.groupedWrapElement.hidden = false;
+        renderGroupedHistory(historyState.groupedBodyElement, records, historyState);
+        return;
+      }
+
+      historyState.tableWrapElement.hidden = false;
+      historyState.groupedWrapElement.hidden = true;
+
+      renderHistoryTable(historyState.tableBodyElement, records, historyState);
+    }
+
+    function renderHistoryTable(tableBodyElement, records, historyState) {
+      tableBodyElement.innerHTML = '';
+
+      for (var index = 0; index < records.length; index += 1) {
+        tableBodyElement.appendChild(buildHistoryRow(records[index], historyState));
+      }
+    }
+
+    function renderGroupedHistory(groupedBodyElement, records, historyState) {
+      groupedBodyElement.innerHTML = '';
+
+      var groups = groupRecordsByReportDate(records);
+
+      for (var index = 0; index < groups.length; index += 1) {
+        groupedBodyElement.appendChild(buildHistoryGroup(groups[index], historyState));
+      }
+    }
+
+    function groupRecordsByReportDate(records) {
+      var groupMap = {};
+      var orderedDates = [];
+
+      for (var index = 0; index < records.length; index += 1) {
+        var record = records[index];
+        var groupKey = String(record.reportDate || '').trim() || 'ไม่ทราบวันที่';
+
+        if (!groupMap[groupKey]) {
+          groupMap[groupKey] = {
+            reportDate: groupKey,
+            records: []
+          };
+          orderedDates.push(groupKey);
+        }
+
+        groupMap[groupKey].records.push(record);
+      }
+
+      orderedDates.sort(compareHistoryGroupKeys);
+
+      return orderedDates.map(function(groupKey) {
+        return buildHistoryGroupSummary(groupMap[groupKey]);
+      });
+    }
+
+    function compareHistoryGroupKeys(leftKey, rightKey) {
+      var leftIsKnownDate = /^\d{8}$/.test(leftKey);
+      var rightIsKnownDate = /^\d{8}$/.test(rightKey);
+
+      if (leftIsKnownDate && rightIsKnownDate) {
+        return rightKey.localeCompare(leftKey);
+      }
+
+      if (leftIsKnownDate) {
+        return -1;
+      }
+
+      if (rightIsKnownDate) {
+        return 1;
+      }
+
+      return rightKey.localeCompare(leftKey);
+    }
+
+    function buildHistoryGroupSummary(group) {
+      var hasSummary = false;
+      var hasIndividual = false;
+      var printedCount = 0;
+      var branchCodeMap = {};
+      var branchCodes = [];
+
+      for (var index = 0; index < group.records.length; index += 1) {
+        var record = group.records[index];
+        var recordBranchCodes = normalizeBranchCodeList(record.branchCodes || record.branchCode);
+
+        if (record.reportType === 'summary') {
+          hasSummary = true;
+        }
+
+        if (record.reportType === 'individual') {
+          hasIndividual = true;
+        }
+
+        if (record.printed) {
+          printedCount += 1;
+        }
+
+        for (var branchIndex = 0; branchIndex < recordBranchCodes.length; branchIndex += 1) {
+          var branchCode = recordBranchCodes[branchIndex];
+
+          if (branchCodeMap[branchCode]) {
+            continue;
+          }
+
+          branchCodeMap[branchCode] = true;
+          branchCodes.push(branchCode);
+        }
+      }
+
+      branchCodes.sort(compareBranchCodes);
+
+      return {
+        reportDate: group.reportDate,
+        records: group.records.slice(),
+        branchCodes: branchCodes,
+        hasSummary: hasSummary,
+        hasIndividual: hasIndividual,
+        printedCount: printedCount,
+        notPrintedCount: group.records.length - printedCount
+      };
+    }
+
+    function buildHistoryGroup(group, historyState) {
+      var container = document.createElement('section');
+      var header = document.createElement('div');
+      var recordsWrap = document.createElement('div');
+
+      container.className = 'history-group';
+      header.className = 'history-group-header';
+      recordsWrap.className = 'history-group-records';
+
+      header.innerHTML =
+        '<div>' +
+          '<h3 class="history-group-title">' + escapeHtml(formatHistoryDate(group.reportDate)) + '</h3>' +
+          '<div class="history-group-meta">' + group.records.length + ' ไฟล์</div>' +
+        '</div>' +
+        '<div class="history-group-summary">' +
+          buildHistorySummaryPill('Summary', group.hasSummary) +
+          buildHistorySummaryPill('Individual', group.hasIndividual) +
+          '<span class="history-summary-pill">ปริ้นท์แล้ว ' + group.printedCount + ' ไฟล์</span>' +
+          '<span class="history-summary-pill">ยังไม่ได้ปริ้นท์ ' + group.notPrintedCount + ' ไฟล์</span>' +
+        '</div>';
+
+      for (var index = 0; index < group.records.length; index += 1) {
+        recordsWrap.appendChild(buildHistoryGroupRecord(group.records[index], historyState));
+      }
+
+      container.appendChild(header);
+      container.appendChild(recordsWrap);
+
+      return container;
+    }
+
+    function buildHistoryDashboardRow(group, activeReportDate, historyState) {
+      var row = document.createElement('tr');
+      var reportDateCell = document.createElement('td');
+      var reportDateText = String(group.reportDate || '').trim();
+      var reportDateLabel = formatHistoryDate(reportDateText);
+
+      if (/^\d{8}$/.test(reportDateText)) {
+        var filterButton = document.createElement('button');
+
+        filterButton.type = 'button';
+        filterButton.className = 'history-date-filter-button';
+        filterButton.textContent = reportDateLabel;
+        filterButton.dataset.active = String(reportDateText === activeReportDate);
+        filterButton.addEventListener('click', function() {
+          historyState.reportDateInput.value = reportDateText;
+          historyState.reload({
+            successMessage: 'กรองประวัติการดำเนินการสำหรับวันที่ ' + formatHistoryDate(reportDateText) + ' แล้ว'
+          });
+        });
+        reportDateCell.appendChild(filterButton);
+      } else {
+        reportDateCell.textContent = reportDateLabel;
+      }
+
+      row.appendChild(reportDateCell);
+      row.appendChild(buildHistoryDashboardBranchesCell(group.branchCodes));
+      row.appendChild(buildHistoryDashboardMetricCell(group.hasSummary ? 'มีไฟล์แล้ว' : 'ยังไม่มีไฟล์', group.hasSummary));
+      row.appendChild(buildHistoryDashboardMetricCell(group.hasIndividual ? 'มีไฟล์แล้ว' : 'ยังไม่มีไฟล์', group.hasIndividual));
+      row.appendChild(buildHistoryDashboardCountCell(group.records.length));
+      row.appendChild(buildHistoryDashboardCountCell(group.printedCount));
+      row.appendChild(buildHistoryDashboardCountCell(group.notPrintedCount));
+
+      return row;
+    }
+
+    function buildHistoryDashboardBranchesCell(branchCodes) {
+      var cell = document.createElement('td');
+      var codes = Array.isArray(branchCodes) ? branchCodes : normalizeBranchCodeList(branchCodes);
+
+      if (!codes.length) {
+        var empty = document.createElement('span');
+
+        empty.className = 'history-muted';
+        empty.textContent = '-';
+        cell.appendChild(empty);
+
+        return cell;
+      }
+
+      var branchList = document.createElement('div');
+
+      branchList.className = 'history-branch-list';
+
+      for (var index = 0; index < codes.length; index += 1) {
+        var pill = document.createElement('span');
+
+        pill.className = 'history-summary-pill';
+        pill.textContent = 'สาขา ' + codes[index];
+        branchList.appendChild(pill);
+      }
+
+      cell.appendChild(branchList);
+
+      return cell;
+    }
+
+    function buildHistoryDashboardMetricCell(label, isPositive) {
+      var cell = document.createElement('td');
+      var pill = document.createElement('span');
+
+      pill.className = 'history-summary-pill';
+      pill.dataset.kind = isPositive ? 'available' : 'missing';
+      pill.textContent = label;
+      cell.appendChild(pill);
+
+      return cell;
+    }
+
+    function buildHistoryDashboardCountCell(count) {
+      var cell = document.createElement('td');
+
+      cell.textContent = String(count || 0);
+
+      return cell;
+    }
+
+    function buildHistorySummaryPill(label, isAvailable) {
+      return (
+        '<span class="history-summary-pill" data-kind="' +
+          (isAvailable ? 'available' : 'missing') +
+        '">' +
+          label + ': ' + (isAvailable ? 'มีไฟล์แล้ว' : 'ยังไม่มีไฟล์') +
+        '</span>'
+      );
+    }
+
+    function buildHistoryBranchCodesHtml(value) {
+      var branchCodes = normalizeBranchCodeList(value);
+
+      if (!branchCodes.length) {
+        return '<span class="history-muted">-</span>';
+      }
+
+      return (
+        '<div class="history-branch-list">' +
+          branchCodes.map(function(branchCode) {
+            return '<span class="history-summary-pill">สาขา ' + branchCode + '</span>';
+          }).join('') +
+        '</div>'
+      );
+    }
+
+    function buildHistoryGroupRecord(record, historyState) {
+      var wrapper = document.createElement('div');
+      var linksHtml = record.driveFileUrl
+        ? '<div class="history-group-links"><a href="' + escapeHtml(record.driveFileUrl) + '" target="_blank" rel="noopener">เปิดไฟล์ใน Google Drive</a></div>'
+        : '<div class="history-group-links"><span class="history-muted">ไม่มีลิงค์ Google Drive</span></div>';
+      var sourceUploadHtml = record.sourceUploadName
+        ? escapeHtml(record.sourceUploadName)
+        : '<span class="history-muted">-</span>';
+
+      wrapper.className = 'history-group-record';
+      wrapper.innerHTML =
+        '<div class="history-group-main">' +
+          '<div class="history-group-label">ชื่อไฟล์</div>' +
+          '<div class="history-filename">' + escapeHtml(record.filename || '-') + '</div>' +
+          linksHtml +
+        '</div>' +
+        '<div class="history-group-detail">' +
+          '<div class="history-group-label">ประเภทรายงาน</div>' +
+          '<div>' + escapeHtml(formatReportType(record.reportType)) + '</div>' +
+          '<div class="history-group-label">เอกสารของสาขา</div>' +
+          '<div>' + buildHistoryBranchCodesHtml(record.branchCodes || record.branchCode) + '</div>' +
+          '<div class="history-group-label">แหล่งเก็บไฟล์</div>' +
+          '<div>' + sourceUploadHtml + '</div>' +
+        '</div>' +
+        '<div class="history-group-detail">' +
+          '<div class="history-group-label">อัปโหลดเมื่อ</div>' +
+          '<div>' + escapeHtml(formatHistoryTimestamp(record.uploadedAt)) + '</div>' +
+          '<div class="history-group-label">ปริ้นท์ส่งพี่เอเมื่อ</div>' +
+          '<div>' + escapeHtml(formatHistoryTimestamp(record.printedAt)) + '</div>' +
+        '</div>';
+
+      var statusCell = document.createElement('div');
+      statusCell.className = 'history-group-detail';
+      statusCell.innerHTML =
+        '<div class="history-group-label">ปริ้นท์ส่งพี่เอแล้ว</div>' +
+        '<div><span class="history-pill" data-printed="' + String(!!record.printed) + '">' +
+          formatPrintedStatus(record.printed) +
+        '</span></div>';
+      statusCell.appendChild(buildHistoryActionsContainer(record, historyState));
+
+      wrapper.appendChild(statusCell);
+
+      return wrapper;
+    }
+
+    function buildHistoryRow(record, historyState) {
+      var row = document.createElement('tr');
+      var driveLinkHtml = record.driveFileUrl
+        ? '<a href="' + escapeHtml(record.driveFileUrl) + '" target="_blank" rel="noopener">เปิดไฟล์</a>'
+        : '<span class="history-muted">-</span>';
+      var sourceUploadHtml = record.sourceUploadName
+        ? escapeHtml(record.sourceUploadName)
+        : '<span class="history-muted">-</span>';
+      var branchCodesHtml = buildHistoryBranchCodesHtml(record.branchCodes || record.branchCode);
+      var printed = !!record.printed;
+
+      row.innerHTML =
+        '<td><div class="history-filename">' + escapeHtml(record.filename || '-') + '</div></td>' +
+        '<td>' + escapeHtml(formatReportType(record.reportType)) + '</td>' +
+        '<td>' + escapeHtml(formatHistoryDate(record.reportDate)) + '</td>' +
+        '<td>' + branchCodesHtml + '</td>' +
+        '<td>' + escapeHtml(formatHistoryTimestamp(record.uploadedAt)) + '</td>' +
+        '<td><span class="history-pill" data-printed="' + String(printed) + '">' +
+          formatPrintedStatus(printed) +
+        '</span></td>' +
+        '<td>' + escapeHtml(formatHistoryTimestamp(record.printedAt)) + '</td>' +
+        '<td>' + driveLinkHtml + '</td>' +
+        '<td>' + sourceUploadHtml + '</td>';
+
+      row.appendChild(buildHistoryActionsCell(record, historyState));
+
+      return row;
+    }
+
+    function buildHistoryActionsCell(record, historyState) {
+      var cell = document.createElement('td');
+
+      cell.className = 'history-actions-cell';
+      cell.appendChild(buildHistoryActionsContainer(record, historyState));
+
+      return cell;
+    }
+
+    function buildHistoryActionsContainer(record, historyState) {
+      var actions = document.createElement('div');
+      var markPrintedButton = document.createElement('button');
+      var markUnprintedButton = document.createElement('button');
+
+      actions.className = 'history-actions';
+
+      markPrintedButton.type = 'button';
+      markPrintedButton.className = 'history-action-button';
+      markPrintedButton.textContent = 'ปริ้นท์ส่งพี่เอแล้ว';
+      markPrintedButton.dataset.defaultLabel = 'ปริ้นท์ส่งพี่เอแล้ว';
+
+      markUnprintedButton.type = 'button';
+      markUnprintedButton.className = 'history-action-button secondary';
+      markUnprintedButton.textContent = 'ยังไม่ได้ปริ้นท์';
+      markUnprintedButton.dataset.defaultLabel = 'ยังไม่ได้ปริ้นท์';
+
+      markPrintedButton.disabled = !!record.printed;
+      markUnprintedButton.disabled = !record.printed;
+      markPrintedButton.dataset.idleDisabled = String(!!record.printed);
+      markUnprintedButton.dataset.idleDisabled = String(!record.printed);
+
+      markPrintedButton.addEventListener('click', function() {
+        submitHistoryPrintAction('printed', record, {
+          primary: markPrintedButton,
+          secondary: markUnprintedButton
+        }, historyState);
+      });
+
+      markUnprintedButton.addEventListener('click', function() {
+        submitHistoryPrintAction('unprinted', record, {
+          primary: markPrintedButton,
+          secondary: markUnprintedButton
+        }, historyState);
+      });
+
+      actions.appendChild(markPrintedButton);
+      actions.appendChild(markUnprintedButton);
+
+      return actions;
+    }
+
+    function normalizeBranchCodeList(value) {
+      var rawValues = [];
+      var branchCodeMap = {};
+      var branchCodes = [];
+
+      if (Array.isArray(value)) {
+        for (var valueIndex = 0; valueIndex < value.length; valueIndex += 1) {
+          rawValues = rawValues.concat(String(value[valueIndex] || '').split(/[,;\s]+/));
+        }
+      } else {
+        rawValues = String(value || '').split(/[,;\s]+/);
+      }
+
+      for (var index = 0; index < rawValues.length; index += 1) {
+        var branchCode = String(rawValues[index] || '').trim();
+
+        if (!/^\d{3}$/.test(branchCode) || branchCodeMap[branchCode]) {
+          continue;
+        }
+
+        branchCodeMap[branchCode] = true;
+        branchCodes.push(branchCode);
+      }
+
+      branchCodes.sort(compareBranchCodes);
+
+      return branchCodes;
+    }
+
+    function compareBranchCodes(left, right) {
+      return Number(left) - Number(right) || String(left).localeCompare(String(right));
+    }
+
+    function submitHistoryPrintAction(action, record, buttons, historyState) {
+      var isPrintedAction = action === 'printed';
+      var confirmMessage = isPrintedAction
+        ? 'ยืนยันว่าปริ้นท์ไฟล์นี้ส่งพี่เอแล้ว?\n\n' + (record.filename || '')
+        : 'ยืนยันเปลี่ยนสถานะเป็นยังไม่ได้ปริ้นท์?\n\n' + (record.filename || '');
+
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
+      setHistoryActionButtonsBusy(buttons, true, isPrintedAction ? 'กำลังบันทึก...' : 'กำลังอัปเดต...');
+      setStatus(
+        historyState.statusElement,
+        isPrintedAction ? 'กำลังบันทึกสถานะว่าปริ้นท์ส่งพี่เอแล้ว...' : 'กำลังบันทึกสถานะว่ายังไม่ได้ปริ้นท์...',
+        'working'
+      );
+
+      runHistoryPrintAction(action, record.id)
+        .then(function(response) {
+          return historyState.reload({
+            successMessage: (response && response.message) || (isPrintedAction ? 'บันทึกสถานะว่าปริ้นท์ส่งพี่เอแล้ว' : 'บันทึกสถานะว่ายังไม่ได้ปริ้นท์แล้ว')
+          });
+        })
+        .catch(function(error) {
+          setStatus(
+            historyState.statusElement,
+            (error && error.message) || 'อัปเดตสถานะการปริ้นท์ไม่สำเร็จ',
+            'error'
+          );
+          setHistoryActionButtonsBusy(buttons, false);
+        });
+    }
+
+    function runHistoryPrintAction(action, recordId) {
+      return new Promise(function(resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(reject);
+
+        if (action === 'printed') {
+          runner.markProcessingHistoryPrinted(recordId);
+          return;
+        }
+
+        runner.markProcessingHistoryUnprinted(recordId);
+      });
+    }
+
+    function setHistoryActionButtonsBusy(buttons, isBusy, label) {
+      var primaryLabel = buttons.primary.dataset.defaultLabel || 'ปริ้นท์ส่งพี่เอแล้ว';
+      var secondaryLabel = buttons.secondary.dataset.defaultLabel || 'ยังไม่ได้ปริ้นท์';
+
+      if (isBusy) {
+        buttons.primary.disabled = true;
+        buttons.secondary.disabled = true;
+        buttons.primary.textContent = label || primaryLabel;
+        buttons.secondary.textContent = label || secondaryLabel;
+        return;
+      }
+
+      buttons.primary.disabled = buttons.primary.dataset.idleDisabled === 'true';
+      buttons.secondary.disabled = buttons.secondary.dataset.idleDisabled === 'true';
+      buttons.primary.textContent = primaryLabel;
+      buttons.secondary.textContent = secondaryLabel;
+    }
+
+    function formatReportType(value) {
+      var text = String(value || '').trim();
+
+      if (text === 'summary') {
+        return 'สรุปจำนวนการชดชยทั้งหมดในรอบนั้นๆ(Summary)';
+      }
+
+      if (text === 'individual') {
+        return 'แจกแจงการชดเชยรายคน(Individual)';
+      }
+
+      return text || '-';
+    }
+
+    function formatPrintedStatus(value) {
+      return value ? 'ปริ้นท์ส่งพี่เอแล้ว' : 'ยังไม่ได้ปริ้นท์ส่งพี่เอ';
+    }
+
+    function formatHistoryDate(value) {
+      var text = String(value || '').trim();
+
+      if (!/^\d{8}$/.test(text)) {
+        return text || '-';
+      }
+
+      return text.slice(0, 4) + '-' + text.slice(4, 6) + '-' + text.slice(6, 8);
+    }
+
+    function formatHistoryTimestamp(value) {
+      var text = String(value || '').trim();
+
+      if (!text) {
+        return '-';
+      }
+
+      var parsed = new Date(text);
+
+      return isNaN(parsed.getTime()) ? text : parsed.toLocaleString();
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  }());
+</script>

@@ -1,0 +1,114 @@
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
+
+async function parseJsonResponse(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error('Backend returned an unreadable response.');
+  }
+}
+
+async function requestJson(path, options = {}) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await parseJsonResponse(response);
+
+  if (!response.ok) {
+    const message = payload?.error?.message || payload?.message || `Request failed with HTTP ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.code = payload?.error?.code;
+    error.details = payload?.error?.details;
+    throw error;
+  }
+
+  return payload;
+}
+
+function appendOptional(formData, key, value) {
+  if (value !== null && typeof value !== 'undefined' && value !== '') {
+    formData.append(key, String(value));
+  }
+}
+
+export function getApiBaseUrl() {
+  return API_BASE_URL;
+}
+
+export async function getBootstrap() {
+  return requestJson('/bootstrap');
+}
+
+export async function processWorkbookPayload(payload) {
+  const file = payload?.file;
+
+  if (!(file instanceof File)) {
+    throw new Error('Workbook upload requires a browser File object.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+  appendOptional(formData, 'formatterMode', payload.formatterMode);
+  appendOptional(formData, 'previewWorkbookId', payload.previewSpreadsheetId || payload.previewWorkbookId);
+  appendOptional(formData, 'batchId', payload.batchId);
+  appendOptional(formData, 'batchFileCount', payload.batchFileCount);
+
+  const response = await requestJson('/workbooks/process', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (response?.successes?.length) {
+    return response.successes[0];
+  }
+
+  if (response?.failures?.length) {
+    throw new Error(response.failures[0].message || 'Workbook processing failed.');
+  }
+
+  throw new Error('Workbook processing returned no result.');
+}
+
+export async function fetchProcessingHistory(filters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  const payload = await requestJson(`/processing-records${query ? `?${query}` : ''}`);
+
+  return payload?.records || [];
+}
+
+export async function markProcessingHistoryPrinted(id, printedBy = '') {
+  return requestJson(`/processing-records/${encodeURIComponent(id)}/mark-printed`, {
+    method: 'POST',
+    body: JSON.stringify({ printedBy }),
+  });
+}
+
+export async function markProcessingHistoryUnprinted(id) {
+  return requestJson(`/processing-records/${encodeURIComponent(id)}/mark-unprinted`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function listProcessingRecords(params = {}) {
+  return fetchProcessingHistory(params);
+}
