@@ -1,0 +1,17 @@
+**/**
+!appsscript.json
+!src/**/*.js
+!src/**/*.gs
+!src/**/*.html
+!server/**/*.js
+!server/**/*.gs
+!server/**/*.html
+
+node_modules/**
+client/node_modules/**
+server/node_modules/**
+**/.vite/**
+**/*.map
+logs/**
+docs/**
+scripts/**
