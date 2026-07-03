@@ -5,6 +5,7 @@
 สคริปต์ปัจจุบัน:
 
 - `import-from-csv.js`: import `ProcessingRegistry.csv` เป็น `processing_records`, `processing_record_branch_codes`, legacy `generated_files` และบันทึก run summary ใน `migration_logs` เมื่อ commit
+- สคริปต์เดียวกันรองรับ `ProcessingRegistry` export แบบ JSON จาก GAS helper ด้วย
 
 ## Prerequisites
 
@@ -35,12 +36,28 @@ id,reportDate,reportType,filename,driveFileId,driveFileUrl,uploadedAt,uploadedBy
 
 แนะนำเก็บไฟล์ export ไว้นอก repo หรือในโฟลเดอร์ที่ไม่ commit เช่น `exports/`
 
+## Export JSON From Legacy GAS Sheet
+
+ถ้ายังมี registry เดิมอยู่ใน Google Sheets/GAS และอยาก import โดยไม่ต้องกด Export CSV เอง ให้รัน GAS function นี้:
+
+```javascript
+exportLegacyProcessingRegistryForSupabaseImport()
+```
+
+แล้วนำ JSON result ไปบันทึกเป็นไฟล์ เช่น `exports/ProcessingRegistry.json`
+
 ## Dry Run
 
 Dry-run เป็นค่าเริ่มต้นและจะไม่เขียนข้อมูลลง database:
 
 ```powershell
 node scripts/import-data/import-from-csv.js --registry-csv .\exports\ProcessingRegistry.csv
+```
+
+หรือใช้ JSON export:
+
+```powershell
+node scripts/import-data/import-from-csv.js --registry-json .\exports\ProcessingRegistry.json
 ```
 
 หรือระบุชัดเจน:
@@ -79,6 +96,7 @@ node scripts/import-data/import-from-csv.js --registry-csv .\exports\ProcessingR
 
 ```txt
 --registry-csv <path>          path ไปยัง ProcessingRegistry CSV
+--registry-json <path>         path ไปยัง ProcessingRegistry JSON export จาก GAS
 --source-name <name>           label ที่บันทึกใน migration_source/migration_logs
 --registry-spreadsheet-id <id> preserve legacy registry spreadsheet id
 --limit <n>                    import เฉพาะ n rows แรก สำหรับ test

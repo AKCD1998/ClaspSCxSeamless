@@ -1,17 +1,10 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { closePool, getClient } = require('./pool');
+const { ensureAppSchema, ensureMigrationTable } = require('./schemaBootstrap');
+const { tables } = require('./identifiers');
 
 const migrationsDir = path.resolve(__dirname, '../../db/migrations');
-
-async function ensureMigrationTable(client) {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      filename text PRIMARY KEY,
-      applied_at timestamptz NOT NULL DEFAULT now()
-    )
-  `);
-}
 
 async function listSqlFiles(directory) {
   const entries = await fs.readdir(directory, { withFileTypes: true });
@@ -22,7 +15,7 @@ async function listSqlFiles(directory) {
 }
 
 async function getAppliedMigrations(client) {
-  const result = await client.query('SELECT filename FROM schema_migrations');
+  const result = await client.query(`SELECT filename FROM ${tables.schemaMigrations}`);
   return new Set(result.rows.map((row) => row.filename));
 }
 
@@ -30,6 +23,7 @@ async function run() {
   const client = await getClient();
 
   try {
+    await ensureAppSchema(client);
     await ensureMigrationTable(client);
 
     const applied = await getAppliedMigrations(client);
@@ -47,7 +41,7 @@ async function run() {
       console.log(`Applying migration: ${filename}`);
       await client.query(sql);
       await client.query(
-        'INSERT INTO schema_migrations (filename) VALUES ($1)',
+        `INSERT INTO ${tables.schemaMigrations} (filename) VALUES ($1)`,
         [filename],
       );
     }

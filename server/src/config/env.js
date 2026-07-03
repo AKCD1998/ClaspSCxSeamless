@@ -19,12 +19,24 @@ function readNumber(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function readIdentifier(value, fallback) {
+  const normalized = String(value || fallback || '').trim();
+
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(normalized)) {
+    throw new Error(`Invalid DB_SCHEMA value: ${normalized}`);
+  }
+
+  return normalized;
+}
+
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: readNumber(process.env.PORT, 3001),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   databaseUrl: process.env.DATABASE_URL || '',
+  dbSchema: readIdentifier(process.env.DB_SCHEMA, 'clasp_scx_seamless'),
   healthFailOnDbError: readBoolean(process.env.HEALTH_FAIL_ON_DB_ERROR, false),
+  internalApiToken: process.env.INTERNAL_API_TOKEN || '',
   publicBaseUrl: process.env.PUBLIC_BASE_URL || '',
   storageDir: process.env.STORAGE_DIR || 'storage',
   pg: {

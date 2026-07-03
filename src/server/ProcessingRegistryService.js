@@ -276,6 +276,31 @@ var SXProcessingRegistryService = {
     return record;
   },
 
+  exportForSupabaseImport: function() {
+    var self = this;
+
+    return this.withRegistryLock_(function() {
+      var registry = self.ensureRegistryReady_();
+      var table = self.readSheetRecords_(registry.sheet);
+      var rows = table.entries.map(function(entry) {
+        var record = self.cloneRecord_(entry.record);
+
+        record.__rowNumber = entry.rowNumber;
+        return record;
+      });
+
+      return {
+        spreadsheetId: registry.spreadsheet.getId(),
+        spreadsheetUrl: registry.spreadsheet.getUrl(),
+        sheetName: registry.sheet.getName(),
+        headers: self.HEADERS.slice(),
+        rowCount: rows.length,
+        exportedAt: self.getNowIso_(),
+        rows: rows
+      };
+    });
+  },
+
   withRegistryLock_: function(callback) {
     var lock = LockService.getScriptLock();
 

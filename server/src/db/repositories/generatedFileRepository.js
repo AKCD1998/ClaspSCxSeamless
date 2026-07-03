@@ -1,5 +1,6 @@
 const { query } = require('../pool');
 const { notFound } = require('../../utils/apiError');
+const { tables } = require('../identifiers');
 
 function executor(client) {
   return client || { query };
@@ -31,7 +32,7 @@ async function createGeneratedFile(file, client = null) {
   const db = executor(client);
   const result = await db.query(
     `
-      INSERT INTO generated_files (
+      INSERT INTO ${tables.generatedFiles} (
         processing_record_id,
         batch_id,
         upload_id,
@@ -79,7 +80,7 @@ async function createGeneratedFile(file, client = null) {
 
 async function getGeneratedFileById(id, client = null) {
   const db = executor(client);
-  const result = await db.query('SELECT * FROM generated_files WHERE id = $1', [id]);
+  const result = await db.query(`SELECT * FROM ${tables.generatedFiles} WHERE id = $1`, [id]);
 
   if (!result.rows.length) {
     throw notFound(`Generated file not found for id: ${id}`);
@@ -92,7 +93,7 @@ async function updateGeneratedFile(id, patch, client = null) {
   const db = executor(client);
   const result = await db.query(
     `
-      UPDATE generated_files
+      UPDATE ${tables.generatedFiles}
       SET
         processing_record_id = COALESCE($2, processing_record_id),
         download_url = COALESCE($3, download_url),

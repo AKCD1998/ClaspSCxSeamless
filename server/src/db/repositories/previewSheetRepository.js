@@ -1,4 +1,5 @@
 const { query } = require('../pool');
+const { tables } = require('../identifiers');
 
 function executor(client) {
   return client || { query };
@@ -8,7 +9,7 @@ async function createPreviewSheet(sheet, client = null) {
   const db = executor(client);
   const result = await db.query(
     `
-      INSERT INTO preview_sheets (
+      INSERT INTO ${tables.previewSheets} (
         preview_file_id,
         upload_id,
         processing_record_id,
@@ -39,7 +40,7 @@ async function createPreviewSheet(sheet, client = null) {
 async function listPreviewSheets(previewFileId, client = null) {
   const db = executor(client);
   const result = await db.query(
-    'SELECT * FROM preview_sheets WHERE preview_file_id = $1 ORDER BY sheet_order',
+    `SELECT * FROM ${tables.previewSheets} WHERE preview_file_id = $1 ORDER BY sheet_order`,
     [previewFileId],
   );
 

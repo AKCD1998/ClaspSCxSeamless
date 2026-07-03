@@ -1,4 +1,5 @@
 const { query } = require('../pool');
+const { tables } = require('../identifiers');
 
 function executor(client) {
   return client || { query };
@@ -8,7 +9,7 @@ async function createWorkbookUpload(upload, client = null) {
   const db = executor(client);
   const result = await db.query(
     `
-      INSERT INTO workbook_uploads (
+      INSERT INTO ${tables.workbookUploads} (
         batch_id,
         original_filename,
         mime_type,
@@ -36,7 +37,7 @@ async function updateWorkbookUpload(id, patch, client = null) {
   const db = executor(client);
   const result = await db.query(
     `
-      UPDATE workbook_uploads
+      UPDATE ${tables.workbookUploads}
       SET
         processing_record_id = COALESCE($2, processing_record_id),
         detected_variant = COALESCE($3, detected_variant),

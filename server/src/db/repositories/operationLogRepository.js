@@ -1,4 +1,5 @@
 const { query } = require('../pool');
+const { tables } = require('../identifiers');
 
 async function logOperation(entry, client = null) {
   const executor = client || { query };
@@ -8,7 +9,7 @@ async function logOperation(entry, client = null) {
   try {
     await executor.query(
       `
-        INSERT INTO operation_logs (
+        INSERT INTO ${tables.operationLogs} (
           scope,
           level,
           action,

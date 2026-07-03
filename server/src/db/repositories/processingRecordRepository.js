@@ -1,5 +1,6 @@
 const { query } = require('../pool');
 const { notFound } = require('../../utils/apiError');
+const { tables } = require('../identifiers');
 const {
   coerceReportDateKey,
   isUuid,
@@ -53,7 +54,7 @@ async function syncBranchCodes(recordId, branchCodes, client = null) {
   const db = executor(client);
   const normalized = normalizeBranchCodes(branchCodes);
 
-  await db.query('DELETE FROM processing_record_branch_codes WHERE processing_record_id = $1', [
+  await db.query(`DELETE FROM ${tables.processingRecordBranchCodes} WHERE processing_record_id = $1`, [
     recordId,
   ]);
 
@@ -64,7 +65,7 @@ async function syncBranchCodes(recordId, branchCodes, client = null) {
   for (const branchCode of normalized.split(/,\s*/)) {
     await db.query(
       `
-        INSERT INTO processing_record_branch_codes (processing_record_id, branch_code)
+        INSERT INTO ${tables.processingRecordBranchCodes} (processing_record_id, branch_code)
         VALUES ($1, $2)
         ON CONFLICT DO NOTHING
       `,
@@ -121,7 +122,7 @@ async function listProcessingRecords(filters = {}, client = null) {
   const result = await db.query(
     `
       SELECT *
-      FROM processing_records
+      FROM ${tables.processingRecords}
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY COALESCE(uploaded_at, updated_at, created_at) DESC
       LIMIT ${limitPlaceholder}
@@ -225,7 +226,7 @@ async function createProcessingRecord(record, client = null) {
   const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
   const result = await db.query(
     `
-      INSERT INTO processing_records (${columns.join(', ')})
+      INSERT INTO ${tables.processingRecords} (${columns.join(', ')})
       VALUES (${placeholders})
       RETURNING *
     `,
@@ -325,7 +326,7 @@ async function updateProcessingRecord(id, patch, client = null) {
   values.push(existing.id);
   const result = await db.query(
     `
-      UPDATE processing_records
+      UPDATE ${tables.processingRecords}
       SET ${updates.join(', ')}
       WHERE id = $${values.length}
       RETURNING *

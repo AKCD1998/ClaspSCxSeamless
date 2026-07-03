@@ -24,10 +24,15 @@ function serviceUnavailable(message, details = null) {
   return new ApiError(503, message, 'SERVICE_UNAVAILABLE', details);
 }
 
+function unauthorized(message, details = null) {
+  return new ApiError(401, message, 'UNAUTHORIZED', details);
+}
+
 module.exports = {
   ApiError,
   badRequest,
   conflict,
   notFound,
+  unauthorized,
   serviceUnavailable,
 };

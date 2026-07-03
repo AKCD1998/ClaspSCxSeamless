@@ -19,34 +19,34 @@ function discardPreviewSpreadsheet(previewSpreadsheetId) {
 }
 
 function initProcessingRegistry() {
-  return SXProcessingRegistryService.initProcessingRegistry();
+  return SXProcessingRegistryGateway.initProcessingRegistry();
 }
 
 function createProcessingRecord(record) {
-  return SXProcessingRegistryService.createProcessingRecord(record);
+  return SXProcessingRegistryGateway.createProcessingRecord(record);
 }
 
 function updateProcessingRecord(id, patch) {
-  return SXProcessingRegistryService.updateProcessingRecord(id, patch);
+  return SXProcessingRegistryGateway.updateProcessingRecord(id, patch);
 }
 
 function findProcessingRecordByFilename(filename) {
-  return SXProcessingRegistryService.findProcessingRecordByFilename(filename);
+  return SXProcessingRegistryGateway.findProcessingRecordByFilename(filename);
 }
 
 function parsePreviewFilename(filename) {
-  return SXProcessingRegistryService.parsePreviewFilename(filename);
+  return SXProcessingRegistryGateway.parsePreviewFilename(filename);
 }
 
 function fetchProcessingHistory(filters) {
-  return SXProcessingRegistryService.listProcessingRecords(filters || {});
+  return SXProcessingRegistryGateway.listProcessingRecords(filters || {});
 }
 
 function markProcessingHistoryPrinted(id) {
   return {
     ok: true,
     message: 'Marked as printed.',
-    record: SXProcessingRegistryService.markPrinted(id)
+    record: SXProcessingRegistryGateway.markPrinted(id)
   };
 }
 
@@ -54,18 +54,22 @@ function markProcessingHistoryUnprinted(id) {
   return {
     ok: true,
     message: 'Marked as unprinted.',
-    record: SXProcessingRegistryService.markUnprinted(id)
+    record: SXProcessingRegistryGateway.markUnprinted(id)
   };
 }
 
 function listProcessingRecords(filters) {
-  return SXProcessingRegistryService.listProcessingRecords(filters || {});
+  return SXProcessingRegistryGateway.listProcessingRecords(filters || {});
 }
 
 function markPrinted(id, printedBy) {
-  return SXProcessingRegistryService.markPrinted(id, printedBy);
+  return SXProcessingRegistryGateway.markPrinted(id, printedBy);
 }
 
 function markUnprinted(id) {
-  return SXProcessingRegistryService.markUnprinted(id);
+  return SXProcessingRegistryGateway.markUnprinted(id);
+}
+
+function exportLegacyProcessingRegistryForSupabaseImport() {
+  return SXProcessingRegistryService.exportForSupabaseImport();
 }

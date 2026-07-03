@@ -118,7 +118,7 @@ var SXWorkbookPipeline = {
         previewResult.spreadsheetId + ' -> ' + (previewResult.spreadsheetUrl || '[missing]')
       );
       try {
-        var parsedPreviewFilename = SXProcessingRegistryService.parsePreviewFilename(
+        var parsedPreviewFilename = SXProcessingRegistryGateway.parsePreviewFilename(
           previewResult.previewFilename
         );
 
@@ -134,7 +134,7 @@ var SXWorkbookPipeline = {
           })
         );
 
-        var registryResult = SXProcessingRegistryService.upsertProcessingRecordFromPreview({
+        var registryResult = SXProcessingRegistryGateway.upsertProcessingRecordFromPreview({
           filename: previewResult.previewFilename,
           driveFileId: previewResult.spreadsheetId,
           driveFileUrl: previewResult.spreadsheetUrl,

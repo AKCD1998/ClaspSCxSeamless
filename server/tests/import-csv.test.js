@@ -3,6 +3,7 @@ const test = require('node:test');
 const {
   normalizeRegistryRow,
   parseCsv,
+  parseRegistryJson,
   validateHeaders,
 } = require('../../scripts/import-data/import-from-csv');
 
@@ -45,4 +46,39 @@ test('ProcessingRegistry header validation fails fast when required columns are 
     () => validateHeaders(['id', 'filename']),
     /missing required headers/i,
   );
+});
+
+test('ProcessingRegistry JSON parser preserves rows exported from GAS helper', () => {
+  const parsed = parseRegistryJson(
+    JSON.stringify({
+      headers: registryHeader.split(','),
+      rows: [
+        {
+          __rowNumber: 7,
+          id: 'legacy-json-1',
+          reportDate: '20260430',
+          reportType: 'individual',
+          filename: 'Preview-individual-single-20260430-101010',
+          driveFileId: 'drive-json-1',
+          driveFileUrl: 'https://drive.example/json',
+          uploadedAt: '2026-04-30T10:10:10Z',
+          uploadedBy: 'user@example.test',
+          printed: false,
+          printedAt: '',
+          printedBy: '',
+          sourceUploadName: 'source.xlsx',
+          notes: 'from gas json',
+          createdAt: '2026-04-30T10:10:10Z',
+          updatedAt: '2026-04-30T10:10:10Z',
+          lastAction: 'uploaded_created',
+          branchCodes: '001, 004',
+        },
+      ],
+    }),
+  );
+
+  assert.equal(parsed.sourceType, 'json');
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.rows[0].__rowNumber, 7);
+  assert.equal(parsed.rows[0].notes, 'from gas json');
 });

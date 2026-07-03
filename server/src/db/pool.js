@@ -1,14 +1,21 @@
 const { Pool } = require('pg');
 const { env } = require('../config/env');
+const { searchPathOption } = require('./identifiers');
 
 function buildPoolConfig() {
+  const config = {
+    options: `-c search_path=${searchPathOption}`,
+  };
+
   if (env.databaseUrl) {
     return {
+      ...config,
       connectionString: env.databaseUrl,
     };
   }
 
   return {
+    ...config,
     host: env.pg.host,
     port: env.pg.port,
     database: env.pg.database,

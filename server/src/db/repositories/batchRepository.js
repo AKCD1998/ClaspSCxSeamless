@@ -1,4 +1,5 @@
 const { query } = require('../pool');
+const { tables } = require('../identifiers');
 
 function executor(client) {
   return client || { query };
@@ -8,7 +9,7 @@ async function createBatch(batch, client = null) {
   const db = executor(client);
   const result = await db.query(
     `
-      INSERT INTO processing_batches (
+      INSERT INTO ${tables.processingBatches} (
         formatter_mode,
         batch_mode,
         status,
@@ -34,7 +35,7 @@ async function updateBatch(id, patch, client = null) {
   const db = executor(client);
   const result = await db.query(
     `
-      UPDATE processing_batches
+      UPDATE ${tables.processingBatches}
       SET
         status = COALESCE($2, status),
         success_count = COALESCE($3, success_count),
@@ -64,7 +65,7 @@ async function recordBatchResult(id, result, client = null) {
 
   const response = await db.query(
     `
-      UPDATE processing_batches
+      UPDATE ${tables.processingBatches}
       SET
         success_count = success_count + $2,
         failure_count = failure_count + $3,

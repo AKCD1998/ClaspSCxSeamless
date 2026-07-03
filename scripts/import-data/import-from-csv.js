@@ -3,6 +3,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { Pool } = require('pg');
+const { searchPathOption, tables } = require('../../server/src/db/identifiers');
 
 try {
   require('dotenv').config({
@@ -40,6 +41,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 function parseArgs(argv) {
   const options = {
     registryCsv: '',
+    registryJson: '',
     sourceName: '',
     registrySpreadsheetId: '',
     dryRun: true,
@@ -52,6 +54,9 @@ function parseArgs(argv) {
 
     if (arg === '--registry-csv') {
       options.registryCsv = readRequiredValue(argv, index, arg);
+      index += 1;
+    } else if (arg === '--registry-json') {
+      options.registryJson = readRequiredValue(argv, index, arg);
       index += 1;
     } else if (arg === '--source-name') {
       options.sourceName = readRequiredValue(argv, index, arg);
@@ -76,8 +81,12 @@ function parseArgs(argv) {
     }
   }
 
-  if (!options.registryCsv) {
-    throw new Error('Missing required option: --registry-csv <path>');
+  if (!options.registryCsv && !options.registryJson) {
+    throw new Error('Missing required option: --registry-csv <path> or --registry-json <path>');
+  }
+
+  if (options.registryCsv && options.registryJson) {
+    throw new Error('Use only one input source: --registry-csv or --registry-json');
   }
 
   if (options.limit && (!Number.isInteger(options.limit) || options.limit < 1)) {
@@ -102,9 +111,11 @@ function readRequiredValue(argv, index, arg) {
 function printHelp() {
   console.log(`Usage:
   node scripts/import-data/import-from-csv.js --registry-csv <path> [options]
+  node scripts/import-data/import-from-csv.js --registry-json <path> [options]
 
 Options:
   --registry-csv <path>             ProcessingRegistry CSV export path
+  --registry-json <path>            ProcessingRegistry JSON export path from GAS helper
   --source-name <name>              migration source label; defaults to CSV basename
   --registry-spreadsheet-id <id>    preserve legacy registry spreadsheet id
   --limit <n>                       process only first n data rows
@@ -119,10 +130,12 @@ function buildPoolConfig() {
   if (process.env.DATABASE_URL) {
     return {
       connectionString: process.env.DATABASE_URL,
+      options: `-c search_path=${searchPathOption}`,
     };
   }
 
   return {
+    options: `-c search_path=${searchPathOption}`,
     host: process.env.PGHOST,
     port: Number(process.env.PGPORT || 5432),
     database: process.env.PGDATABASE,
@@ -133,19 +146,16 @@ function buildPoolConfig() {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const csvPath = path.resolve(process.cwd(), options.registryCsv);
-  const sourceName = options.sourceName || path.basename(csvPath);
-  const csvText = await fs.readFile(csvPath, 'utf8');
-  const parsedCsv = parseCsv(csvText);
-
-  validateHeaders(parsedCsv.headers);
-
-  const rows = options.limit ? parsedCsv.rows.slice(0, options.limit) : parsedCsv.rows;
+  const sourcePath = path.resolve(process.cwd(), options.registryCsv || options.registryJson);
+  const sourceName = options.sourceName || path.basename(sourcePath);
+  const parsedSource = await loadRegistrySource(options, sourcePath);
+  const rows = options.limit ? parsedSource.rows.slice(0, options.limit) : parsedSource.rows;
   const pool = new Pool(buildPoolConfig());
   const client = await pool.connect();
   const summary = createSummary({
     sourceName,
-    sourcePath: csvPath,
+    sourcePath,
+    sourceType: parsedSource.sourceType,
     dryRun: options.dryRun,
     allowUpdate: options.allowUpdate,
   });
@@ -156,7 +166,8 @@ async function main() {
     if (!options.dryRun) {
       await client.query('BEGIN');
       migrationLogId = await createMigrationLog(client, sourceName, {
-        sourcePath: csvPath,
+        sourcePath,
+        sourceType: parsedSource.sourceType,
         registrySpreadsheetId: options.registrySpreadsheetId || null,
         allowUpdate: options.allowUpdate,
       });
@@ -199,10 +210,11 @@ async function main() {
   }
 }
 
-function createSummary({ sourceName, sourcePath, dryRun, allowUpdate }) {
+function createSummary({ sourceName, sourcePath, sourceType, dryRun, allowUpdate }) {
   return {
     sourceName,
     sourcePath,
+    sourceType,
     dryRun,
     allowUpdate,
     recordsRead: 0,
@@ -219,6 +231,22 @@ function createSummary({ sourceName, sourcePath, dryRun, allowUpdate }) {
     warnings: [],
     errors: [],
     fatalError: '',
+  };
+}
+
+async function loadRegistrySource(options, sourcePath) {
+  const rawText = await fs.readFile(sourcePath, 'utf8');
+
+  if (options.registryJson) {
+    return parseRegistryJson(rawText);
+  }
+
+  const parsedCsv = parseCsv(rawText);
+  validateHeaders(parsedCsv.headers);
+  return {
+    sourceType: 'csv',
+    headers: parsedCsv.headers,
+    rows: parsedCsv.rows,
   };
 }
 
@@ -294,6 +322,42 @@ function validateHeaders(headers) {
   if (missing.length > 0) {
     throw new Error(`ProcessingRegistry CSV is missing required headers: ${missing.join(', ')}`);
   }
+}
+
+function parseRegistryJson(text) {
+  let payload;
+
+  try {
+    payload = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Registry JSON is invalid: ${error.message}`);
+  }
+
+  const rows = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload && payload.rows)
+      ? payload.rows
+      : [];
+  const headers = Array.isArray(payload && payload.headers)
+    ? payload.headers
+    : REGISTRY_HEADERS.slice();
+
+  validateHeaders(headers);
+
+  return {
+    sourceType: 'json',
+    headers,
+    rows: rows.map((row, rowIndex) => {
+      const record = {};
+
+      headers.forEach((header) => {
+        record[header] = row && Object.prototype.hasOwnProperty.call(row, header) ? row[header] : '';
+      });
+
+      record.__rowNumber = Number(row && row.__rowNumber) || rowIndex + 2;
+      return record;
+    }),
+  };
 }
 
 function normalizeRegistryRow(row, context) {
@@ -570,7 +634,7 @@ async function findExistingProcessingRecord(client, data) {
 
   const result = await client.query(
     `SELECT id, legacy_registry_id, filename
-       FROM processing_records
+       FROM ${tables.processingRecords}
       WHERE ${conditions.join(' OR ')}
       ORDER BY updated_at DESC
       LIMIT 1`,
@@ -581,7 +645,7 @@ async function findExistingProcessingRecord(client, data) {
 
 async function insertProcessingRecord(client, data) {
   const result = await client.query(
-    `INSERT INTO processing_records (
+    `INSERT INTO ${tables.processingRecords} (
        id,
        legacy_registry_id,
        report_date_key,
@@ -646,7 +710,7 @@ async function insertProcessingRecord(client, data) {
 
 async function updateProcessingRecord(client, id, data) {
   await client.query(
-    `UPDATE processing_records
+    `UPDATE ${tables.processingRecords}
         SET legacy_registry_id = COALESCE($2, legacy_registry_id),
             report_date_key = $3,
             report_date = $4::date,
@@ -702,7 +766,7 @@ async function updateProcessingRecord(client, id, data) {
 async function insertBranchCodes(client, processingRecordId, branchCodes, summary) {
   for (const branchCode of branchCodes) {
     const result = await client.query(
-      `INSERT INTO processing_record_branch_codes (processing_record_id, branch_code)
+      `INSERT INTO ${tables.processingRecordBranchCodes} (processing_record_id, branch_code)
        VALUES ($1::uuid, $2)
        ON CONFLICT DO NOTHING`,
       [processingRecordId, branchCode],
@@ -730,7 +794,7 @@ async function insertGeneratedFileReference(client, processingRecordId, data, su
   }
 
   await client.query(
-    `INSERT INTO generated_files (
+    `INSERT INTO ${tables.generatedFiles} (
        processing_record_id,
        file_kind,
        filename,
@@ -786,7 +850,7 @@ async function findExistingGeneratedFile(client, processingRecordId, data, fileK
 
   const result = await client.query(
     `SELECT id
-       FROM generated_files
+       FROM ${tables.generatedFiles}
       WHERE ${conditions.join(' OR ')}
       LIMIT 1`,
     params,
@@ -823,10 +887,10 @@ function inferLegacyGoogleMimeType(fileKind) {
 
 async function createMigrationLog(client, sourceName, metadata) {
   const result = await client.query(
-    `INSERT INTO migration_logs (source_name, source_type, status, metadata)
-     VALUES ($1, 'csv', 'started', $2::jsonb)
+    `INSERT INTO ${tables.migrationLogs} (source_name, source_type, status, metadata)
+     VALUES ($1, $2, 'started', $3::jsonb)
      RETURNING id`,
-    [sourceName, JSON.stringify(metadata)],
+    [sourceName, metadata.sourceType || 'csv', JSON.stringify(metadata)],
   );
   return result.rows[0].id;
 }
@@ -834,7 +898,7 @@ async function createMigrationLog(client, sourceName, metadata) {
 async function finishMigrationLog(client, migrationLogId, summary) {
   const status = summary.recordsFailed > 0 || summary.warnings.length > 0 ? 'completed_with_warnings' : 'completed';
   await client.query(
-    `UPDATE migration_logs
+    `UPDATE ${tables.migrationLogs}
         SET status = $2,
             finished_at = now(),
             records_read = $3,
@@ -935,6 +999,7 @@ if (require.main === module) {
 
 module.exports = {
   parseCsv,
+  parseRegistryJson,
   validateHeaders,
   normalizeRegistryRow,
   normalizeReportType,
