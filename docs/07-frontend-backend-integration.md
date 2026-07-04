@@ -2,11 +2,11 @@
 
 วันที่จัดทำ: 2026-04-30
 
-เอกสารนี้สรุปการเชื่อม React frontend กับ Express backend สำหรับ PERN migration รอบแรก โดยยังไม่ deploy production
+เอกสารนี้สรุปการเชื่อม React frontend กับ Express backend สำหรับ PERN migration รอบแรก และสถานะที่พร้อม deploy บน Render โดยไม่ต้องใช้ GAS UI เป็น frontend หลัก
 
 ## Summary
 
-React UI เดิมที่ migrate จาก GAS ได้เปลี่ยนจาก placeholder/mock API เป็น HTTP calls จริงไปยัง Express backend แล้ว
+React UI เดิมที่ migrate จาก GAS ได้เปลี่ยนจาก placeholder/mock API เป็น HTTP calls จริงไปยัง Express backend แล้ว และสามารถ serve เป็น frontend หลักจาก backend เดียวกันได้
 
 ไฟล์หลักที่เกี่ยวข้อง:
 
@@ -33,9 +33,20 @@ VITE_API_BASE_URL=http://localhost:3001/api
 client/.env.example
 ```
 
-ถ้าไม่ตั้งค่า ระบบจะ fallback เป็น `http://localhost:3001/api`
+ถ้าไม่ตั้งค่า ระบบจะ fallback เป็น same-origin `/api` ใน browser และ fallback เป็น `http://localhost:3001/api` ใน local SSR/test
 
-Backend ใช้ `server/.env` ตาม `server/.env.example` เช่น `DATABASE_URL`, `PUBLIC_BASE_URL`, `STORAGE_DIR` และ PostgreSQL variables ห้าม commit secret จริง
+Backend ใช้ `server/.env` ตาม `server/.env.example`
+
+ค่าที่ prefer สำหรับ production ของ workspace นี้:
+
+```txt
+SC_OFFICIAL_SUPABASE_DATABASE_URL=postgresql://...
+SEAMLESS_DB_SCHEMA=clasp_scx_seamless
+PUBLIC_BASE_URL=https://<render-service>.onrender.com
+STORAGE_DIR=/var/data/storage
+```
+
+Server ยังรองรับ `DATABASE_URL` และ `DB_SCHEMA` เป็น alias เพื่อ backward compatibility แต่ไม่ใช่ชื่อหลักที่ควรใช้ใน Render ของ repo นี้
 
 ## API Mapping
 
@@ -43,10 +54,15 @@ Backend ใช้ `server/.env` ตาม `server/.env.example` เช่น `DA
 | --- | --- | --- |
 | `getBootstrap()` | `GET /api/bootstrap` | โหลด config เช่น max upload size และ batch limit |
 | `processWorkbookPayload(payload)` | `POST /api/workbooks/process` | อัปโหลด workbook ด้วย `multipart/form-data` |
-| `fetchProcessingHistory(filters)` | `GET /api/processing-records` | โหลด history จาก PostgreSQL |
-| `markProcessingHistoryPrinted(id)` | `POST /api/processing-records/:id/mark-printed` | mark printed |
-| `markProcessingHistoryUnprinted(id)` | `POST /api/processing-records/:id/mark-unprinted` | mark unprinted |
+| `fetchProcessingHistory(filters)` | `GET /api/app/processing-records` | Browser-facing history API สำหรับ React frontend |
+| `markProcessingHistoryPrinted(id)` | `POST /api/app/processing-records/:id/mark-printed` | mark printed จาก React frontend |
+| `markProcessingHistoryUnprinted(id)` | `POST /api/app/processing-records/:id/mark-unprinted` | mark unprinted จาก React frontend |
 | generated file link | `GET /api/files/:id/download` | ดาวน์โหลด generated `.xlsx` หรือ preview workbook |
+
+หมายเหตุ:
+
+- `GET/POST/PATCH /api/processing-records` path เดิมยังคงอยู่สำหรับ internal/GAS integration
+- React frontend ใช้ `/api/app/processing-records` เพื่อไม่ต้องพก internal token ใน browser
 
 ## Workflow Status
 
@@ -121,7 +137,13 @@ npm run dev:client
 
 ```txt
 http://localhost:5173
-```
+
+Production shape ที่รองรับแล้ว:
+
+- build `client/` เป็น `client/dist`
+- ให้ Express serve static frontend ที่ `/` และรองรับ SPA route fallback เช่น `/history`
+- ใช้ same-origin API calls จาก React ไป `/api/*`
+- deploy เป็น Render web service เดียวผ่าน `render.yaml`
 
 ## Validation Notes
 
@@ -131,8 +153,32 @@ http://localhost:5173
 - Client build ผ่านด้วย `npm.cmd --prefix client run build`
 - Server route/controller/service syntax ผ่าน `node --check`
 - Server app load ผ่าน `require('./server/src/app').createApp()`
+- local production-style stack ผ่านจริงกับ Supabase project `fneevjmjlgvjqcocknft`
+- `POST /api/workbooks/process` สร้างข้อมูลจริงใน `clasp_scx_seamless.processing_records`
+- `GET /api/app/processing-records` อ่าน record ที่เพิ่งสร้างกลับมาได้
 
-ยังไม่ได้ยืนยัน end-to-end ด้วยไฟล์ `.xlsx` จริง เพราะต้องมี PostgreSQL ที่ migrate แล้วและ sample workbook จริง
+ตัวอย่างล่าสุดที่ยืนยันแล้ว:
+
+- ก่อนทดสอบ `clasp_scx_seamless.processing_records` มี `0` แถว
+- ยิง upload workbook ตัวอย่างเข้า backend local ที่ชี้ production Supabase
+- หลังทดสอบ `processing_records = 1`, `processing_batches = 1`, `workbook_uploads = 1`, `generated_files = 3`, `preview_sheets = 1`
+
+## Render Deploy Notes
+
+ไฟล์ `render.yaml` ที่ root ของ repo ถูกเตรียมไว้สำหรับ deploy แบบ:
+
+- Render web service เดียว
+- React build ถูก serve จาก Express
+- health check ใช้ `GET /api/health`
+- migrations และ seeds รันผ่าน `preDeployCommand`
+- generated files เก็บใน persistent disk ที่ `/var/data/storage`
+
+ค่าที่ต้องตั้งใน Render Dashboard ให้ตรง:
+
+- `SC_OFFICIAL_SUPABASE_DATABASE_URL`
+- `SEAMLESS_DB_SCHEMA=clasp_scx_seamless`
+- `PUBLIC_BASE_URL=https://<render-service>.onrender.com`
+- `CORS_ORIGIN=https://<render-service>.onrender.com`
 
 ## Open Follow-ups
 

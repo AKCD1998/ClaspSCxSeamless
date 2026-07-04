@@ -38,8 +38,8 @@ export default function HistoryTable({ busyRecordId, onPrintAction, records }) {
             <th>อัปโหลดเมื่อ</th>
             <th>ปริ้นท์ส่งพี่เอแล้ว</th>
             <th>ปริ้นท์ส่งพี่เอเมื่อ</th>
-            <th>ลิงค์ดูไฟล์</th>
-            <th>แหล่งเก็บไฟล์</th>
+            <th>ลิงก์พรีวิว/ดาวน์โหลด</th>
+            <th>ไฟล์ต้นทาง</th>
             <th>การจัดการ</th>
           </tr>
         </thead>

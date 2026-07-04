@@ -29,12 +29,28 @@ function readIdentifier(value, fallback) {
   return normalized;
 }
 
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return '';
+}
+
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: readNumber(process.env.PORT, 3001),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  databaseUrl: process.env.DATABASE_URL || '',
-  dbSchema: readIdentifier(process.env.DB_SCHEMA, 'clasp_scx_seamless'),
+  databaseUrl: firstNonEmpty(
+    process.env.SC_OFFICIAL_SUPABASE_DATABASE_URL,
+    process.env.DATABASE_URL,
+  ),
+  dbSchema: readIdentifier(
+    firstNonEmpty(process.env.SEAMLESS_DB_SCHEMA, process.env.DB_SCHEMA),
+    'clasp_scx_seamless',
+  ),
   healthFailOnDbError: readBoolean(process.env.HEALTH_FAIL_ON_DB_ERROR, false),
   internalApiToken: process.env.INTERNAL_API_TOKEN || '',
   publicBaseUrl: process.env.PUBLIC_BASE_URL || '',

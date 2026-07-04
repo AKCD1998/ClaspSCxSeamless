@@ -1,4 +1,12 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
+function resolveDefaultApiBaseUrl() {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/api`;
+  }
+
+  return 'http://localhost:3001/api';
+}
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || resolveDefaultApiBaseUrl()).replace(/\/+$/, '');
 
 async function parseJsonResponse(response) {
   const text = await response.text();
@@ -90,20 +98,20 @@ export async function fetchProcessingHistory(filters = {}) {
   });
 
   const query = params.toString();
-  const payload = await requestJson(`/processing-records${query ? `?${query}` : ''}`);
+  const payload = await requestJson(`/app/processing-records${query ? `?${query}` : ''}`);
 
   return payload?.records || [];
 }
 
 export async function markProcessingHistoryPrinted(id, printedBy = '') {
-  return requestJson(`/processing-records/${encodeURIComponent(id)}/mark-printed`, {
+  return requestJson(`/app/processing-records/${encodeURIComponent(id)}/mark-printed`, {
     method: 'POST',
     body: JSON.stringify({ printedBy }),
   });
 }
 
 export async function markProcessingHistoryUnprinted(id) {
-  return requestJson(`/processing-records/${encodeURIComponent(id)}/mark-unprinted`, {
+  return requestJson(`/app/processing-records/${encodeURIComponent(id)}/mark-unprinted`, {
     method: 'POST',
     body: JSON.stringify({}),
   });

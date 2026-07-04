@@ -236,12 +236,12 @@ export default function UploadPanel({
             <p>
               {result.successes.length}
               {' '}
-              ไฟล์พร้อมใช้งาน กรุณาเปิดหน้าพรีวิวเวิร์คบุ๊คก่อน หากต้องการไฟล์แยกสาขาสามารถใช้ลิงค์ดาวน์โหลดด้านล่างได้
+              ไฟล์พร้อมใช้งาน กรุณาเปิดพรีวิวเวิร์คบุ๊คก่อน หากต้องการไฟล์แยกสาขาสามารถใช้ลิงก์ดาวน์โหลดด้านล่างได้
               {result.failures.length ? ` มีไฟล์ไม่สำเร็จ ${result.failures.length} ไฟล์` : ''}
             </p>
             <p>
               <a href={result.previewState.url || '#'} target="_blank" rel="noopener noreferrer">
-                เปิดหน้าพรีวิวเวิร์คบุ๊ค
+                ดาวน์โหลดพรีวิวเวิร์คบุ๊ค
               </a>
             </p>
             <ul className="results-list">
@@ -251,7 +251,7 @@ export default function UploadPanel({
                     {payload.filename}
                   </a>
                   <div className="result-meta">
-                    รูปแบบ: {payload.variant}. ตรวจพบ: {payload.detectedVariant}. รหัสไฟล์ใน Drive:{' '}
+                    รูปแบบ: {payload.variant}. ตรวจพบ: {payload.detectedVariant}. รหัสไฟล์:{' '}
                     {payload.driveFileId}.
                   </div>
                 </li>

@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: claspscxseamless-web
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm ci && npm run build
+    preDeployCommand: npm run db:migrate && npm run db:seed
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: seamless-storage
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SC_OFFICIAL_SUPABASE_DATABASE_URL
+        sync: false
+      - key: SEAMLESS_DB_SCHEMA
+        value: clasp_scx_seamless
+      - key: INTERNAL_API_TOKEN
+        generateValue: true
+      - key: STORAGE_DIR
+        value: /var/data/storage
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
