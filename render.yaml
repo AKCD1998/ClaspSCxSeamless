@@ -7,13 +7,8 @@ services:
     branch: main
     autoDeployTrigger: commit
     buildCommand: npm ci && npm run build
-    preDeployCommand: npm run db:migrate && npm run db:seed
-    startCommand: npm start
+    startCommand: npm run db:migrate && npm run db:seed && npm start
     healthCheckPath: /api/health
-    disk:
-      name: seamless-storage
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -24,7 +19,7 @@ services:
       - key: INTERNAL_API_TOKEN
         generateValue: true
       - key: STORAGE_DIR
-        value: /var/data/storage
+        value: storage
       - key: PUBLIC_BASE_URL
         sync: false
       - key: CORS_ORIGIN

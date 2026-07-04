@@ -170,8 +170,8 @@ Production shape ที่รองรับแล้ว:
 - Render web service เดียว
 - React build ถูก serve จาก Express
 - health check ใช้ `GET /api/health`
-- migrations และ seeds รันผ่าน `preDeployCommand`
-- generated files เก็บใน persistent disk ที่ `/var/data/storage`
+- free-tier deploy ใช้ `startCommand` รัน migrations และ seeds ก่อน start server
+- free-tier deploy ใช้ local `storage/` แบบ ephemeral
 
 ค่าที่ต้องตั้งใน Render Dashboard ให้ตรง:
 
@@ -179,6 +179,13 @@ Production shape ที่รองรับแล้ว:
 - `SEAMLESS_DB_SCHEMA=clasp_scx_seamless`
 - `PUBLIC_BASE_URL=https://<render-service>.onrender.com`
 - `CORS_ORIGIN=https://<render-service>.onrender.com`
+- `STORAGE_DIR=storage`
+
+ข้อจำกัดปัจจุบันบน Render free tier:
+
+- `render.yaml` ใช้ persistent disk ไม่ได้
+- `preDeployCommand` ใช้ไม่ได้
+- generated `.xlsx` files จะไม่ durable ข้าม instance restart/deploy จนกว่าจะย้ายไป persistent storage
 
 ## Open Follow-ups
 

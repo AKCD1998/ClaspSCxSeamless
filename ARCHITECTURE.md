@@ -13,7 +13,9 @@ The app shares a Supabase project with other systems, but this repo must stay is
 - Deploy target: one Render web service serving both the React build and the `/api/*` routes
 - Database: shared Supabase project `fneevjmjlgvjqcocknft`
 - Database namespace for this repo: `clasp_scx_seamless`
-- Generated file storage: Render persistent disk mounted at `/var/data`
+- Generated file storage:
+  - free-tier deploy: local ephemeral `storage/`
+  - paid deploy option: move to a Render persistent disk or another persistent object storage target
 
 ## Runtime Flow
 
@@ -40,7 +42,7 @@ No Google Apps Script UI is required for the preferred production path.
 - `SEAMLESS_DB_SCHEMA`: should stay `clasp_scx_seamless`
 - `PUBLIC_BASE_URL`: external Render URL for file links
 - `CORS_ORIGIN`: allowed browser origin if cross-origin access is needed
-- `STORAGE_DIR`: should point to `/var/data/storage` on Render
+- `STORAGE_DIR`: `storage` on free-tier Render; use a persistent mount path only on paid plans
 - `INTERNAL_API_TOKEN`: only needed for internal compatibility routes such as `/api/processing-records`
 
 Backward-compatible aliases `DATABASE_URL` and `DB_SCHEMA` are still supported by the server, but the preferred names above match the shared-backend environment naming now in use.
