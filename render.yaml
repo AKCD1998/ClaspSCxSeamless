@@ -6,7 +6,7 @@ services:
     region: singapore
     branch: main
     autoDeployTrigger: commit
-    buildCommand: npm ci && npm run build
+    buildCommand: npm install && npm run build
     startCommand: npm run db:migrate && npm run db:seed && npm start
     healthCheckPath: /api/health
     envVars:
