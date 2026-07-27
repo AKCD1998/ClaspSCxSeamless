@@ -25,6 +25,14 @@ async function parseJsonResponse(response) {
 async function requestJson(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
+    // The backend now (usually) lives on a different origin than this client (a separate
+    // Render static site, sharing the backend's already-paid web service instead of a second
+    // one). Browser-native HTTP Basic Auth is only attached to cross-origin requests when
+    // credentials are explicitly included — the fetch default ('same-origin') would silently
+    // drop it, making protected Seamless calls (/api/app/*, /api/files/*, /api/workbooks/*,
+    // /api/bootstrap) return 401 forever after the login prompt. The backend's CORS config
+    // already allows credentials for known origins (CORS_ORIGIN env var), so this is safe.
+    credentials: 'include',
     headers: {
       ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.headers || {}),
