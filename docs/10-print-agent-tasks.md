@@ -378,3 +378,7 @@ workbook processing logic, config หรือค่าเดิมใดๆ. �
 `SEAMLESS_APP_BASIC_USER`/`SEAMLESS_APP_BASIC_PASSWORD` รวมถึง LINE/R2/email config สำหรับ
 โมดูลใหม่นี้. จึงเปิด Draft PR ไว้แต่ยังไม่ merge/trigger auto-deploy จนกว่าจะตั้ง production
 credentials อย่างน้อยสองค่าแรกให้ครบ. Scheduled auto-print ยังไม่ถูกเปิด.
+
+หลัง audit รัน `npm run seamless:migrate` กับ production database ผ่าน connection string ของ
+shared Render service โดยไม่แสดงค่า secret แล้ว: 001, 002 และ 003 ถูก skip เป็น
+already-applied ทั้งหมดและจบสำเร็จ จึงยืนยันแล้วว่า production migration เป็น no-op ตามคาด.
