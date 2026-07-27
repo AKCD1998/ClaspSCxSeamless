@@ -1,6 +1,14 @@
 # 10 Auto-Print Agent — Implementation Task Loop
 
 สถานะ: เสร็จแล้ว (Task 1-8 ติ๊กครบหมด — เหลือแต่ "งานที่เหลือให้มนุษย์ทำหลัง loop จบ" ด้านล่าง + รอ code review ใน docs/11 ให้ครบทุก task)
+
+> **⚠️ 2026-07-27 — เปลี่ยนแผน deploy: โค้ดทั้งหมดในไฟล์นี้ (server/, client/) ถูกย้ายไปรันจริงบน
+> `currentSC-official-website-project/backend` แทนที่จะ deploy `render.yaml` ของ repo นี้เป็น service
+> แยกต่างหาก** — เจ้าของไม่ต้องการจ่ายค่า Render web service ตัวที่สองทั้งที่ service เดิมยังใช้ไม่เต็ม
+> `claspscxseamless-web` (`render.yaml` ในนี้) **ไม่เคย deploy จริงเลยสักครั้ง** จึงไม่มีอะไรต้อง
+> decommission รายละเอียดเต็มของการย้ายอยู่ท้ายไฟล์นี้ หัวข้อ "การย้ายไปรันบน shared backend
+> (2026-07-27)" — โค้ดใน `server/`/`client/` ของ repo นี้ยังอยู่ครบเป็นต้นทาง/ประวัติการพัฒนา (ผ่านรีวิว
+> 12 รอบ R1-R12) แต่ **ไม่ใช่โค้ดที่รันจริงในโปรดักชันอีกต่อไป**
 Design spec ต้นทาง: `docs/09-auto-print-agent-design.md` — **อ่านก่อนเริ่มทุกครั้ง** ทุกการตัดสินใจสำคัญถูกฟิกซ์ไว้แล้วใน section 8 ของไฟล์นั้น ห้ามออกแบบใหม่เอง
 
 ## กติกาการทำงาน (บังคับทุก iteration)
@@ -306,3 +314,71 @@ Codex กลับมา re-verify R7-R9 (ไม่แก้โค้ดเอ�
 - 2026-07-27 — ตอบและแก้ "ประเด็นจากรีวิวรอบ 3" (R7-R9) จาก Codex blind review ก่อน commit. **R7 คือบั๊กร้ายแรงที่สุดที่เจอในโปรเจกต์นี้** — เอกสารที่กด "ขอปริ้นใหม่" จะปริ้นซ้ำไม่จบเพราะแถว `queued` เดิมไม่เคยถูกเคลียร์ Sonnet ไม่เชื่อ Codex เฉยๆ แต่จำลองสถานการณ์บน Docker Postgres จริงเองจนเห็นบั๊กเกิดขึ้นต่อหน้า ก่อนจะลงมือแก้. Implement ครบ 3 ข้อ: (R7) เพิ่ม `claimQueuedJob` ใน `printJobRepository.js` ให้ agent หยิบใช้แถว `queued` เดิมแทนสร้างใหม่ (ใช้ `FOR UPDATE SKIP LOCKED` กันชนกันถ้ามีหลาย process), แก้ `printAgentService.createAgentPrintJob` ให้เรียก claim ก่อนสร้างใหม่; (R8) ห่อ `processingRecordService.requestPrint` ด้วย transaction (`BEGIN`/`COMMIT`/`ROLLBACK` ตาม pattern ของ `workbookService.js`); (R9) แก้ `print-agent/README.md` 2 จุดที่เขียนพฤติกรรมเก่าก่อน R4/R5. ไฟล์ที่แตะ: `server/src/db/repositories/printJobRepository.js`, `server/src/services/printAgentService.js`, `server/src/services/processingRecordService.js`, `server/tests/print-job-db.test.js` (เพิ่ม test), `server/tests/agent-api.test.js` (เพิ่ม full-cycle regression test ผ่าน HTTP endpoint จริงทุกตัว), `print-agent/README.md`. ผลทดสอบ: Docker Postgres จริง 2 รอบติดกันไม่ reset DB → 33/33 pass ทั้งสองรอบ; default env → 26 pass, 7 skip, 0 fail; client 8/8; print-agent 28/28 (ไม่ได้แก้โค้ด print-agent, แค่ README). รายละเอียดเต็มอยู่ในหัวข้อ "ประเด็นจากรีวิวรอบ 3" ด้านบน. เก็บกวาด container แล้ว. **ยังไม่ commit — รอเจ้าของ review + สั่ง commit เอง.**
 - 2026-07-27 — Codex re-verify R7-R9 เจอปัญหาเพิ่ม 2 จุด ("ประเด็นจากรีวิวรอบ 4"): R10 (test flaky ตอนรันไฟล์เทสหลายไฟล์พร้อมกัน) และ R11 (`claimQueuedJob` ยังไม่ปลอดภัยจริงถ้ามีสอง caller พร้อมกัน — ยัง double-print ได้). Sonnet ไม่เชื่อ Codex เฉยๆ อีกครั้ง — จำลอง R11 ด้วยการยิง HTTP request สองอันพร้อมกันจริง (ไม่ sequential) แล้วดูฐานข้อมูลตรงๆ **ยืนยันเจอ 2 แถวแยกกันจริงตามที่ Codex บอก** ก่อนแก้. แก้ทั้งคู่: (R10) เปลี่ยน assertion ของเทสให้เช็คเฉพาะ record ตัวเอง ไม่เช็ค queue.length ทั้งระบบ; (R11) เพิ่ม `pg_advisory_xact_lock` ล็อกทั้งขั้นตอน claim-or-create ต่อ record ใน `printAgentService.createAgentPrintJob` + เช็ค active job ที่มีอยู่แล้วก่อนสร้างใหม่ (กันกรณี caller ที่สองมาถึงหลังจาก caller แรก commit ไปแล้ว). เพิ่ม test ใหม่จำลองการยิง 2 request พร้อมกันจริงยืนยันว่าได้ job เดียวกันและมีแค่ 1 แถวในฐานข้อมูล. ไฟล์ที่แตะ: `server/src/services/printAgentService.js`, `server/tests/agent-api.test.js`. ผลทดสอบ: รัน `npm test` (server) พร้อม Docker Postgres จริง **3 รอบติดกันบน DB เดิมไม่ reset → 34/34 pass ทุกรอบ** (ยืนยันว่า flaky หายจริง); default env → 26 pass 8 skip 0 fail; client 8/8; print-agent 28/28. รายละเอียดเต็มอยู่ในหัวข้อ "ประเด็นจากรีวิวรอบ 4" ด้านบน. **ยังไม่ commit — รอเจ้าของ review + สั่ง commit เอง.**
 - 2026-07-27 — เจ้าของ reproduce เองด้วยการยิง 10 concurrent create-job requests แล้วพบว่า R11's "fix" ยังไม่พอ: DB เหลือแถวเดียวจริง แต่ทั้ง 10 คำขอได้ HTTP 201 เหมือนกันหมด — ตรงกับที่ Codex เตือนไว้ในแถว 47 ของ ledger ที่ตอนนั้นยังไม่ได้แก้ ("ประเด็นจากรีวิวรอบ 6", R12). Sonnet 5 reproduce ซ้ำเองยืนยันตรงกันก่อนแก้: เปลี่ยน `printAgentService.createAgentPrintJob`'s "มี active job แล้ว" branch จาก `return activeJobs[0]` เป็น `throw conflict(...)` → ผู้แพ้ race ได้ HTTP 409 จริง; แก้ `print-agent/src/index.js`'s `processDocument` ให้ดัก `error.status === 409` แล้ว skip เอกสารนั้นแบบไม่ crash ทั้ง `runOnce` (เดิมไม่มี try/catch ครอบ `createPrintJob` เลย ถ้าไม่แก้จะ abort ทั้งคิวที่เหลือเพราะแพ้ race แค่เอกสารเดียว); เขียน regression test ใหม่ให้ assert "winner เดียว (201) + loser เดียว (409)" แทน "job id ตรงกัน"; เพิ่ม test ใหม่ยืนยันว่า print-agent เจอ 409 แล้ว skip ได้จริงไม่ download/print. ไฟล์ที่แตะ: `server/src/services/printAgentService.js`, `server/tests/agent-api.test.js`, `print-agent/src/index.js`, `print-agent/tests/index.test.js`. ผลทดสอบ: server พร้อม Docker Postgres จริง **3 รอบติดกันบน DB เดิมไม่ reset → 34/34 pass ทุกรอบ**; print-agent → 29/29 pass (จาก 28); client 8/8. รายละเอียดเต็มอยู่ในหัวข้อ "ประเด็นจากรีวิวรอบ 6" ด้านบน. อัปเดตแถว R11 ใน `docs/11-print-agent-review-ledger.md` (row 47) ด้วย strikethrough+"แก้แล้ว (R12)". **ยังไม่ commit — รอเจ้าของ review + สั่ง commit เอง.**
+- 2026-07-27 — **หลัง commit+push R12 แล้ว (`3e1f933`)**, เจ้าของถามขั้นตอน deploy ต่อ ("ตั้ง LINE token, deploy backend") แล้วชี้แจงว่า webhook URL ที่ตั้งใจใช้จริง (`sc-official-website.onrender.com`) เป็นคนละ Render service กับที่ `render.yaml` ของ repo นี้ (`claspscxseamless-web`) กำหนดไว้ — เพราะ**เจตนาเดิมของเจ้าของ (ตั้งแต่ prompt แรก) คือให้ทั้งระบบนี้รันบน Render service เดิมที่จ่ายเงินอยู่แล้ว (`currentSC-official-website-project`, repo `SC-official-website`) ไม่ใช่ deploy service ใหม่แยกต่างหาก** เพื่อไม่ต้องจ่ายค่า web service ตัวที่สอง Sonnet 5 ยอมรับว่าพลาดจุดนี้ตั้งแต่แรก (`render.yaml` ที่สร้างไว้ในไฟล์ 10/12 ก่อนหน้าเป็นแผนผิด — ไม่เคย deploy จริงจึงไม่มีอะไรต้อง decommission) ตรวจสอบยืนยันด้วยการอ่านโค้ดจริงของ `currentSC-official-website-project/backend` ก่อนเริ่ม ใช้ `EnterPlanMode` วางแผน scope เต็ม (ย้ายทั้ง backend ไม่ใช่แค่ print-agent/LINE/appAuth ตามที่เจ้าของยืนยัน) แล้ว implement ทั้งหมด — **รายละเอียดเต็มอยู่ในหัวข้อ "การย้ายไปรันบน shared backend (2026-07-27)" ท้ายไฟล์นี้**
+
+## การย้ายไปรันบน shared backend (2026-07-27)
+
+**สรุปสั้น:** ทุกอย่างในไฟล์นี้ (`server/`, `client/`) ถูก port ไปเป็นโมดูลใหม่ใน
+`currentSC-official-website-project/backend/src/modules/seamless/` โดยขยายจากโมดูล `seamless`
+เดิมที่มีอยู่แล้ว (legacy internal API `/api/processing-records`, ไม่ได้แตะ) ให้ backend ตัวเดียวที่
+จ่ายเงินอยู่แล้ว (`sc-official-website` บน Render) รองรับทั้งหมด — plan เต็มถูกเขียนไว้ล่วงหน้าและอนุมัติแล้วก่อน implement (ดู `EnterPlanMode`/`ExitPlanMode` transcript ของ session นั้น)
+
+**สถาปัตยกรรมที่ตัดสินใจ:**
+- ใช้ shared `db.js` pool + schema `clasp_scx_seamless` เดิม (ไม่แยก DB เหมือน `digitalpjk`/`rx1011`) เพราะ schema นี้ตั้งใจ share กับระบบอื่นอยู่แล้วตาม ARCHITECTURE.md
+- Route paths เดิมทั้งหมดคงไว้ไม่เปลี่ยน (`/api/agent/*`, `/api/app/processing-records/*`, `/api/files/*`, `/api/line/webhook`, `/api/workbooks/*`, `/api/bootstrap`) — ไม่ชนกับ route ที่มีอยู่แล้วเลยสักตัว จึง **print-agent CLI ไม่ต้องแก้โค้ดเลย** เปลี่ยนแค่ `API_BASE_URL`/`INTERNAL_API_TOKEN` ใน `.env`
+- `appAuth` (Basic/Bearer) ผูกเฉพาะ router ใหม่ (`/api/app/*`, `/api/files/*`, `/api/bootstrap`) **ไม่ใช่ทั้งแอปเหมือนต้นฉบับ** เพราะ shared backend มีฟีเจอร์สาธารณะอื่นอีกมาก (reactnjob, digitalpjk, scglamliff, sccrm, loyalty, crm, slider, auth, contact) ต้องเปิดต่อไปโดยไม่มี login prompt
+- `printAgentService.js` (รวม R12 fix) ถูก port แบบ verbatim ที่สุดเท่าที่ทำได้ เพราะเป็นไฟล์ที่ผ่านการรีวิว 12 รอบมาแล้ว
+- File storage/email ใช้ config namespace ใหม่ (`SEAMLESS_R2_*`, ไม่ใช้ `lib/r2Storage.js` เดิมของ shared backend ซึ่งไม่มี prefix isolation/download/presign และผูกกับ slider images) — reuse `SENDGRID_API_KEY`/`MAIL_USER` เดิมของ shared backend สำหรับอีเมล
+- Client (`client/`) deploy เป็น Render **Static Site แยกต่างหาก (ฟรี)** แทนที่จะ fold เข้า SPA เดิมของ shared backend — เพราะ Basic Auth ผูกกับทั้งหน้าเดียวไม่ได้ scoped ตาม path ได้ง่ายถ้า merge เข้า SPA เดียวกับหน้าสาธารณะอื่น; เพิ่ม `credentials: 'include'` ใน `client/src/services/api.js`'s `fetch()` เพราะ cross-origin ต้องระบุชัดถึงจะแนบ cached Basic Auth header ได้ (shared backend's CORS เปิด `credentials: true` ให้อยู่แล้ว)
+- Migration runner ใหม่ (`backend/src/modules/seamless/db/migrate.js`) อ่าน/เขียน `clasp_scx_seamless.schema_migrations` ตัวเดิมที่ repo นี้สร้างไว้ (001-003 apply ไปที่ production แล้วตั้งแต่ก่อนหน้านี้ในวันเดียวกัน) — รันแล้วเป็น no-op ถูกต้อง ไม่ apply ซ้ำ
+
+**ไฟล์ใหม่ทั้งหมด** (`currentSC-official-website-project/backend/src/modules/seamless/`): `tables.js`, `appConfig.js`, `db/{printJobRepository,generatedFileRepository,batchRepository,operationLogRepository,previewSheetRepository,workbookUploadRepository,migrate}.js` + `db/migrations/*.sql` (คัดลอกจาก repo นี้), `services/{workbookRules,workbookTransformService,workbookService,processingRecordAppService,printAgentService,lineNotifyService,fileStorageService,r2StorageService,emailService}.js`, `middleware/{appAuth,internalApiAuth,errorHandler}.js`, `utils/asyncHandler.js`, `controllers/{bootstrapController,lineWebhookController,workbookController,appProcessingRecordController,fileController,agentController}.js`, `routes/{workbookRoutes,appProcessingRecordRoutes,fileRoutes,agentRoutes,lineRoutes,bootstrapRoutes,index}.js`; extended `config.js`/`errors.js`/`validators.js`/`processingRecords.js` (เพิ่ม export `mapRecord`/`findProcessingRecordByFilename`/`getProcessingRecordById` ที่ขาดไป); `server.js` (mount ใหม่ + เพิ่ม `verify` hook ให้ `express.json()` จับ `req.rawBody` สำหรับ LINE HMAC — จุดเดียวที่ต้องแก้โค้ดเดิม), `.env.example` (เพิ่ม `SEAMLESS_*` block), `package.json` (เพิ่ม `exceljs` dependency + `seamless:migrate` script). Tests ใหม่: `backend/tests/seamless-{agent-api,line-webhook,app-auth,workbook-transform}.test.cjs` (Jest จริงกับ Docker Postgres จริง — จงใจไม่ตาม convention mock-SQL เดิมของ backend นี้ เพราะ mock ตรวจจับบั๊ก concurrency ของ R7/R11/R12 ไม่ได้จริง) + `backend/docs/seamless-print-agent-testing.md` อธิบายเหตุผล/วิธีรัน
+
+**บั๊กที่เจอระหว่าง port (แก้แล้วก่อน verify):** `processingRecords.js` เดิมของ shared backend ไม่ export `mapRecord`/`findProcessingRecordByFilename`/`getProcessingRecordById` (ใช้แค่ภายในไฟล์เดิม) ทำให้ `printAgentService.getPrintQueue()` throw `TypeError` ตอน smoke test จริงครั้งแรก — เจอจาก curl test สด ไม่ใช่แค่อ่านโค้ด แก้โดยเพิ่ม 3 ชื่อนี้เข้า `module.exports`
+
+**ผลทดสอบ (สดจริงบน Docker Postgres แยก, ไม่แตะ production):**
+- Auth matrix ครบ: no-credential → 401 ทุก route ใหม่ (`/api/bootstrap`, `/api/agent/*`, `/api/app/*`, `/api/files/*`), Basic ถูก → 200, Bearer ถูก → 200, Bearer ผิด → 401, LINE webhook ลายเซ็นผิด → 401, `/api/health` เดิมไม่กระทบ
+- **R12 concurrency reproduce ซ้ำบนโค้ด port แล้ว: ยิง 10 concurrent create-job requests → ผู้ชนะ 1 ราย (201) ผู้แพ้ 9 ราย (409 `CONFLICT`) ฐานข้อมูลมีแถวเดียว** — ตรงกับพฤติกรรมที่ยืนยันแล้วใน repo ต้นทาง
+- full request-print → agent claim → complete → LINE skip (ไม่ได้ตั้ง token) → queue ว่างหลัง complete: ผ่านครบ
+- R8 rollback test (บังคับ INSERT fail ด้วย `metadata.outputFileId` ผิดรูป) → record ไม่เปลี่ยน `printed`/`lastAction`, ไม่มี job ค้าง: ผ่าน
+- Jest suite ใหม่ (`seamless-*.test.cjs`) รัน **3 รอบติดกันบน DB เดิมไม่ reset → 13/13 pass ทุกรอบ**
+- Full backend test suite เดิม (ไม่มี DB override) → **9/10 suites pass, 73/78 tests pass, 0 fail** (5 skip = suite ใหม่ของเราเองที่ skip เพราะไม่มี `DATABASE_URL` override ตามการออกแบบ ไม่ใช่ regression)
+- Client: `npm test` → 8/8 pass หลังเพิ่ม `credentials: 'include'`
+
+**ยังไม่ทำ (เจ้าของต้องทำเอง/ตัดสินใจต่อ):** ตั้ง `SEAMLESS_*` env vars จริงบน Render (`sc-official-website`), รัน `npm run seamless:migrate` กับ production จริง (schema/ตารางมีอยู่แล้วจาก repo นี้ ควรเป็น no-op แต่ต้องรันยืนยัน), deploy `client/` เป็น Render Static Site แยก + ตั้ง `VITE_API_BASE_URL`/เพิ่ม origin เข้า `CORS_ORIGIN`, ตั้งค่า LINE webhook ให้ชี้ URL ของ `sc-official-website` จริง (ไม่ใช่ `claspscxseamless-web` ที่ไม่เคยมีจริง), ติดตั้ง print-agent บนเครื่อง 000 ชี้ `.env` ไปที่ backend ใหม่. **ยังไม่ commit ทั้งสอง repo — รอเจ้าของ review**
+
+### R13 — ปิด unauthenticated workbook upload บน shared backend (2026-07-27)
+
+Codex blind review พบว่า scope ของ `appAuth` ที่ port ครั้งแรกตกหล่น `/api/workbooks/*`:
+route ถูก mount ใช้งานจริงแต่ `workbookRoutes.js` ไม่มี middleware ทำให้คำขอที่ไม่มี credential
+ผ่านถึง controller (ตอบ validation 400 แทน 401). CORS ไม่สามารถทดแทน authentication สำหรับ curl
+หรือ server-to-server caller ได้
+
+แก้โดยเพิ่ม `appAuth` ภายใน `workbookRoutes` ก่อน `multer`/`POST /process`; จึงยังคงหลักการของ
+shared backend ว่าไม่ครอบ auth ไปยัง feature สาธารณะอื่น และไม่เปลี่ยน route path, payload,
+workbook processing logic, config หรือค่าเดิมใดๆ. เพิ่ม route-level regression tests ใน
+`backend/tests/seamless-app-auth.test.cjs` ยืนยัน no credential → 401 พร้อม
+`WWW-Authenticate`/`UNAUTHORIZED`, ส่วน Basic และ Bearer ที่ถูกต้องผ่าน auth แล้วถึง validation
+เดิม → 400 เมื่อไม่มีไฟล์.
+
+ผลทดสอบหลังแก้: `seamless-app-auth` 8/8, full shared-backend suite 76 passed + 5 skipped +
+0 failed, และ client 8/8 ผ่าน.
+
+### Deployment audit หลัง R13 (2026-07-27)
+
+ตรวจ Render workspace จริงก่อน merge/deploy แล้วพบว่า ข้อความก่อนหน้านี้ที่ระบุว่า
+`claspscxseamless-web` “ไม่เคย deploy” ไม่ตรงกับ external state ปัจจุบัน: มี service
+`claspscxseamless-web` (`srv-d94a29dckfvc739jo3mg`) อยู่จริง, สถานะไม่ suspended,
+และ `https://claspscxseamless-web.onrender.com/api/health` ตอบ 200. ยังไม่ได้ลบ/หยุด service
+ดังกล่าว เพราะต้องยืนยัน traffic/ข้อมูลที่ใช้งานอยู่ก่อน.
+
+ตรวจเฉพาะชื่อ env โดยไม่แสดง secret พบว่า service เก่าไม่มี `APP_BASIC_USER`/
+`APP_BASIC_PASSWORD`; live `GET /api/bootstrap` โดยไม่ใส่ credential ตอบ 200. Shared service
+`SC-official-website` มี DB URL/schema พร้อมและ health ตอบ 200 แต่ยังไม่มี
+`SEAMLESS_APP_BASIC_USER`/`SEAMLESS_APP_BASIC_PASSWORD` รวมถึง LINE/R2/email config สำหรับ
+โมดูลใหม่นี้. จึงเปิด Draft PR ไว้แต่ยังไม่ merge/trigger auto-deploy จนกว่าจะตั้ง production
+credentials อย่างน้อยสองค่าแรกให้ครบ. Scheduled auto-print ยังไม่ถูกเปิด.
+
+หลัง audit รัน `npm run seamless:migrate` กับ production database ผ่าน connection string ของ
+shared Render service โดยไม่แสดงค่า secret แล้ว: 001, 002 และ 003 ถูก skip เป็น
+already-applied ทั้งหมดและจบสำเร็จ จึงยืนยันแล้วว่า production migration เป็น no-op ตามคาด.
