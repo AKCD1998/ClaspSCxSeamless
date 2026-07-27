@@ -363,3 +363,18 @@ workbook processing logic, config หรือค่าเดิมใดๆ. �
 
 ผลทดสอบหลังแก้: `seamless-app-auth` 8/8, full shared-backend suite 76 passed + 5 skipped +
 0 failed, และ client 8/8 ผ่าน.
+
+### Deployment audit หลัง R13 (2026-07-27)
+
+ตรวจ Render workspace จริงก่อน merge/deploy แล้วพบว่า ข้อความก่อนหน้านี้ที่ระบุว่า
+`claspscxseamless-web` “ไม่เคย deploy” ไม่ตรงกับ external state ปัจจุบัน: มี service
+`claspscxseamless-web` (`srv-d94a29dckfvc739jo3mg`) อยู่จริง, สถานะไม่ suspended,
+และ `https://claspscxseamless-web.onrender.com/api/health` ตอบ 200. ยังไม่ได้ลบ/หยุด service
+ดังกล่าว เพราะต้องยืนยัน traffic/ข้อมูลที่ใช้งานอยู่ก่อน.
+
+ตรวจเฉพาะชื่อ env โดยไม่แสดง secret พบว่า service เก่าไม่มี `APP_BASIC_USER`/
+`APP_BASIC_PASSWORD`; live `GET /api/bootstrap` โดยไม่ใส่ credential ตอบ 200. Shared service
+`SC-official-website` มี DB URL/schema พร้อมและ health ตอบ 200 แต่ยังไม่มี
+`SEAMLESS_APP_BASIC_USER`/`SEAMLESS_APP_BASIC_PASSWORD` รวมถึง LINE/R2/email config สำหรับ
+โมดูลใหม่นี้. จึงเปิด Draft PR ไว้แต่ยังไม่ merge/trigger auto-deploy จนกว่าจะตั้ง production
+credentials อย่างน้อยสองค่าแรกให้ครบ. Scheduled auto-print ยังไม่ถูกเปิด.
