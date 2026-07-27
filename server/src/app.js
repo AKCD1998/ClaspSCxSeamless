@@ -5,6 +5,7 @@ const express = require('express');
 const morgan = require('morgan');
 const routes = require('./routes');
 const { env } = require('./config/env');
+const { appAuth } = require('./middleware/appAuth');
 const { errorHandler } = require('./middleware/errorHandler');
 const { notFoundHandler } = require('./middleware/notFoundHandler');
 
@@ -24,11 +25,24 @@ function registerClientApp(app) {
 function createApp() {
   const app = express();
 
+  if (!env.appBasicUser || !env.appBasicPassword) {
+    console.warn(
+      '[appAuth] APP_BASIC_USER/APP_BASIC_PASSWORD not set — the app and /api/app/*, /api/files/* ' +
+        'are open without authentication. Set both env vars in production.',
+    );
+  }
+
   app.disable('x-powered-by');
   app.use(cors({ origin: env.corsOrigin }));
-  app.use(express.json({ limit: '30mb' }));
+  app.use(express.json({
+    limit: '30mb',
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  }));
   app.use(express.urlencoded({ extended: true, limit: '30mb' }));
   app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
+  app.use(appAuth);
 
   app.use('/api', routes);
   registerClientApp(app);

@@ -1,4 +1,6 @@
 const processingRecordRepository = require('../db/repositories/processingRecordRepository');
+const printJobRepository = require('../db/repositories/printJobRepository');
+const { getClient } = require('../db/pool');
 const { normalizeString } = require('../utils/validators');
 
 async function createProcessingRecord(record = {}) {
@@ -37,11 +39,54 @@ async function markUnprinted(id) {
   };
 }
 
+async function requestPrint(id, options = {}) {
+  const client = await getClient();
+
+  try {
+    await client.query('BEGIN');
+
+    const record = await processingRecordRepository.updateProcessingRecord(
+      id,
+      {
+        printed: false,
+        lastAction: 'print_requested',
+      },
+      client,
+    );
+
+    const job = await printJobRepository.createPrintJob(
+      {
+        processingRecordId: record.id,
+        generatedFileId: (record.metadata && record.metadata.outputFileId) || null,
+        requestedBy: normalizeString(options.requestedBy),
+        reprintReason: normalizeString(options.reason),
+        documentUploadedAt: record.uploadedAt,
+      },
+      client,
+    );
+
+    await client.query('COMMIT');
+
+    return {
+      ok: true,
+      message: job.isReprint ? 'Reprint requested.' : 'Print requested.',
+      record,
+      job,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   createProcessingRecord,
   listProcessingRecords,
   markPrinted,
   markUnprinted,
+  requestPrint,
   updateProcessingRecord,
   upsertProcessingRecordFromPreview,
 };

@@ -33,11 +33,17 @@ async function markUnprinted(req, res) {
   res.json(payload);
 }
 
+async function requestPrint(req, res) {
+  const payload = await processingRecordService.requestPrint(req.params.id, req.body || {});
+  res.json(payload);
+}
+
 module.exports = {
   createProcessingRecord,
   listProcessingRecords,
   markPrinted,
   markUnprinted,
+  requestPrint,
   updateProcessingRecord,
   upsertProcessingRecordFromPreview,
 };

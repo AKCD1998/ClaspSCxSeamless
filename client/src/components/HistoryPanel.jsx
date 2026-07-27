@@ -6,6 +6,8 @@ import {
   fetchProcessingHistory,
   markProcessingHistoryPrinted,
   markProcessingHistoryUnprinted,
+  requestProcessingHistoryPrint,
+  sendGeneratedFileEmail,
 } from '../services/api.js';
 
 const emptyFilters = {
@@ -160,6 +162,67 @@ export default function HistoryPanel({ reloadKey }) {
     }
   }
 
+  async function handleRequestPrint(record) {
+    if (!window.confirm(`ยืนยันสั่งปริ้น / ขอปริ้นใหม่สำหรับไฟล์นี้?\n\n${record.filename || ''}`)) {
+      return;
+    }
+
+    const reason = window.prompt(
+      'เหตุผลที่ขอปริ้นใหม่ (เว้นว่างไว้ได้ถ้าเป็นการสั่งปริ้นปกติ):',
+      '',
+    );
+
+    if (reason === null) {
+      return;
+    }
+
+    setBusyRecordId(record.id);
+    setStatus({ message: 'กำลังส่งคำขอปริ้น...', state: 'working' });
+
+    try {
+      const response = await requestProcessingHistoryPrint(record.id, { reason });
+      await loadProcessingHistory({
+        successMessage: response?.message || 'ส่งคำขอปริ้นแล้ว',
+      });
+    } catch (error) {
+      setStatus({
+        message: error?.message || 'ส่งคำขอปริ้นไม่สำเร็จ',
+        state: 'error',
+      });
+    } finally {
+      setBusyRecordId('');
+    }
+  }
+
+  async function handleSendEmail(record, fileId) {
+    if (!fileId) {
+      setStatus({ message: 'ไม่พบไฟล์เอกสารสำหรับรายการนี้', state: 'error' });
+      return;
+    }
+
+    if (!window.confirm(`ยืนยันส่งเอกสารนี้เข้าอีเมลที่ตั้งไว้?\n\n${record.filename || ''}`)) {
+      return;
+    }
+
+    setBusyRecordId(record.id);
+    setStatus({ message: 'กำลังส่งเอกสารเข้าอีเมล...', state: 'working' });
+
+    try {
+      const response = await sendGeneratedFileEmail(fileId);
+      setStatus({
+        message: response?.message || 'ส่งเอกสารเข้าอีเมลแล้ว',
+        state: 'success',
+      });
+    } catch (error) {
+      setStatus({
+        message: error?.message || 'ส่งเอกสารเข้าอีเมลไม่สำเร็จ',
+        state: 'error',
+      });
+    } finally {
+      setBusyRecordId('');
+    }
+  }
+
   return (
     <section className="panel history-panel">
       <p className="panel-eyebrow">ประวัติการจัดการไฟล์</p>
@@ -247,12 +310,16 @@ export default function HistoryPanel({ reloadKey }) {
           <HistoryTable
             busyRecordId={busyRecordId}
             onPrintAction={handlePrintAction}
+            onRequestPrint={handleRequestPrint}
+            onSendEmail={handleSendEmail}
             records={filteredRecords}
           />
         ) : (
           <HistoryGrouped
             busyRecordId={busyRecordId}
             onPrintAction={handlePrintAction}
+            onRequestPrint={handleRequestPrint}
+            onSendEmail={handleSendEmail}
             records={filteredRecords}
           />
         )}

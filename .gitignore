@@ -12,6 +12,7 @@ storage/
 uploads/
 tmp/
 temp/
+agent.lock
 
 .DS_Store
 Thumbs.db

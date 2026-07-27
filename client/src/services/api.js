@@ -33,11 +33,15 @@ async function requestJson(path, options = {}) {
   const payload = await parseJsonResponse(response);
 
   if (!response.ok) {
-    const message = payload?.error?.message || payload?.message || `Request failed with HTTP ${response.status}`;
+    const message =
+      payload?.error?.message ||
+      payload?.failures?.[0]?.message ||
+      payload?.message ||
+      `Request failed with HTTP ${response.status}`;
     const error = new Error(message);
     error.status = response.status;
-    error.code = payload?.error?.code;
-    error.details = payload?.error?.details;
+    error.code = payload?.error?.code || payload?.failures?.[0]?.code;
+    error.details = payload?.error?.details || payload?.failures?.[0]?.details;
     throw error;
   }
 
@@ -117,6 +121,23 @@ export async function markProcessingHistoryUnprinted(id) {
   });
 }
 
+export async function requestProcessingHistoryPrint(id, options = {}) {
+  return requestJson(`/app/processing-records/${encodeURIComponent(id)}/request-print`, {
+    method: 'POST',
+    body: JSON.stringify({
+      requestedBy: options.requestedBy || '',
+      reason: options.reason || '',
+    }),
+  });
+}
+
 export async function listProcessingRecords(params = {}) {
   return fetchProcessingHistory(params);
+}
+
+export async function sendGeneratedFileEmail(fileId, options = {}) {
+  return requestJson(`/files/${encodeURIComponent(fileId)}/send-email`, {
+    method: 'POST',
+    body: JSON.stringify({ to: options.to || '' }),
+  });
 }

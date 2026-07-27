@@ -25,7 +25,7 @@ function BranchCodes({ value }) {
   );
 }
 
-export default function HistoryTable({ busyRecordId, onPrintAction, records }) {
+export default function HistoryTable({ busyRecordId, onPrintAction, onRequestPrint, onSendEmail, records }) {
   return (
     <div className="history-table-wrap">
       <table className="history-table">
@@ -77,6 +77,8 @@ export default function HistoryTable({ busyRecordId, onPrintAction, records }) {
                 <HistoryActions
                   busyRecordId={busyRecordId}
                   onPrintAction={onPrintAction}
+                  onRequestPrint={onRequestPrint}
+                  onSendEmail={onSendEmail}
                   record={record}
                 />
               </td>

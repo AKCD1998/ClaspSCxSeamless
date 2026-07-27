@@ -1,0 +1,14 @@
+{
+  "name": "print-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Polls ClaspSCxSeamless for unprinted documents and prints them via LibreOffice + SumatraPDF on the branch printer machine.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}

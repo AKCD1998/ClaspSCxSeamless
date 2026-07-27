@@ -34,7 +34,7 @@ function BranchCodes({ value }) {
   );
 }
 
-export default function HistoryGrouped({ busyRecordId, onPrintAction, records }) {
+export default function HistoryGrouped({ busyRecordId, onPrintAction, onRequestPrint, onSendEmail, records }) {
   const groups = groupRecordsByReportDate(records);
 
   return (
@@ -98,6 +98,8 @@ export default function HistoryGrouped({ busyRecordId, onPrintAction, records })
                     <HistoryActions
                       busyRecordId={busyRecordId}
                       onPrintAction={onPrintAction}
+                      onRequestPrint={onRequestPrint}
+                      onSendEmail={onSendEmail}
                       record={record}
                     />
                   </div>

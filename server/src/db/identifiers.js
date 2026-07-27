@@ -25,6 +25,7 @@ const tables = Object.freeze({
   migrationLogs: qualifyTable('migration_logs'),
   operationLogs: qualifyTable('operation_logs'),
   previewSheets: qualifyTable('preview_sheets'),
+  printJobs: qualifyTable('print_jobs'),
   processingBatches: qualifyTable('processing_batches'),
   processingRecordBranchCodes: qualifyTable('processing_record_branch_codes'),
   processingRecords: qualifyTable('processing_records'),

@@ -57,3 +57,30 @@ test('summary workbook transform deletes ATK and columns to the right', async ()
   assert.equal(result.deletedColumns[0].count, 2);
   assert.match(filename.filename, /sum exp\.xlsx$/);
 });
+
+test('transform removes extra worksheets and keeps only the transformed first sheet', async () => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('REP');
+
+  worksheet.getCell('A1').value = 'HCODE';
+  worksheet.getCell('A2').value = 'D1180';
+  worksheet.getCell('C5').value = '2569 เมษายน 30';
+  worksheet.getCell('B8').value = 'วันที่ลงทะเบียน';
+  worksheet.getCell('C8').value = 'หมายเหตุอื่นๆ (STMID)';
+  worksheet.getCell('D8').value = 'ลำดับที่';
+  worksheet.getCell('F8').value = 'หมายเหตุ';
+  worksheet.getCell('E10').value = 'ราคาต่อหน่วย';
+  worksheet.getCell('E11').value = 150;
+
+  workbook.addWorksheet('Empty Sheet 2');
+  const junkSheet = workbook.addWorksheet('Junk Sheet 3');
+  junkSheet.getCell('A1').value = 'leftover junk data';
+
+  const result = await transformWorkbook(await workbookBuffer(workbook), {
+    requestedVariant: 'individual',
+  });
+
+  assert.equal(result.workbook.worksheets.length, 1);
+  assert.equal(result.workbook.worksheets[0].name, 'REP');
+  assert.equal(result.workbook.worksheets[0].id, result.worksheet.id);
+});

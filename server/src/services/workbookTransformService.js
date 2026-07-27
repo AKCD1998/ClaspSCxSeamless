@@ -274,6 +274,10 @@ async function transformWorkbook(buffer, options) {
 
   worksheet.views = [{ state: 'frozen', ySplit: 10 }];
 
+  workbook.worksheets
+    .filter((sheet) => sheet.id !== worksheet.id)
+    .forEach((sheet) => workbook.removeWorksheet(sheet.id));
+
   return {
     workbook,
     worksheet,

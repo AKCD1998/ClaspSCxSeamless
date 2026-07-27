@@ -116,3 +116,66 @@ test('processWorkbookPayload rejects non-File values before network calls', asyn
     /File object/,
   );
 });
+
+test('processWorkbookPayload surfaces duplicate-upload failures from backend payloads', async () => {
+  if (typeof File === 'undefined') {
+    return;
+  }
+
+  globalThis.fetch = async () => new Response(
+    JSON.stringify({
+      ok: false,
+      successes: [],
+      failures: [
+        {
+          fileName: 'source.xlsx',
+          message: 'This workbook was already uploaded previously.',
+          code: 'DUPLICATE_UPLOAD',
+          details: {
+            existingGeneratedFileId: 'existing-file-id',
+          },
+        },
+      ],
+    }),
+    { status: 409 },
+  );
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+
+  await assert.rejects(
+    () => api.processWorkbookPayload({
+      file: new File(['xlsx'], 'source.xlsx'),
+      formatterMode: 'individual',
+    }),
+    (error) => {
+      assert.equal(error.message, 'This workbook was already uploaded previously.');
+      assert.equal(error.code, 'DUPLICATE_UPLOAD');
+      assert.equal(error.details.existingGeneratedFileId, 'existing-file-id');
+      return true;
+    },
+  );
+});
+
+test('requestProcessingHistoryPrint posts requestedBy and reason to the request-print endpoint', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        message: 'Reprint requested.',
+        record: { id: 'record-id', printed: false },
+        job: { id: 'job-id', status: 'queued', isReprint: true },
+      }),
+      { status: 200 },
+    );
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const payload = await api.requestProcessingHistoryPrint('record-id', { reason: 'document_lost' });
+
+  assert.equal(calls[0].url, 'http://api.test.local/api/app/processing-records/record-id/request-print');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].options.body), { requestedBy: '', reason: 'document_lost' });
+  assert.equal(payload.job.isReprint, true);
+});
