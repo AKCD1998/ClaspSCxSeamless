@@ -382,3 +382,25 @@ credentials อย่างน้อยสองค่าแรกให้ค�
 หลัง audit รัน `npm run seamless:migrate` กับ production database ผ่าน connection string ของ
 shared Render service โดยไม่แสดงค่า secret แล้ว: 001, 002 และ 003 ถูก skip เป็น
 already-applied ทั้งหมดและจบสำเร็จ จึงยืนยันแล้วว่า production migration เป็น no-op ตามคาด.
+
+### Production deploy หลัง R13 (2026-07-27)
+
+- suspend `claspscxseamless-web` แบบย้อนกลับได้แล้ว; URL เก่าตอบ 503 และยังไม่ได้ลบ service
+- merge shared-backend PR #2 เป็น commit `e49f29f`; Render deploy
+  `dep-d9jgik1oagis738q62b0` ขึ้น live
+- ตั้ง `SEAMLESS_APP_BASIC_USER/PASSWORD` แล้ว; ตั้ง compatibility aliases
+  `SEAMLESS_LINE_CHANNEL_ACCESS_TOKEN`/`SEAMLESS_LINE_CHANNEL_SECRET` จากชื่อเดิม
+  `LINE_CHANNEL_ACCESS_TOKEN_SEAMLESS`/`LINE_CHANNEL_SECRET_SEAMLESS` โดยเก็บชื่อเดิมไว้ครบ
+- `SEAMLESS_LINE_TARGET_ID` ยังไม่ตั้ง จึงยัง skip LINE notification ตาม fail-safe
+- merge client/docs PR #1 เป็น commit `bdef288`; สร้าง Render Static Site
+  `claspscxseamless-client` (`srv-d9jgk03tqb8s73abd57g`) ที่
+  `https://claspscxseamless-client.onrender.com`
+- ตั้ง `VITE_API_BASE_URL`, `CORS_ORIGIN`, `SEAMLESS_PUBLIC_BASE_URL`,
+  `SEAMLESS_STORAGE_DIR` แล้ว และ redeploy backend `dep-d9jgk3vlk1mc73856am0` ขึ้น live
+- production smoke สดผ่าน: client=200, backend health=200, bootstrap no-auth=401,
+  bootstrap Basic=200, workbook no-auth=401, workbook Basic/no-file=400, agent no-auth=401,
+  agent Bearer=200, invalid LINE signature=401; CORS preflight จาก Static Site=204 พร้อม exact
+  allow-origin และ allow-credentials=true
+
+ยังไม่เปิด scheduled auto-print. งานที่เหลือคือหา LINE target ID, ตั้ง R2/email ถ้าต้องใช้,
+และทดสอบเครื่อง 000/LibreOffice/SumatraPDF/Brother printer จริง.
