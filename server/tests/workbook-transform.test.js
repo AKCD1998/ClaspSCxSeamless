@@ -30,7 +30,10 @@ test('individual workbook transform deletes target columns and highlights exact 
   assert.equal(result.effectiveVariant, 'individual');
   assert.equal(result.deletedColumns.length, 2);
   assert.equal(result.highlightCount, 1);
-  assert.ok(result.warnings.some((warning) => warning.includes('Node workbook strategy')));
+  // Column deletion now preserves merged ranges instead of just splicing (see
+  // workbookFormatting.deleteColumnsPreservingMerges), so the old "verify merged-range
+  // parity against real samples" caveat no longer applies.
+  assert.ok(!result.warnings.some((warning) => warning.includes('merged-range parity')));
 });
 
 test('summary workbook transform deletes ATK and columns to the right', async () => {

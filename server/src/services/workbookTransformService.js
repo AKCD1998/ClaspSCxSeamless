@@ -6,6 +6,20 @@ const {
   getCellText,
   normalizeHeaderText,
 } = require('./workbookRules');
+const {
+  CONFIG: FORMATTING_CONFIG,
+  applyColumnWidths: applyCalculatedColumnWidths,
+  applyRowHeights: applyCalculatedRowHeights,
+  buildSheetModel,
+  calculateColumnWidths,
+  deleteColumnsPreservingMerges,
+  findFirstHeaderRowInRange,
+  findLastNonEmptyRowInRange,
+  fitColumnWidthsToPrintableWidth,
+} = require('./workbookFormatting');
+
+const INDIVIDUAL_HEADER_ROWS = [8, 9, 10];
+const SUMMARY_HEADER_ROWS = [5, 6, 7, 8, 9, 10];
 
 function detectWorkbookVariant(worksheet) {
   const sheetName = normalizeHeaderText(worksheet.name).toLowerCase();
@@ -47,12 +61,7 @@ function wrapHeaderRows(worksheet, headerRows) {
 }
 
 function deleteColumns(worksheet, matches) {
-  matches
-    .slice()
-    .sort((left, right) => right.start - left.start)
-    .forEach((match) => {
-      worksheet.spliceColumns(match.start, match.count);
-    });
+  deleteColumnsPreservingMerges(worksheet, matches);
 }
 
 function collectIndividualColumnMatches(worksheet, warnings) {
@@ -167,17 +176,8 @@ function applyHighlighting(worksheet) {
   return highlightCount;
 }
 
-function applyBorders(worksheet) {
-  const startMatch = findColumnByHeaderText(worksheet, 'ลำดับที่', {
-    rowStart: 8,
-    rowEnd: 10,
-  });
-  const endMatch = findColumnByHeaderText(worksheet, 'หมายเหตุ', {
-    rowStart: 8,
-    rowEnd: 10,
-  });
-
-  if (!startMatch || !endMatch) {
+function applyBorders(worksheet, tableRange) {
+  if (!tableRange) {
     return;
   }
 
@@ -185,11 +185,9 @@ function applyBorders(worksheet) {
     style: 'thin',
     color: { argb: 'FF000000' },
   };
-  const startRow = Math.min(startMatch.rowNumber, endMatch.rowNumber, 8);
-  const endRow = worksheet.rowCount;
 
-  for (let rowNumber = startRow; rowNumber <= endRow; rowNumber += 1) {
-    for (let columnNumber = startMatch.columnNumber; columnNumber <= endMatch.columnNumber; columnNumber += 1) {
+  for (let rowNumber = tableRange.startRow; rowNumber <= tableRange.endRow; rowNumber += 1) {
+    for (let columnNumber = tableRange.startCol; columnNumber <= tableRange.endCol; columnNumber += 1) {
       worksheet.getRow(rowNumber).getCell(columnNumber).border = {
         top: border,
         left: border,
@@ -200,27 +198,73 @@ function applyBorders(worksheet) {
   }
 }
 
-function applyColumnWidths(worksheet) {
-  for (let columnNumber = 1; columnNumber <= worksheet.columnCount; columnNumber += 1) {
-    let maxWidth = 6;
-
-    worksheet.eachRow({ includeEmpty: false }, (row) => {
-      const text = getCellText(worksheet, row.number, columnNumber);
-      if (text) {
-        maxWidth = Math.max(maxWidth, Math.min(24, text.length * 0.9 + 2));
-      }
-    });
-
-    worksheet.getColumn(columnNumber).width = maxWidth;
-  }
+function getHeaderRowsForVariant(variant) {
+  return variant === 'summary' ? SUMMARY_HEADER_ROWS : INDIVIDUAL_HEADER_ROWS;
 }
 
-function applyRowHeights(worksheet, variant) {
+// Mirrors SXTransformSummary.detectFinalTableRange / SXTransformIndiv.detectFinalTableRange:
+// individual reports bound the table between the 'ลำดับที่' and 'หมายเหตุ' headers, while
+// summary reports use the full used-range width (no natural start/end header pair).
+function detectFinalTableRange(worksheet, model, bounds, variant) {
+  const headerRows = getHeaderRowsForVariant(variant);
+  let startCol = bounds.left;
+  let endCol = bounds.right;
+
   if (variant === 'individual') {
-    [8, 9, 10].forEach((rowNumber) => {
-      worksheet.getRow(rowNumber).height = 15;
+    const startMatch = findColumnByHeaderText(worksheet, 'ลำดับที่', {
+      rowStart: Math.min(...headerRows),
+      rowEnd: Math.max(...headerRows),
+      left: bounds.left,
+      right: bounds.right,
     });
+    const endMatch = findColumnByHeaderText(worksheet, 'หมายเหตุ', {
+      rowStart: Math.min(...headerRows),
+      rowEnd: Math.max(...headerRows),
+      left: bounds.left,
+      right: bounds.right,
+    });
+
+    if (!startMatch || !endMatch) {
+      return null;
+    }
+
+    startCol = startMatch.start;
+    endCol = endMatch.start + endMatch.count - 1;
   }
+
+  const startRow = findFirstHeaderRowInRange(model, startCol, endCol, headerRows);
+  if (!startRow) {
+    return null;
+  }
+
+  const dataStartRow = Math.max(...headerRows) + 1;
+  const endRow = Math.max(
+    findLastNonEmptyRowInRange(worksheet, startCol, endCol, dataStartRow, getCellText) || 0,
+    Math.max(...headerRows),
+  );
+
+  return { startCol, endCol, startRow, dataStartRow, endRow };
+}
+
+function applyColumnWidths(worksheet, tableRange, bounds, variant) {
+  const model = buildSheetModel(worksheet, getCellText);
+  const headerRows = getHeaderRowsForVariant(variant);
+  const sizingRange = tableRange
+    ? { top: tableRange.startRow, bottom: tableRange.endRow, left: tableRange.startCol, right: tableRange.endCol }
+    : bounds;
+  const fixedColumnWidths = variant === 'individual' ? FORMATTING_CONFIG.INDIVIDUAL_FIXED_COLUMN_WIDTHS : null;
+
+  let columnWidths = calculateColumnWidths(model, sizingRange, { headerRows, fixedColumnWidths });
+  columnWidths = fitColumnWidthsToPrintableWidth(columnWidths, sizingRange);
+  applyCalculatedColumnWidths(worksheet, columnWidths);
+
+  return { model, sizingRange, columnWidths };
+}
+
+function applyRowHeights(worksheet, model, bounds, columnWidths, variant) {
+  const headerRows = getHeaderRowsForVariant(variant);
+  const fixedRowHeights = variant === 'individual' ? FORMATTING_CONFIG.INDIVIDUAL_FIXED_ROW_HEIGHTS : null;
+  applyCalculatedRowHeights(worksheet, model, bounds, columnWidths, { headerRows, fixedRowHeights });
 }
 
 async function loadWorkbook(buffer) {
@@ -249,8 +293,10 @@ async function transformWorkbook(buffer, options) {
     );
   }
 
+  const headerRows = getHeaderRowsForVariant(effectiveVariant);
+
   applyWorkbookFont(worksheet);
-  wrapHeaderRows(worksheet, effectiveVariant === 'summary' ? [5, 6, 7, 8, 9, 10] : [8, 9, 10]);
+  wrapHeaderRows(worksheet, headerRows);
 
   const deletedColumns =
     effectiveVariant === 'summary'
@@ -259,20 +305,31 @@ async function transformWorkbook(buffer, options) {
 
   if (deletedColumns.length) {
     deleteColumns(worksheet, deletedColumns);
-    warnings.push('Column deletion was applied with the Node workbook strategy; merged-range parity must be verified against real samples.');
   }
 
   applyWorkbookFont(worksheet);
-  wrapHeaderRows(worksheet, effectiveVariant === 'summary' ? [5, 6, 7, 8, 9, 10] : [8, 9, 10]);
-  applyColumnWidths(worksheet);
-  applyRowHeights(worksheet, effectiveVariant);
+  wrapHeaderRows(worksheet, headerRows);
+
+  // worksheet.columnCount does not shrink after spliceColumns (only actualColumnCount does),
+  // so relying on columnCount here after a column deletion would size/border/scan a range
+  // that includes stale, already-deleted trailing columns.
+  const bounds = { top: 1, left: 1, bottom: worksheet.rowCount, right: worksheet.actualColumnCount };
+  const preliminaryModel = buildSheetModel(worksheet, getCellText);
+  const tableRange = detectFinalTableRange(worksheet, preliminaryModel, bounds, effectiveVariant);
+
+  if (!tableRange) {
+    warnings.push('Could not detect the final table range for column sizing and border styling.');
+  }
+
+  const { model, columnWidths } = applyColumnWidths(worksheet, tableRange, bounds, effectiveVariant);
+  applyRowHeights(worksheet, model, bounds, columnWidths, effectiveVariant);
 
   const highlightCount = effectiveVariant === 'individual' ? applyHighlighting(worksheet) : 0;
   if (effectiveVariant === 'individual') {
-    applyBorders(worksheet);
+    applyBorders(worksheet, tableRange);
   }
 
-  worksheet.views = [{ state: 'frozen', ySplit: 10 }];
+  worksheet.views = [{ state: 'frozen', ySplit: Math.max(...headerRows) }];
 
   workbook.worksheets
     .filter((sheet) => sheet.id !== worksheet.id)
