@@ -230,3 +230,29 @@
   - ลบสคริปต์ชั่วคราวแล้ว (`fix-legacy-drive-url-tmp.js`, `check-legacy-url-tmp.js`)
   - หมายเหตุ: `legacy_drive_file_id` (Drive file ID) ไม่ได้แก้ เพราะไม่มีที่ใดใน client อ่านฟิลด์นี้
     ไปแสดงเป็นลิงก์โดยตรง มีแต่ `legacy_drive_file_url` ที่กระทบ UI
+
+- 2026-07-29 — **แก้บั๊ก: ไฟล์ legacy ที่ดาวน์โหลดแล้วเปิดไม่ถูกโปรแกรม (ไม่รู้ว่าต้องใช้ Excel)**
+  - ผู้ใช้ดาวน์โหลด `Preview-individual-single-20260728-001551` มาทดสอบหลังแก้ URL ด้านบน แต่
+    Windows ไม่รู้ว่าไฟล์นี้ควรเปิดด้วย Excel — ตรวจพบว่า `generated_files.filename` (34 legacy
+    rows เดิม) ไม่มีนามสกุล `.xlsx` ต่อท้าย และ `generated_files.mime_type` ยังเป็นค่าที่ import
+    มาจาก Google Drive API ตอน migrate (`application/vnd.google-apps.spreadsheet` — mimetype ของ
+    ไฟล์ Google Sheets แบบ native ไม่ใช่ของจริงที่เป็น `.xlsx`) ทั้งสองฟิลด์นี้เป็นตัวกำหนด
+    `Content-Disposition filename=`/`Content-Type` ตอนดาวน์โหลดใน `fileController.js` โดยตรง —
+    เทียบกับไฟล์ที่อัปโหลดใหม่ (fresh upload) ซึ่ง filename ลงท้าย `.xlsx` และ mime_type เป็น
+    `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` เสมอ
+  - Dry-run (`fix-legacy-filename-mime-tmp.js`): join เงื่อนไขเดียวกับการแก้ URL ด้านบน (34 rows)
+    — ทั้ง 34 filename ไม่มี `.xlsx` และ mime_type ผิดทั้งหมด
+  - Backup ก่อนเขียนจริง: `backups/before-legacy-filename-mime-fix-2026-07-29T12-41-24-281Z.sql`
+    (265,743 bytes, gitignored)
+  - Commit จริงด้วย raw SQL ตรง (`updateGeneratedFile()` เดิมของแอปไม่รองรับแก้ `filename`/
+    `mime_type`) ต่อ `.xlsx` เข้า filename เดิม และตั้ง mime_type เป็นค่า xlsx จริง ครบ 34/34
+    — ไม่แตะ `storage_path`/R2 object key เดิม (ไม่จำเป็น เพราะ header ตอนดาวน์โหลดมาจาก DB
+    column ไม่ใช่จาก storage key)
+  - ผลข้างเคียงที่รู้ตัว: `generated_files.filename` ไม่ตรงกับ `processing_records.filename`
+    อีกต่อไปสำหรับ 34 legacy records (processing_records ไม่มี `.xlsx` ต่อท้าย) — ตรวจแล้วว่า
+    โค้ด runtime ของแอปไม่มีจุดไหน join สองตารางนี้ด้วย filename เลย (`getGeneratedFileById`
+    ใช้ id เท่านั้น) จึงไม่กระทบการทำงานจริง มีผลแค่กับ diagnostic script ชั่วคราวที่ใช้ join
+    แบบเดิมเท่านั้น
+  - Verify หลัง commit: query ตรงด้วย `legacy_drive_file_id` (แทน filename join ที่ใช้ไม่ได้แล้ว)
+    — 34/34 filename ลงท้าย `.xlsx`, 34/34 mime_type ถูกต้อง
+  - ลบสคริปต์ชั่วคราวแล้ว (`fix-legacy-filename-mime-tmp.js`)
