@@ -16,6 +16,8 @@ const emptyFilters = {
   printed: '',
 };
 
+const RECORDS_PAGE_SIZE = 10;
+
 function normalizeHistoryFilterBoolean(value) {
   if (value === '' || value === null || typeof value === 'undefined') {
     return null;
@@ -51,11 +53,23 @@ export default function HistoryPanel({ reloadKey }) {
   const [status, setStatus] = useState({ message: 'กำลังโหลด', state: 'idle' });
   const [isLoading, setIsLoading] = useState(false);
   const [busyRecordId, setBusyRecordId] = useState('');
+  const [recordsPage, setRecordsPage] = useState(1);
 
   const filteredRecords = useMemo(
     () => filterProcessingHistoryRecords(records, filters),
     [filters, records],
   );
+
+  const totalRecordsPages = Math.max(1, Math.ceil(filteredRecords.length / RECORDS_PAGE_SIZE));
+
+  useEffect(() => {
+    setRecordsPage(1);
+  }, [filteredRecords, currentView]);
+
+  const pagedRecords = useMemo(() => {
+    const start = (recordsPage - 1) * RECORDS_PAGE_SIZE;
+    return filteredRecords.slice(start, start + RECORDS_PAGE_SIZE);
+  }, [filteredRecords, recordsPage]);
 
   async function loadProcessingHistory(options = {}) {
     setIsLoading(true);
@@ -306,22 +320,50 @@ export default function HistoryPanel({ reloadKey }) {
 
         {!filteredRecords.length ? (
           <div className="history-empty">ไม่พบการค้นหาที่ตรงกับการกรองนี้</div>
-        ) : currentView === 'table' ? (
-          <HistoryTable
-            busyRecordId={busyRecordId}
-            onPrintAction={handlePrintAction}
-            onRequestPrint={handleRequestPrint}
-            onSendEmail={handleSendEmail}
-            records={filteredRecords}
-          />
         ) : (
-          <HistoryGrouped
-            busyRecordId={busyRecordId}
-            onPrintAction={handlePrintAction}
-            onRequestPrint={handleRequestPrint}
-            onSendEmail={handleSendEmail}
-            records={filteredRecords}
-          />
+          <>
+            {currentView === 'table' ? (
+              <HistoryTable
+                busyRecordId={busyRecordId}
+                onPrintAction={handlePrintAction}
+                onRequestPrint={handleRequestPrint}
+                onSendEmail={handleSendEmail}
+                records={pagedRecords}
+              />
+            ) : (
+              <HistoryGrouped
+                busyRecordId={busyRecordId}
+                onPrintAction={handlePrintAction}
+                onRequestPrint={handleRequestPrint}
+                onSendEmail={handleSendEmail}
+                records={pagedRecords}
+              />
+            )}
+
+            {totalRecordsPages > 1 ? (
+              <div className="history-dashboard-pagination">
+                <button
+                  className="history-view-button secondary"
+                  disabled={recordsPage <= 1}
+                  onClick={() => setRecordsPage((page) => Math.max(1, page - 1))}
+                  type="button"
+                >
+                  ก่อนหน้า
+                </button>
+                <span className="history-muted">
+                  หน้า {recordsPage} / {totalRecordsPages}
+                </span>
+                <button
+                  className="history-view-button secondary"
+                  disabled={recordsPage >= totalRecordsPages}
+                  onClick={() => setRecordsPage((page) => Math.min(totalRecordsPages, page + 1))}
+                  type="button"
+                >
+                  ถัดไป
+                </button>
+              </div>
+            ) : null}
+          </>
         )}
       </section>
     </section>
