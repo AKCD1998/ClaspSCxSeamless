@@ -157,3 +157,76 @@
     ยืนยัน lifecycle เต็ม + กระดาษออกจริง (5) รันซ้ำทันทีเพื่อยืนยันไม่ปริ้นซ้ำ. **หมายเหตุ:**
     ไฟล์ทั้ง 2 นี้เก็บบน local disk (ephemeral บน Render) — ถ้ามี redeploy เกิดขึ้นก่อนจะทดสอบต่อ
     ไฟล์อาจหายไปแล้ว ต้องอัปโหลดใหม่หากเป็นเช่นนั้น
+- 2026-07-29 — **บั๊กจริงพบ+แก้: legacy branch codes ไม่ zero-padded ทำให้หน้าเว็บแสดง "-" ผิด**
+  เจ้าของสังเกตในหน้าเว็บว่าเอกสาร legacy หลายรายการ (รวมถึง `Preview-summary-single-20260728-050721`,
+  `Preview-individual-single-20260728-045829` ฯลฯ) แสดงคอลัมน์ "เอกสารของสาขา" เป็น "-" ทั้งที่ไม่ควร
+  ตรวจสอบครั้งแรกพลาด (นับ `processing_record_branch_codes` junction table แทนที่จะเช็ค
+  `legacy_branch_codes` ซึ่งเป็น field จริงที่หน้าเว็บอ่าน) ก่อนจะพบสาเหตุจริง: `legacy_branch_codes`
+  ของ record จำนวนมากถูกเก็บเป็นเลขหลักเดียว เช่น `"3"`, `"1"`, `"4"` แทนที่จะเป็น zero-padded 3 หลัก
+  (`"003"`, `"001"`, `"004"`) — client's `normalizeBranchCodeList` (และ server's `normalizeBranchCodes`
+  ทั้งคู่) ใช้ regex `/^\d{3}$/` เช็คแบบเข้มงวด ทำให้เลขหลักเดียวถูกกรองทิ้งเงียบๆ กลายเป็น array ว่าง
+  แล้ว UI แสดง "-" — **ตรวจสอบเต็มพบว่ากระทบ 117 จาก 125 legacy records ที่ import มา** (ไม่ใช่แค่
+  4 records ที่คิดไว้ตอนแรกจากการเช็ค junction table)
+  - แก้ด้วยสคริปต์ zero-pad ทุกส่วนที่เป็นตัวเลข 1-3 หลักให้เป็น 3 หลัก แล้วเรียก
+    `processingRecords.updateProcessingRecord(id, { branchCodes: paddedValue })` ของจริง (ใช้โค้ด
+    เดียวกับที่แอปใช้ ไม่เขียน SQL ตรงๆ เอง) เพื่อให้ทั้ง `legacy_branch_codes` และ junction table
+    sync กันถูกต้อง
+  - Dry-run ก่อน: 117 would-fix, 4 already-correct, 0 unparseable — สะอาดหมด
+  - Backup production ก่อน commit จริง (`backups/before-branch-code-padding-fix-*.sql`)
+  - Commit จริง: แก้ครบ 117 รายการ ยืนยันหลังแก้ว่า **0 รายการยังผิดรูปแบบ** จาก 121 รายการที่มีค่า
+    ไม่ว่าง
+  - ระหว่างตรวจก็ยืนยันด้วยว่า 2 เอกสารที่อัปโหลดจริงทดสอบก่อนหน้า (`Preview-summary-single-
+    20260729-100657`, `Preview-individual-single-20260729-100647`) มี `legacy_branch_codes="004"`
+    ถูกต้องอยู่แล้วในฐานข้อมูลจริง — "-" ที่เจ้าของเห็นในสกรีนช็อตก่อนหน้าเป็นแค่ state ค้างของหน้าเว็บ
+    ไม่ใช่บั๊กจริงของ pipeline ปัจจุบัน
+
+- 2026-07-29 — **ยืนยัน R2 fallback จริง + attach legacy preview workbooks เข้า R2**
+  - อัปโหลด raw-source ผ่าน production flow `POST /api/workbooks/process` ใหม่ 2 ไฟล์:
+    `rep_summary_zone05 (8).xlsx` (`formatterMode=summary`) และ
+    `REP_individual_INS_2026072916562626.xlsx` (`formatterMode=individual`) — response ทั้งคู่
+    `ok: true`, 0 failures; query production ยืนยัน generated files ใหม่ครบ 6 rows
+    (`source_upload`, `processed_xlsx`, `preview_workbook` อย่างละชนิดต่อ input) เป็น
+    `storage_provider='r2'` ทั้งหมด จึงยืนยันว่า bare `R2_*` fallback จาก commit `edb580b`
+    ทำงานจริงบน Render
+  - Legacy dry-run: ตรวจไฟล์ `.xlsx` 40 ไฟล์ใน `Downloads/เอกสาร seamlessXSC`, จำกัด record ที่
+    `migration_source='ProcessingRegistry.csv'`, เทียบ basename กับ `processing_records.filename`
+    และตรวจ `file_kind='preview_workbook'` — จับคู่พร้อมย้าย 34, already-R2 0,
+    ambiguous/missing preview row 0, จับคู่ record ไม่พบ 6
+  - ก่อนเขียนจริงสร้าง production backup:
+    `backups/before-legacy-preview-r2-attach-20260729-190914.sql` (258,721 bytes, gitignored)
+  - ผลจริง: อ่าน buffer จากไฟล์ local และเรียก
+    `writeStoredFile('preview_workbook', filename, buffer)` ของ shared backend เพื่ออัปโหลด R2
+    ครบ 34/34 จากนั้นอัปเดต `generated_files` rows เดิมครบ 34 rows ภายใน transaction;
+    ไม่สร้าง row ใหม่และไม่แก้ record ที่ไม่ match โดยเก็บ `legacy_drive_file_id`/
+    `legacy_drive_file_url` เดิมไว้ครบ
+  - Post-commit query exact 34 IDs: `storage_provider='r2'` 34/34,
+    R2 key path ถูกต้อง 34/34, `download_url=view_url` และไม่ว่าง 34/34,
+    file size/checksum ครบ 34/34, legacy Drive traceability ยังอยู่ 34/34,
+    และทุก row ยังเป็น `file_kind='preview_workbook'`
+  - ไฟล์ที่จับคู่ record ไม่พบและไม่ได้แตะ:
+    `Preview-individual-single-20260723-222920.xlsx`,
+    `Preview-individual-single-20260728-000853.xlsx`,
+    `Preview-individual-single-20260728-003311.xlsx`,
+    `Preview-summary-single-20260722-044244.xlsx`,
+    `Preview-summary-single-20260723-223004.xlsx`,
+    `Preview-summary-single-20260728-003411.xlsx`
+
+- 2026-07-29 — **แก้บั๊ก: ปุ่ม "เปิดไฟล์" ของ legacy เอกสารยังเปิด Google Sheets แม้ย้ายขึ้น R2 แล้ว**
+  - สาเหตุ: การ migrate ข้างต้นตั้งใจคงค่า `legacy_drive_file_id`/`legacy_drive_file_url` เดิมไว้
+    (เพื่อรักษา traceability) แต่ `HistoryTable.jsx` render ปุ่ม "เปิดไฟล์" จาก
+    `record.driveFileUrl` (= `processing_records.legacy_drive_file_url`) โดยตรง ไม่เคย join กับ
+    `generated_files.download_url` — ผลคือทั้ง 34/34 record ที่ย้ายขึ้น R2 แล้ว ปุ่มยังพาไปที่
+    Google Sheets URL เดิม ไม่ได้ดาวน์โหลดจาก R2 เหมือนไฟล์ที่อัปโหลดใหม่
+  - Dry-run (`fix-legacy-drive-url-tmp.js` ใน `backend/`): join `processing_records` กับ
+    `generated_files` (filename + `file_kind='preview_workbook'`) เฉพาะที่
+    `migration_source='ProcessingRegistry.csv'` และ `storage_provider='r2'` — พบ 34/34 ต้องแก้,
+    already-correct 0, skip (ไม่มี `download_url`) 0
+  - Backup ก่อนเขียนจริง: `backups/before-legacy-drive-url-fix-2026-07-29T12-31-27-109Z.sql`
+    (265,471 bytes, gitignored)
+  - Commit จริงผ่าน `processingRecords.updateProcessingRecord(id, { driveFileUrl })` เดิมของแอป
+    (ไม่ใช้ raw SQL) อัปเดต `legacy_drive_file_url` ให้เท่ากับ
+    `generated_files.download_url`/`view_url` ที่ R2 migration ตั้งไว้แล้ว ครบ 34/34
+  - Verify หลัง commit: query ซ้ำด้วยเงื่อนไขเดิม — เหลือ 0/34 ที่ยังชี้ไป `docs.google.com`
+  - ลบสคริปต์ชั่วคราวแล้ว (`fix-legacy-drive-url-tmp.js`, `check-legacy-url-tmp.js`)
+  - หมายเหตุ: `legacy_drive_file_id` (Drive file ID) ไม่ได้แก้ เพราะไม่มีที่ใดใน client อ่านฟิลด์นี้
+    ไปแสดงเป็นลิงก์โดยตรง มีแต่ `legacy_drive_file_url` ที่กระทบ UI
