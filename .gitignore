@@ -14,6 +14,11 @@ tmp/
 temp/
 agent.lock
 
+# Legacy data-migration artifacts (docs/06-data-migration-plan.md) — real production exports
+# and full DB dumps, never committed.
+exports/
+backups/
+
 .DS_Store
 Thumbs.db
 npm-debug.log*

@@ -316,6 +316,15 @@ button:disabled {
   background: rgba(255, 255, 255, 0.72);
 }
 
+.history-dashboard-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(31, 42, 40, 0.08);
+}
+
 .history-grouped-body {
   display: grid;
   gap: 16px;

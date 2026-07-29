@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import {
   formatHistoryDate,
   groupRecordsByReportDate,
   normalizeBranchCodeList,
 } from '../utils/historyFormatting.js';
+
+const PAGE_SIZE = 10;
 
 function SummaryPill({ children, isAvailable }) {
   return (
@@ -32,6 +35,17 @@ function BranchCodes({ branchCodes }) {
 
 export default function HistoryDashboard({ activeReportDate, onSelectReportDate, records }) {
   const groups = groupRecordsByReportDate(records);
+  const totalPages = Math.max(1, Math.ceil(groups.length / PAGE_SIZE));
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageGroups = groups.slice(pageStart, pageStart + PAGE_SIZE);
 
   return (
     <section className="history-dashboard">
@@ -61,7 +75,7 @@ export default function HistoryDashboard({ activeReportDate, onSelectReportDate,
               </tr>
             </thead>
             <tbody>
-              {groups.map((group) => (
+              {pageGroups.map((group) => (
                 <tr key={group.reportDate}>
                   <td>
                     {/^\d{8}$/.test(group.reportDate) ? (
@@ -97,6 +111,29 @@ export default function HistoryDashboard({ activeReportDate, onSelectReportDate,
               ))}
             </tbody>
           </table>
+          {totalPages > 1 ? (
+            <div className="history-dashboard-pagination">
+              <button
+                className="history-view-button secondary"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                type="button"
+              >
+                ก่อนหน้า
+              </button>
+              <span className="history-muted">
+                หน้า {currentPage} / {totalPages}
+              </span>
+              <button
+                className="history-view-button secondary"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                type="button"
+              >
+                ถัดไป
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
     </section>

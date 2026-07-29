@@ -127,9 +127,11 @@ Options:
 }
 
 function buildPoolConfig() {
-  if (process.env.DATABASE_URL) {
+  const connectionString = process.env.SC_OFFICIAL_SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+
+  if (connectionString) {
     return {
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
       options: `-c search_path=${searchPathOption}`,
     };
   }

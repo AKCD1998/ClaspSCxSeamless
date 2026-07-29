@@ -226,3 +226,32 @@ pg_dump "$DATABASE_URL" > backups/before-processing-registry-import.sql
 - ต้อง migrate preview sheet list ทั้งหมดหรือใช้ legacy preview Drive URL ระดับ workbook เพียงพอ
 - ยังมี output `.xlsx` เก่าที่ต้อง copy ออกจาก Google Drive มาก่อน cleanup หรือไม่
 - ต้อง preserve actor email เดิมตาม `uploadedBy`/`printedBy` แบบ exact หรือจะ map เป็น local user ในอนาคต
+
+## 10. Execution Log
+
+- 2026-07-29 — Export `ProcessingRegistry.csv` จากสเปรดชีต "SeamlessXGASExcelFormatV2 Processing
+  Registry" (tab `ProcessingRegistry`, แก้ไขล่าสุดวันเดียวกัน — ยืนยันว่าเป็นไฟล์ที่ระบบใช้งานจริง
+  ไม่ใช่ไฟล์เก่าที่แก้ไขครั้งสุดท้าย 8 เม.ย.) เก็บไว้ที่ `exports/ProcessingRegistry.csv` (gitignored)
+  — 125 rows.
+  - **พบและแก้บั๊กจริงใน `scripts/import-data/import-from-csv.js`:** `buildPoolConfig()` เช็คแค่
+    `process.env.DATABASE_URL` เฉยๆ ไม่เช็ค `SC_OFFICIAL_SUPABASE_DATABASE_URL` เหมือนที่
+    `server/src/config/env.js` ทำ — เพราะ `server/.env` production ตั้งค่าไว้ที่
+    `SC_OFFICIAL_SUPABASE_DATABASE_URL` (ตาม convention จริงของ repo) สคริปต์นี้เลย fallback ไปต่อ
+    `localhost:5432` แล้วได้ `ECONNREFUSED` เงียบๆ (`AggregateError` ไม่มี `.message` ทำให้
+    `console.error(error.message)` เดิมใน `main().catch()` ไม่ print อะไรเลย ดูเหมือน process
+    เงียบหายไปเฉยๆ) แก้โดยให้เช็ค `SC_OFFICIAL_SUPABASE_DATABASE_URL` ก่อน เหมือนโค้ดส่วนอื่นของ repo
+  - Dry-run ก่อน: 125/125 rows valid, 0 duplicates, 0 errors/warnings
+  - Backup production ก่อน commit จริงด้วย `pg_dump --schema=clasp_scx_seamless` (ผ่าน discrete
+    `PG*` env vars แทน connection-string เดียว เพราะ `pg_dump`'s URI parser สะดุดกับ connection
+    string ของ Supabase pooler) → `backups/before-processing-registry-import.sql` (63 KB, 26
+    tables, gitignored)
+  - Commit จริง: **125 records created, 0 skipped/updated/failed** ตรงกับ dry-run เป๊ะ — ยืนยันตรง
+    ใน DB จริงหลัง commit: `processing_records` ที่ `migration_source='ProcessingRegistry.csv'` =
+    125, `generated_files` ที่ `storage_provider='google_drive'` = 125, `migration_logs` แถวล่าสุด
+    status = `completed`
+  - เพิ่ม `exports/` และ `backups/` เข้า `.gitignore` (มีข้อมูล production จริงและไม่เคย gitignore
+    มาก่อน)
+  - **ยังไม่ทำ:** แนบไฟล์ `.xlsx` จริง 40 ไฟล์ที่ดาวน์โหลดมาไว้ที่
+    `C:\Users\scgro\Downloads\เอกสาร seamlessXSC` (`Preview-summary-single-*`/
+    `Preview-individual-single-*`) เข้ากับ `generated_files` rows ที่เพิ่ง import — ต้องจับคู่ด้วย
+    filename แล้วอัปโหลดเนื้อไฟล์จริงเข้า storage (R2/local) ของแอปใหม่ แทนที่จะพึ่ง legacy Drive URL
