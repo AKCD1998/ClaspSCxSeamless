@@ -316,3 +316,20 @@
     relative อีกครั้ง — แก้ด้วย script เดิม (ตรง ๆ ไม่ผ่าน dry-run รอบนี้ เพราะเป็นการแก้ URL
     แบบเดียวกับที่ทดสอบซ้ำแล้วหลายรอบในวันเดียวกัน และเป็น record ที่เพิ่งสร้างเองทั้งหมด)
     ยืนยันแล้วว่าไม่มี relative URL เหลือ
+
+- 2026-07-30 — **เปลี่ยน print-agent polling interval จากทุก 1 ชั่วโมง เป็นทุก 2 นาที**
+  - เหตุผล: user ต้องการ feedback (ปริ้น/LINE/email สำเร็จหรือไม่) เร็วที่สุดเท่าที่ทำได้ เพื่อ
+    ตัดสินใจว่าจะลองใหม่หรือรอ — bottleneck จริงคือรอบ poll ของ agent เอง ไม่ใช่การสื่อสาร
+    client-server จึงไม่จำเป็นต้องใช้ WebSocket (ดูเหตุผลเต็มในบทสนทนา)
+  - ประเมิน resource impact บน shared backend แล้ว: `GET /api/agent/print-queue` เป็น indexed
+    SELECT เบา ๆ ไม่กี่ query, คืนเร็วมากเมื่อคิวว่าง (กรณีปกติ) — เทียบกับ traffic จริงจาก
+    reactnjob/digitalpjk/scglamliff/sccrm/loyalty/crm/slider ถือว่า negligible; user ตกลงจะสังเกต
+    resource consumption จริงหลังปรับใช้เพิ่มเติมเอง
+  - อัปเดต `print-agent/README.md`: คำอธิบาย interval, PowerShell setup snippet
+    (`RepetitionInterval` จาก `-Hours 1` เป็น `-Minutes 2`), เพิ่มขั้นตอนอัปเดต schedule ของ task
+    ที่ตั้งไว้แล้วบนเครื่อง 000 ด้วย `Set-ScheduledTask` (ไม่ต้องลบ/สร้างใหม่), และเพิ่มคำอธิบาย
+    ว่า backend ยิงอีเมลไปยัง `SEAMLESS_DOCS_RECIPIENT_EMAIL` ด้วยแล้ว (ไม่ใช่แค่ LINE)
+  - `docs/09-auto-print-agent-design.md`/`docs/10-print-agent-tasks.md` ไม่ได้แก้ — เป็นเอกสาร
+    design/history เดิม (ตาม convention เดิมของ ledger นี้คือไม่แก้ข้อความ history เก่า)
+  - **ยังไม่ได้ทำจริงบนเครื่อง 000** — README มีคำสั่ง `Set-ScheduledTask` พร้อมใช้ รอ user/ผู้ดูแล
+    เครื่อง 000 รันเอง แล้วสังเกต resource consumption ของ backend ต่อ

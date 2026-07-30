@@ -1,10 +1,10 @@
 # Print Agent
 
-Node.js CLI ที่รันบนเครื่อง 000 (สาขา, Windows Server 2019) ทุก 1 ชั่วโมงผ่าน Task Scheduler เพื่อ:
+Node.js CLI ที่รันบนเครื่อง 000 (สาขา, Windows Server 2019) ทุก 2 นาทีผ่าน Task Scheduler เพื่อ:
 
 1. เช็คเว็บ ClaspSCxSeamless ว่ามีเอกสารที่ยังไม่ได้ปริ้นท์ส่งพี่เอหรือไม่ (`GET /api/agent/print-queue`)
 2. ถ้ามี → ดาวน์โหลดไฟล์ .xlsx → แปลงเป็น PDF ด้วย LibreOffice headless → สั่งปริ้นด้วย SumatraPDF ไปที่ Brother MFC-T4500DW
-3. รอจนงานปริ้นของเอกสารนี้โดยเฉพาะหายไปจากคิว (ไม่รอทั้งคิวว่าง — คิวเครื่องจริงอาจมีงานค้างเก่าที่ไม่เกี่ยวกันอยู่) แล้วรายงานผลกลับไปที่เว็บ (backend เป็นคน mark printed + ยิง LINE แจ้งเตือน)
+3. รอจนงานปริ้นของเอกสารนี้โดยเฉพาะหายไปจากคิว (ไม่รอทั้งคิวว่าง — คิวเครื่องจริงอาจมีงานค้างเก่าที่ไม่เกี่ยวกันอยู่) แล้วรายงานผลกลับไปที่เว็บ (backend เป็นคน mark printed + ยิง LINE แจ้งเตือน + ส่งอีเมลไฟล์ที่ปริ้นไปยัง `SEAMLESS_DOCS_RECIPIENT_EMAIL`)
 
 รายละเอียด design เต็มอยู่ที่ `docs/09-auto-print-agent-design.md`, checklist implementation อยู่ที่ `docs/10-print-agent-tasks.md`.
 
@@ -60,7 +60,7 @@ node src\index.js
 
 เช็ค `logs\print-agent-YYYYMMDD.log` ว่า log ออกมาตามที่คาด
 
-## ตั้ง Task Scheduler ให้รันทุก 1 ชั่วโมง
+## ตั้ง Task Scheduler ให้รันทุก 2 นาที
 
 ต้องตั้งให้รันเป็น user **Administrator** (เพราะ SumatraPDF ติดตั้งแบบ per-user ของ user นี้) และเปิด "Run whether user is logged on or not":
 
@@ -70,7 +70,11 @@ $action = New-ScheduledTaskAction `
   -Argument "src\index.js" `
   -WorkingDirectory "C:\apps\ClaspSCxSeamless\print-agent"
 
-$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([TimeSpan]::MaxValue)
+# Task Scheduler's repetition interval maxes out at 1 day for -Once triggers, but a
+# short interval like this is well within range. Each run exits almost immediately when
+# the queue is empty (a couple of lightweight indexed queries), and agent.lock already
+# prevents overlapping runs if a real print job is still in progress — see "Log" below.
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 2) -RepetitionDuration ([TimeSpan]::MaxValue)
 
 $principal = New-ScheduledTaskPrincipal -UserId "Administrator" -LogonType Password -RunLevel Highest
 
@@ -79,7 +83,19 @@ Register-ScheduledTask `
   -Action $action `
   -Trigger $trigger `
   -Principal $principal `
-  -Description "Polls ClaspSCxSeamless print queue hourly and prints to Brother MFC-T4500DW"
+  -Description "Polls ClaspSCxSeamless print queue every 2 minutes and prints to Brother MFC-T4500DW"
+```
+
+### อัปเดต schedule ของ task ที่ตั้งไว้แล้ว (จากทุก 1 ชั่วโมง เป็นทุก 2 นาที)
+
+ถ้า task `ClaspSCxSeamless Print Agent` ถูกสร้างไว้แล้วบนเครื่อง 000 (รันทุก 1 ชั่วโมง) ไม่ต้องลบ/สร้างใหม่ทั้งหมด แค่แก้ trigger:
+
+```powershell
+$newTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 2) -RepetitionDuration ([TimeSpan]::MaxValue)
+Set-ScheduledTask -TaskName "ClaspSCxSeamless Print Agent" -Trigger $newTrigger
+
+# ยืนยันว่า interval เปลี่ยนจริง
+(Get-ScheduledTask -TaskName "ClaspSCxSeamless Print Agent").Triggers | Select-Object Repetition
 ```
 
 จะถูกถามรหัสผ่านของ user `Administrator` ตอนสร้าง task (จำเป็นสำหรับ `LogonType Password` เพื่อให้รันได้แม้ไม่มีใคร login อยู่)
