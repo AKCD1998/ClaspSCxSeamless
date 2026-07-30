@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import TopNavBar from './components/TopNavBar.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import UploadPage from './pages/UploadPage.jsx';
@@ -46,10 +47,13 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route index element={<UploadPage onLogout={handleLogout} />} />
-      <Route path="history" element={<HistoryPage onLogout={handleLogout} />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <TopNavBar onLogout={handleLogout} />
+      <Routes>
+        <Route index element={<UploadPage />} />
+        <Route path="history" element={<HistoryPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }

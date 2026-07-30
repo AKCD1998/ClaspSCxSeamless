@@ -27,7 +27,7 @@ const uploadPanels = [
   },
 ];
 
-export default function UploadPage({ onLogout }) {
+export default function UploadPage() {
   const [bootstrap, setBootstrap] = useState(DEFAULT_BOOTSTRAP);
   const [bootstrapStatus, setBootstrapStatus] = useState({
     message: 'กำลังเชื่อมต่อ backend...',
@@ -62,7 +62,6 @@ export default function UploadPage({ onLogout }) {
   return (
     <main className="shell">
       <Hero
-        onLogout={onLogout}
         title="อัปโหลดไฟล์จาก Seamless เพื่อปรับรูปแบบเอกสารและติดตามประวัติการทำงานผ่าน backend/database ใหม่"
         intro="ผู้ใช้งานต้องอัปโหลดเอกสารจาก Seamless for DMIS ของ สปสช.ทั้งหมด 2 ไฟล์ต่อสัปดาห์ ได้แก่เอกสารแจกแจงการชดเชยรายบุคคล
         (individual) และเอกสารสรุปการชดเชยทั้งหมด (summary) ผ่านหน้าเว็บนี้โดยตรง ระบบจะสร้างไฟล์ที่ปรับรูปแบบแล้วและบันทึกประวัติการดำเนินการไว้ใน backend/database
