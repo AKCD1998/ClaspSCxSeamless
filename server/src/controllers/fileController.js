@@ -1,17 +1,24 @@
 const fs = require('node:fs/promises');
-const { createStoredFileStream } = require('../services/fileStorageService');
+const { createStoredFileStream, readStoredFile } = require('../services/fileStorageService');
+const { sendGeneratedFileEmail } = require('../services/emailService');
 const { getGeneratedFileById } = require('../db/repositories/generatedFileRepository');
-const { notFound } = require('../utils/apiError');
+const { badRequest, notFound } = require('../utils/apiError');
+const { env } = require('../config/env');
+const { isValidEmailList, normalizeString } = require('../utils/validators');
 
 async function downloadGeneratedFile(req, res) {
   const file = await getGeneratedFileById(req.params.id);
 
   if (!file.storagePath) {
-    throw notFound(`Generated file has no local storage path for id: ${req.params.id}`);
+    throw notFound(`Generated file has no storage path for id: ${req.params.id}`);
   }
 
+  let stream;
   try {
-    await fs.access(file.storagePath);
+    if (file.storageProvider !== 'r2') {
+      await fs.access(file.storagePath);
+    }
+    stream = await createStoredFileStream(file.storageProvider, file.storagePath);
   } catch (error) {
     throw notFound(`Generated file content not found for id: ${req.params.id}`);
   }
@@ -19,7 +26,40 @@ async function downloadGeneratedFile(req, res) {
   res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
   res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.filename)}"`);
 
-  createStoredFileStream(file.storagePath).pipe(res);
+  stream.pipe(res);
 }
 
-module.exports = { downloadGeneratedFile };
+async function sendGeneratedFileByEmail(req, res) {
+  const file = await getGeneratedFileById(req.params.id);
+
+  if (!file.storagePath) {
+    throw notFound(`Generated file has no storage path for id: ${req.params.id}`);
+  }
+
+  const requestedTo = normalizeString(req.body && req.body.to);
+  const to = requestedTo || env.docsRecipientEmail;
+
+  if (!to || !isValidEmailList(to)) {
+    throw badRequest('A valid recipient email address is required.');
+  }
+
+  let buffer;
+  try {
+    buffer = await readStoredFile(file.storageProvider, file.storagePath);
+  } catch (error) {
+    throw notFound(`Generated file content not found for id: ${req.params.id}`);
+  }
+
+  await sendGeneratedFileEmail({
+    to,
+    subject: `[ClaspSCxSeamless] ${file.filename}`,
+    text: `แนบไฟล์เอกสาร: ${file.filename}`,
+    filename: file.filename,
+    mimeType: file.mimeType,
+    buffer,
+  });
+
+  res.json({ ok: true, message: `ส่งไฟล์ไปยัง ${to} แล้ว`, to, fileId: file.id });
+}
+
+module.exports = { downloadGeneratedFile, sendGeneratedFileByEmail };

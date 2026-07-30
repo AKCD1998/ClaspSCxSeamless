@@ -388,6 +388,34 @@ button:disabled {
   color: var(--warning);
 }
 
+.history-notify-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.history-notify-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.history-notify-badge[data-state="ok"] {
+  background: rgba(10, 95, 67, 0.12);
+  color: var(--success);
+}
+
+.history-notify-badge[data-state="error"] {
+  background: rgba(163, 49, 36, 0.12);
+  color: var(--error);
+  cursor: help;
+}
+
 .history-branch-list {
   display: flex;
   flex-wrap: wrap;

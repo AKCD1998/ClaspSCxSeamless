@@ -161,14 +161,36 @@ function isUuid(value) {
   );
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeString(value));
+}
+
+// Supports "a@x.com,b@y.com" the same way MAIL_TO is written elsewhere — SendGrid's mail helper
+// needs an actual array to send to multiple recipients, a raw comma-separated string is treated
+// as one (invalid) address.
+function parseEmailList(value) {
+  return String(value || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function isValidEmailList(value) {
+  const emails = parseEmailList(value);
+  return emails.length > 0 && emails.every((email) => isValidEmail(email));
+}
+
 module.exports = {
   coerceReportDateKey,
   isUuid,
+  isValidEmail,
+  isValidEmailList,
   normalizeBoolean,
   normalizeBranchCodes,
   normalizeLimit,
   normalizeReportDateKey,
   normalizeString,
+  parseEmailList,
   parseFormatterMode,
   reportDateKeyToDate,
   requireString,

@@ -1,4 +1,5 @@
 import HistoryActions from './HistoryActions.jsx';
+import NotifyStatus from './NotifyStatus.jsx';
 import {
   formatHistoryDate,
   formatHistoryTimestamp,
@@ -86,6 +87,8 @@ export default function HistoryGrouped({ busyRecordId, onPrintAction, onRequestP
                     <div>{formatHistoryTimestamp(record.uploadedAt)}</div>
                     <div className="history-group-label">ปริ้นท์ส่งพี่เอเมื่อ</div>
                     <div>{formatHistoryTimestamp(record.printedAt)}</div>
+                    <div className="history-group-label">แจ้งเตือน</div>
+                    <NotifyStatus record={record} />
                   </div>
 
                   <div className="history-group-detail">

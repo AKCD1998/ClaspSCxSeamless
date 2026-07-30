@@ -5,6 +5,7 @@ const { getClient } = require('../db/pool');
 const { createBatch, recordBatchResult } = require('../db/repositories/batchRepository');
 const {
   createGeneratedFile,
+  findSourceUploadByChecksum,
   getGeneratedFileById,
   updateGeneratedFile,
 } = require('../db/repositories/generatedFileRepository');
@@ -21,6 +22,7 @@ const {
 const {
   buildApiUrl,
   readStoredFile,
+  sha256,
   writeStoredFile,
 } = require('./fileStorageService');
 const { buildOutputFilename } = require('./workbookRules');
@@ -28,7 +30,7 @@ const {
   copyWorksheet,
   transformWorkbook,
 } = require('./workbookTransformService');
-const { badRequest } = require('../utils/apiError');
+const { badRequest, conflict } = require('../utils/apiError');
 const {
   normalizeBranchCodes,
   normalizeString,
@@ -132,7 +134,7 @@ async function writeWorkbookToStoredFile(kind, filename, workbook) {
 
 async function loadPreviewWorkbook(previewFile) {
   const workbook = new ExcelJS.Workbook();
-  const buffer = await readStoredFile(previewFile.storagePath);
+  const buffer = await readStoredFile(previewFile.storageProvider, previewFile.storagePath);
   await workbook.xlsx.load(buffer);
   return workbook;
 }
@@ -179,6 +181,7 @@ async function createOrUpdatePreview({
     previewFile = await updateGeneratedFile(
       previewFile.id,
       {
+        storageProvider: storedPreview.storageProvider,
         storagePath: storedPreview.storagePath,
         fileSizeBytes: storedPreview.fileSizeBytes,
         checksumSha256: storedPreview.checksumSha256,
@@ -194,7 +197,7 @@ async function createOrUpdatePreview({
         fileKind: 'preview_workbook',
         filename: previewFilename,
         mimeType: XLSX_MIME_TYPE,
-        storageProvider: 'local',
+        storageProvider: storedPreview.storageProvider,
         storagePath: storedPreview.storagePath,
         fileSizeBytes: storedPreview.fileSizeBytes,
         checksumSha256: storedPreview.checksumSha256,
@@ -236,24 +239,38 @@ async function processSingleWorkbook({
 
   const requestedVariant = parseFormatterMode(formatterMode, { allowEmpty: false });
   const originalFilename = file.originalname;
-  const sourceStoredFile = await writeStoredFile('source_upload', originalFilename, file.buffer);
-  const transformResult = await transformWorkbook(file.buffer, {
-    requestedVariant,
-  });
-  const filenameResult = buildOutputFilename(
-    transformResult.worksheet,
-    originalFilename,
-    transformResult.effectiveVariant,
-  );
-  const outputFilename = filenameResult.filename;
-  const warnings = [...transformResult.warnings, ...filenameResult.warnings];
-  const outputBuffer = toBuffer(await transformResult.workbook.xlsx.writeBuffer());
-  const processedStoredFile = await writeStoredFile('processed_xlsx', outputFilename, outputBuffer);
+  const sourceChecksumSha256 = sha256(file.buffer);
   const client = await getClient();
   let activeBatchId = batchId || '';
 
   try {
     await client.query('BEGIN');
+
+    const duplicateSourceUpload = await findSourceUploadByChecksum(sourceChecksumSha256, client);
+    if (duplicateSourceUpload) {
+      throw conflict('This workbook was already uploaded previously.', {
+        code: 'DUPLICATE_UPLOAD',
+        checksumSha256: sourceChecksumSha256,
+        existingGeneratedFileId: duplicateSourceUpload.id,
+        existingOriginalFilename: duplicateSourceUpload.originalFilename || duplicateSourceUpload.filename,
+        existingUploadedAt: duplicateSourceUpload.uploadCreatedAt || duplicateSourceUpload.createdAt,
+        existingProcessingRecord: duplicateSourceUpload.processingRecordRef,
+      });
+    }
+
+    const sourceStoredFile = await writeStoredFile('source_upload', originalFilename, file.buffer);
+    const transformResult = await transformWorkbook(file.buffer, {
+      requestedVariant,
+    });
+    const filenameResult = buildOutputFilename(
+      transformResult.worksheet,
+      originalFilename,
+      transformResult.effectiveVariant,
+    );
+    const outputFilename = filenameResult.filename;
+    const warnings = [...transformResult.warnings, ...filenameResult.warnings];
+    const outputBuffer = toBuffer(await transformResult.workbook.xlsx.writeBuffer());
+    const processedStoredFile = await writeStoredFile('processed_xlsx', outputFilename, outputBuffer);
 
     if (!activeBatchId) {
       const previewName = buildPreviewFilename(requestedVariant, batchFileCount);
@@ -288,10 +305,10 @@ async function processSingleWorkbook({
         fileKind: 'source_upload',
         filename: originalFilename,
         mimeType: file.mimetype || XLSX_MIME_TYPE,
-        storageProvider: 'local',
+        storageProvider: sourceStoredFile.storageProvider,
         storagePath: sourceStoredFile.storagePath,
         fileSizeBytes: sourceStoredFile.fileSizeBytes,
-        checksumSha256: sourceStoredFile.checksumSha256,
+        checksumSha256: sourceChecksumSha256,
         metadata: {
           importedFrom: 'user_upload',
         },
@@ -306,7 +323,7 @@ async function processSingleWorkbook({
         fileKind: 'processed_xlsx',
         filename: outputFilename,
         mimeType: XLSX_MIME_TYPE,
-        storageProvider: 'local',
+        storageProvider: processedStoredFile.storageProvider,
         storagePath: processedStoredFile.storagePath,
         fileSizeBytes: processedStoredFile.fileSizeBytes,
         checksumSha256: processedStoredFile.checksumSha256,
@@ -483,7 +500,8 @@ async function processWorkbooks({ files, formatterMode, previewWorkbookId, batch
       failures.push({
         fileName: file && file.originalname ? file.originalname : 'workbook.xlsx',
         message: error.message || 'Workbook processing failed.',
-        code: error.code || 'WORKBOOK_PROCESSING_FAILED',
+        code: error.details?.code || error.code || 'WORKBOOK_PROCESSING_FAILED',
+        details: error.details || null,
       });
     }
   }

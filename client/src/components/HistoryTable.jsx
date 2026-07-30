@@ -1,4 +1,5 @@
 import HistoryActions from './HistoryActions.jsx';
+import NotifyStatus from './NotifyStatus.jsx';
 import {
   formatHistoryDate,
   formatHistoryTimestamp,
@@ -38,6 +39,7 @@ export default function HistoryTable({ busyRecordId, onPrintAction, onRequestPri
             <th>อัปโหลดเมื่อ</th>
             <th>ปริ้นท์ส่งพี่เอแล้ว</th>
             <th>ปริ้นท์ส่งพี่เอเมื่อ</th>
+            <th>แจ้งเตือน</th>
             <th>ลิงก์พรีวิว/ดาวน์โหลด</th>
             <th>ไฟล์ต้นทาง</th>
             <th>การจัดการ</th>
@@ -61,6 +63,9 @@ export default function HistoryTable({ busyRecordId, onPrintAction, onRequestPri
                 </span>
               </td>
               <td>{formatHistoryTimestamp(record.printedAt)}</td>
+              <td>
+                <NotifyStatus record={record} />
+              </td>
               <td>
                 {record.driveFileUrl ? (
                   <a href={record.driveFileUrl} target="_blank" rel="noopener noreferrer">

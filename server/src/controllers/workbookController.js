@@ -9,7 +9,10 @@ async function processWorkbooks(req, res) {
     batchFileCount: req.body && req.body.batchFileCount,
   });
 
-  res.status(payload.failures.length && !payload.successes.length ? 400 : 200).json(payload);
+  const allFailed = payload.failures.length && !payload.successes.length;
+  const duplicateOnly = allFailed && payload.failures.every((failure) => failure.code === 'DUPLICATE_UPLOAD');
+
+  res.status(duplicateOnly ? 409 : allFailed ? 400 : 200).json(payload);
 }
 
 module.exports = { processWorkbooks };
