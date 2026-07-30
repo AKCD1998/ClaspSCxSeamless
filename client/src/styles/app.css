@@ -47,6 +47,15 @@ a {
   grid-auto-rows: min-content;
 }
 
+.shell-single-column {
+  grid-template-columns: 1fr;
+}
+
+.shell-single-column .hero {
+  grid-column: auto;
+  grid-row: auto;
+}
+
 .hero,
 .panel {
   background: var(--panel);
@@ -789,6 +798,40 @@ button:disabled {
 
 .hero-top-row .eyebrow {
   margin: 0;
+}
+
+.hero-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-nav {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(31, 42, 40, 0.06);
+}
+
+.hero-nav-link {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.hero-nav-link:hover {
+  color: var(--ink);
+}
+
+.hero-nav-link.active {
+  background: var(--accent-strong);
+  color: #fff;
 }
 
 .logout-button {
