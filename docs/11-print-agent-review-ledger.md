@@ -288,3 +288,31 @@
     ครบ 4+2 verify แล้วเหลือ 0 relative rows
   - Test suite ทั้งสอง repo ผ่านครบ (backend 81/86 pass 5 skip, ClaspSCxSeamless 29/37 pass 8 skip,
     ไม่มี fail) ก่อน commit
+
+- 2026-07-30 — **แก้บั๊กจริง: preview workbook เสีย merge ทั้งหมด (header ที่ user เห็นเละ)**
+  - หลังจากพิสูจน์ก่อนหน้านี้ว่า `generated_files` ประเภท `processed_xlsx` มี header/merge
+    ถูกต้องตรงกับ legacy ทุกจุด (ยืนยันด้วยการเทียบ `sheet.model.merges` ตรงๆ) user ส่ง screenshot
+    จาก Microsoft Excel จริง (ไม่ใช่ browser preview) แสดง header แถว 8/9/10 ซ้ำกันครบทุกคอลัมน์
+    ไม่มี merge เลย — เป็นการยืนยันว่ามีบั๊กจริง แต่เป็นคนละไฟล์กับที่ตรวจก่อนหน้า: title bar
+    ระบุ "Preview-individual-single-20260730-075101" คือไฟล์ `preview_workbook` (ไฟล์ที่ปุ่ม
+    "เปิดไฟล์" ใช้จริง) ไม่ใช่ `processed_xlsx` ที่ตรวจไปแล้ว
+  - Root cause: `copyWorksheet()` ใน `workbookTransformService.js` (ใช้สร้าง preview workbook
+    เท่านั้น) copy ค่า cell/style/row height/column width แต่**ไม่เคย copy merged ranges เลย**
+    — ค่าที่อ่านจาก non-master cell ของ merge (ซึ่ง ExcelJS คืนค่า "echo" จาก master cell) ถูก
+    เขียนเป็นค่าอิสระแยกกันในทุกเซลล์ของปลายทาง โดยไม่มีการ merge จริง ทำให้ Excel แสดง header
+    ซ้ำทุกแถวแทนที่จะ merge เป็นก้อนเดียว
+  - แก้: เพิ่ม `(sourceWorksheet.model.merges || []).forEach(range => targetWorksheet.mergeCells(range))`
+    หลัง copy column widths ใน `copyWorksheet()` — ทั้งสอง repo
+  - เพิ่ม regression test ใหม่ทั้งสอง repo: สร้าง worksheet มี vertical merge (A8:A10) +
+    horizontal group merge (M8:P8) แล้วยืนยันว่า `copyWorksheet()` คง merge ไว้ (เช็ค
+    `model.merges` และ `.master.address` ของทุก cell ในแต่ละ merge)
+  - Test suite ผ่านครบหลังแก้ (backend 82/87 pass 5 skip, ClaspSCxSeamless 30/38 pass 8 skip)
+  - ลบ 2 test processing_records เดิม (พร้อม backup
+    `before-second-test-record-cleanup-2026-07-30T02-05-56-564Z.sql`) แล้ว reprocess
+    `rep_summary_zone05 (8).xlsx`/`REP_individual_INS_2026072916562626.xlsx` ใหม่ผ่าน pipeline
+    ที่แก้แล้ว — ดาวน์โหลด preview workbook จริงจาก R2 มาตรวจ `model.merges` ตรงๆ ยืนยันตรงกับ
+    legacy ทุก coordinate ทั้งสองไฟล์
+  - หมายเหตุ: URL ที่ได้จาก local reprocess (ไม่มี `RENDER_EXTERNAL_URL` ในเครื่อง) ยังเป็น
+    relative อีกครั้ง — แก้ด้วย script เดิม (ตรง ๆ ไม่ผ่าน dry-run รอบนี้ เพราะเป็นการแก้ URL
+    แบบเดียวกับที่ทดสอบซ้ำแล้วหลายรอบในวันเดียวกัน และเป็น record ที่เพิ่งสร้างเองทั้งหมด)
+    ยืนยันแล้วว่าไม่มี relative URL เหลือ

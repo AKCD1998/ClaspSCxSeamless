@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const ExcelJS = require('exceljs');
 const { buildOutputFilename } = require('../src/services/workbookRules');
-const { transformWorkbook } = require('../src/services/workbookTransformService');
+const { copyWorksheet, transformWorkbook } = require('../src/services/workbookTransformService');
 
 async function workbookBuffer(workbook) {
   return Buffer.from(await workbook.xlsx.writeBuffer());
@@ -86,4 +86,31 @@ test('transform removes extra worksheets and keeps only the transformed first sh
   assert.equal(result.workbook.worksheets.length, 1);
   assert.equal(result.workbook.worksheets[0].name, 'REP');
   assert.equal(result.workbook.worksheets[0].id, result.worksheet.id);
+});
+
+test('copyWorksheet (used to build the preview workbook) preserves merged ranges', async () => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('REP');
+
+  // A vertical 3-row merge, matching the real header shape (e.g. A8:A10 = "ลำดับที่").
+  worksheet.getCell('A8').value = 'ลำดับที่';
+  worksheet.mergeCells('A8:A10');
+
+  // A horizontal group-header merge with its own sub-header row beneath, matching M8:P8.
+  worksheet.getCell('M8').value = 'เรียกเก็บ';
+  worksheet.mergeCells('M8:P8');
+  worksheet.getCell('M9').value = 'จำนวน';
+
+  const targetWorkbook = new ExcelJS.Workbook();
+  const copiedSheet = copyWorksheet(worksheet, targetWorkbook, 'preview-copy');
+
+  assert.deepEqual(new Set(copiedSheet.model.merges), new Set(['A8:A10', 'M8:P8']));
+
+  // With the merge actually applied, only the master cell of each range reports the value —
+  // the previous bug copied the "echoed" value into every cell as an independent literal,
+  // leaving no merge at all and visibly duplicated text in every row.
+  assert.equal(copiedSheet.getCell('A8').value, 'ลำดับที่');
+  assert.equal(copiedSheet.getCell('A8').master.address, 'A8');
+  assert.equal(copiedSheet.getCell('A9').master.address, 'A8');
+  assert.equal(copiedSheet.getCell('A10').master.address, 'A8');
 });
