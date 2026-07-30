@@ -14,14 +14,12 @@ const uploadPanels = [
   {
     mode: 'individual',
     eyebrow: 'ขั้นตอนที่ 1 อัปโหลดไฟล์แจกแจงการชดเชยรายคน',
-    title: 'Individual Formatter',
     copy:
       'สำหรับไฟล์ที่มีรูปแบบชื่อไฟล์ REP_individual_INS_202604..... เท่านั้น (ผู้ใช้สามารถอัปโหลดได้ทีละหลายไฟล์พร้อมกัน)',
   },
   {
     mode: 'summary',
     eyebrow: 'ขั้นตอนที่ 2 อัปโหลดไฟล์สรุปจำนวนการชดชยทั้งหมดในรอบนั้นๆ',
-    title: 'Summary Formatter',
     copy:
       'สำหรับไฟล์ที่มีรูปแบบชื่อไฟล์ rep_summary_zone0... เท่านั้น (ผู้ใช้สามารถอัปโหลดได้ทีละหลายไฟล์พร้อมกัน)',
   },
@@ -78,7 +76,6 @@ export default function UploadPage() {
           copy={panel.copy}
           eyebrow={panel.eyebrow}
           formatterMode={panel.mode}
-          title={panel.title}
         />
       ))}
     </main>

@@ -77,7 +77,6 @@ export default function UploadPanel({
   eyebrow,
   formatterMode,
   onProcessingComplete,
-  title,
 }) {
   const inputId = useId();
   const fileInputRef = useRef(null);
@@ -188,7 +187,6 @@ export default function UploadPanel({
   return (
     <section className="panel">
       <p className="panel-eyebrow">{eyebrow}</p>
-      <h2>{title}</h2>
       <p className="panel-copy">{copy}</p>
 
       <form className="upload-form" onSubmit={handleSubmit}>
