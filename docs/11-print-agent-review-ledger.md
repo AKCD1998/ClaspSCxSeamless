@@ -333,3 +333,62 @@
     design/history เดิม (ตาม convention เดิมของ ledger นี้คือไม่แก้ข้อความ history เก่า)
   - **ยังไม่ได้ทำจริงบนเครื่อง 000** — README มีคำสั่ง `Set-ScheduledTask` พร้อมใช้ รอ user/ผู้ดูแล
     เครื่อง 000 รันเอง แล้วสังเกต resource consumption ของ backend ต่อ
+
+- 2026-07-30 — **Phase G จริงสำเร็จ + แก้บั๊ก page orientation เป็น Portrait ผิด (ควรเป็น Landscape)**
+  - Phase G (บนเครื่อง 000 จริง): ตั้ง Task Scheduler ทุก 2 นาทีสำเร็จ (เจอบั๊กจริงระหว่างทาง —
+    `[TimeSpan]::MaxValue` ทำให้ Task Scheduler XML invalid บน Windows Server 2019 เครื่องนี้ แก้
+    ด้วย `New-TimeSpan -Days 3650` แทน), ทดสอบจริงด้วยการกดปุ่ม "สั่งปริ้น / ขอปริ้นใหม่" จาก
+    dev laptop คนละเครื่อง — ยืนยันครบ 4 ทาง (print_jobs DB row, print-agent log, Windows
+    Print Service Operational event log job 13 ~66MB 2 หน้า, ข้อความ LINE จริง) ว่าปริ้นสำเร็จ
+    ครั้งเดียวไม่ซ้ำ (`attempt_no: 1`, `is_reprint: false`) ภายใน ~40 วินาทีจากตอนกดปุ่ม — ปิด
+    phase G ทั้งหมด รวมถึงข้อกังวลเรื่อง WebSocket vs polling (สรุปว่า bottleneck คือ agent
+    poll interval เอง ไม่ใช่ client-server communication จึงไม่จำเป็นต้องใช้ WebSocket)
+  - บั๊กใหม่ที่พบระหว่างทดสอบจริง: PDF ที่ print-agent สร้าง (LibreOffice `--convert-to pdf`)
+    ออกมาเป็น Portrait (595×842pt) ทั้งที่ควรเป็น Landscape — user ยืนยันด้วยการดาวน์โหลดไฟล์จริง
+    2 ไฟล์ (individual + summary) ผ่าน `GET /api/files/:id/download` แล้วแปลง PDF ด้วยคำสั่งเดียว
+    กับที่ print-agent ใช้จริง ตรวจ `/MediaBox` ตรงๆ
+  - Root cause: ตรวจ legacy GAS source (`SeamlessXGASExcelFormatV2`) ทั้งหมด — ไม่มี
+    `pageSetup`/`orientation`/`landscape` ใน code เลยสักที่ แต่ไฟล์ legacy reference จริงทั้ง 2
+    ประเภท (individual/summary ที่โหลดมาก่อนหน้านี้) มี `pageSetup.orientation: "landscape"`
+    ชัดเจน (พร้อม `fitToPage:false, fitToWidth:1, fitToHeight:1, scale:100, paperSize:9,
+    margins 0.7/0.7/0.75/0.75 header/footer 0`) — สรุปว่าค่านี้ถูกตั้งไว้ครั้งเดียวผ่าน Google
+    Sheets print-setup dialog บน template แล้ว exporter ของ Sheets serialize ติดมากับไฟล์ xlsx
+    เอง ไม่ใช่ผลจาก script ใดๆ — ไฟล์ raw ที่ผู้ใช้อัปโหลดจริงไม่มี field พวกนี้เลย (portrait
+    โดย omission) เทียบกับ ExcelJS default (`workbook.addWorksheet()` สดๆ) ก็ยืนยันว่า
+    `fitToPage/fitToWidth/fitToHeight/scale` ตรงกับ default ของ ExcelJS อยู่แล้ว มีแค่
+    `orientation` (ตัวบั๊กจริง) กับ `margins.header/footer` (default 0.3 แต่ legacy คือ 0) ที่ต้อง
+    เปลี่ยนจริง
+  - แก้: เพิ่ม `applyPageSetup(worksheet)` ใน `workbookTransformService.js` (ทั้งสอง repo)
+    เรียกท้าย `transformWorkbook()` ตั้งค่าทุก field ตรงๆ (ไม่พึ่ง OOXML spec default แบบ
+    implicit) — ทดสอบ dry-run กับไฟล์จริงทั้ง 2 ไฟล์ (rep_summary_zone05, REP_individual_INS)
+    ยืนยัน `pageSetup` ตรงกับ legacy reference เป๊ะ
+  - เพิ่ม regression test ทั้งสอง repo (`.each`/for-loop ทั้ง individual และ summary) ยืนยันค่า
+    pageSetup ทุก field ตรงตาม legacy reference — test suite ผ่านครบ (backend 84/89 pass 5 skip,
+    ClaspSCxSeamless 32/40 pass 8 skip, ไม่มี fail)
+  - **ยังไม่ verify ระดับ PDF จริง** (ไม่มี LibreOffice บนเครื่อง dev ที่ใช้พัฒนา) — รอ deploy
+    แล้วให้ user/เครื่อง 000 ทำ dry-run เดิม (ดาวน์โหลดไฟล์ที่ reprocess ใหม่ → แปลง PDF ด้วย
+    soffice command เดิม → เช็ค `/MediaBox` width > height) เพื่อยืนยันปิด task นี้จริง
+
+- 2026-07-30 — **เพิ่ม report title banner (สาขา/วันที่) บนหัวเอกสาร ให้บัญชีรู้ทันทีว่าเป็นไฟล์อะไร**
+  - user ส่งไฟล์ตัวอย่างที่แก้เอง (`Preview-individual-single-20260730-090623 (3).xlsx`) แสดง
+    merged cell ใหญ่ตัวหนา 48pt เขียนว่า "รายคน สาขา 004 {REP DATE}" ต่อจาก metadata เดิม
+    (คอลัมน์ H เป็นต้นไป แถว 1-5) — ขอให้เพิ่มลง pipeline จริงโดยไม่แตะ processing เดิม
+  - ยืนยัน design กับ user 3 จุด: wording ของ summary คือ "สรุป..." (แทน "รายคน" ที่หมายถึง
+    รายบุคคลเท่านั้น), ตำแหน่ง merge ให้ตรงกับตัวอย่างเป๊ะ (ไม่ใช่ full-width banner แบบใหม่),
+    รูปแบบวันที่คือ ค.ศ. DD/MM/YYYY (`27/07/2026`)
+  - พบจุดสำคัญที่ต้องแก้จากตัวอย่าง: ตัวอย่าง user ใช้แถว 1-5 คงที่ทั้งสองประเภท แต่
+    SUMMARY_HEADER_ROWS เริ่มที่แถว 5 จริง (ตาราง header จริงของ summary) — ถ้าใช้แถว 1-5 ตามแบบ
+    จะทับ header จริงของ summary พอดี จึงต้องให้ summary จบที่แถว 4 แทน (individual ยังคงแถว
+    1-5 ได้ปกติเพราะ header จริงเริ่มแถว 8) — และคอลัมน์สิ้นสุด (ตัวอย่างใช้ W ตายตัว) เปลี่ยนเป็น
+    dynamic ตาม `bounds.right` จริงของแต่ละไฟล์ เพราะ individual/summary จบคนละคอลัมน์กัน
+  - Implementation: `applyReportTitle()` ใหม่ใน `workbookTransformService.js` (ทั้งสอง repo) ใช้
+    `buildOutputFilename()` เดิม (มีอยู่แล้วสำหรับตั้งชื่อไฟล์ output) ดึง branchCode/parsedDate
+    มาสร้างข้อความหัวเรื่อง โดยไม่แตะ business logic ใดๆ ที่มีอยู่แล้ว — wrap ด้วย try/catch
+    ผลัก warning แทนการ throw เพราะเป็นแค่ของตกแต่ง ไม่ควรทำให้การประมวลผลเอกสารจริงพัง
+  - Export `columnLetter` จาก `workbookFormatting.js` เพิ่ม (เดิมเป็น private helper) เพื่อคำนวณ
+    ขอบเขต merge แบบ dynamic
+  - ทดสอบ dry-run กับไฟล์จริงทั้งสองไฟล์: individual ได้ "รายคน สาขา 004 วันที่ 27/07/2026"
+    (merge H1:X5), summary ได้ "สรุป สาขา 004 วันที่ 29/07/2026" (merge H1:Y4) — ตรงตาม design
+  - เพิ่ม regression test ทั้งสอง repo (individual + summary) ยืนยันข้อความ, font, และว่า merge
+    ไม่ทับ header จริงของแต่ละ variant — test suite ผ่านครบ (backend 86/91 pass 5 skip,
+    ClaspSCxSeamless 34/42 pass 8 skip, ไม่มี fail)

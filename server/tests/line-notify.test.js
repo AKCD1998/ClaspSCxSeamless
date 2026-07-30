@@ -110,7 +110,9 @@ test('sendPrintNotification pushes a message when LINE is configured (fetch mock
 
     const body = JSON.parse(capturedRequest.options.body);
     assert.equal(body.to, env.lineTargetId);
-    assert.match(body.messages[0].text, /ปริ้นซ้ำ/);
+    assert.equal(body.messages[0].type, 'flex');
+    assert.match(body.messages[0].altText, /ปริ้นซ้ำ/);
+    assert.match(JSON.stringify(body.messages[0].contents), /document_lost/);
   } finally {
     global.fetch = originalFetch;
   }
