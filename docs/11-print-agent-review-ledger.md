@@ -256,3 +256,35 @@
   - Verify หลัง commit: query ตรงด้วย `legacy_drive_file_id` (แทน filename join ที่ใช้ไม่ได้แล้ว)
     — 34/34 filename ลงท้าย `.xlsx`, 34/34 mime_type ถูกต้อง
   - ลบสคริปต์ชั่วคราวแล้ว (`fix-legacy-filename-mime-tmp.js`)
+
+- 2026-07-30 — **เพิ่ม session-cookie login แทน Basic Auth popup + แก้บั๊ก relative download URL**
+  - ผู้ใช้ขอให้สร้างหน้า login จริงแทน browser native Basic Auth popup เพราะ popup ทำงานไม่คงเส้น
+    คงวา (fetch ของแอปแนบ credential ได้ แต่ลิงก์ `<a href target="_blank">` ธรรมดาเป็นการ navigate
+    ใหม่ที่ไม่ reuse credential เดิมเสมอไป)
+  - Backend (mirror ทั้งสอง repo): เพิ่ม `middleware/session.js` (stateless HMAC-signed httpOnly
+    cookie, ไม่มี session table เพราะมี login ร่วมกันแบบเดียว ไม่ใช่ per-user identity),
+    `POST /api/app/session/login`, `POST /api/app/session/logout`, `GET /api/app/session`
+    (public, ไม่ผ่าน appAuth) — `appAuth` รับ valid session cookie เป็นวิธีที่ 3 นอกจาก
+    Basic/Bearer เดิม `cookie-parser` wire เข้า server ทั้งสอง (มีอยู่แล้วเป็น unused dependency
+    ใน shared backend, เพิ่มใหม่ใน source repo)
+  - Client: เพิ่ม `LoginPage.jsx`, `App.jsx` เช็ค session ตอนโหลดแล้ว gate หน้า login/app,
+    ปุ่ม "ออกจากระบบ", `api.js` เพิ่ม `login`/`logout`/`getSession`
+  - Verify ด้วย chrome-devtools จริง: login คงอยู่ข้าม reload, navigate ตรงไปยัง
+    `/api/files/:id/download` (จำลองปุ่ม "เปิดไฟล์") ผ่านได้โดยไม่มี native popup เลย, logout แล้ว
+    endpoint เดิม fallback กลับไปเรียก Basic Auth เหมือนเดิม (พิสูจน์ auth ถูก revoke จริง)
+  - ระหว่างทดสอบจริงหลัง deploy พบบั๊กจริงอีกจุด: ปุ่ม "เปิดไฟล์" ของไฟล์ที่เพิ่ง reprocess ใหม่
+    (2026-07-29/07-27 test records) เปิดไปที่หน้า root ของ client เอง (`claspscxseamless.onrender.com/`)
+    แทนที่จะเป็นไฟล์ — สาเหตุ: `download_url`/`view_url`/`legacy_drive_file_url` ที่สร้างตอน
+    ประมวลผลเป็น relative path (`/api/files/:id/download`) เพราะ `SEAMLESS_PUBLIC_BASE_URL` ไม่ได้
+    ตั้งค่าไว้ ตั้งแต่ client แยกเป็น Render Static Site คนละ origin กับ API แล้ว relative path
+    จะ resolve กับ origin ของ client เอง (ซึ่งไม่มี route นี้ จึงตกไปที่ SPA fallback → หน้า root)
+  - แก้โค้ด: `readPublicBaseUrl()`/`env.publicBaseUrl` fallback ไปที่ `RENDER_EXTERNAL_URL`
+    (env var ที่ Render inject ให้อัตโนมัติทุก web service) เมื่อไม่ได้ตั้ง
+    `SEAMLESS_PUBLIC_BASE_URL`/`PUBLIC_BASE_URL` เอง — ไม่ต้องเพิ่ม env var ใหม่บน Render
+  - Data fix: พบ 4 `generated_files` rows + 2 `processing_records.legacy_drive_file_url` เป็น
+    relative path จริง (ทั้งหมดคือ 2 ไฟล์ที่เพิ่ง reprocess ก่อนหน้านี้ในวันเดียวกัน ไม่มี record
+    เก่ากว่านี้ที่กระทบ) — backup (`before-relative-url-fix-2026-07-30T01-40-36-380Z.sql`)
+    แล้ว dry-run/commit ต่อ URL ให้เป็น absolute (`https://sc-official-website.onrender.com...`)
+    ครบ 4+2 verify แล้วเหลือ 0 relative rows
+  - Test suite ทั้งสอง repo ผ่านครบ (backend 81/86 pass 5 skip, ClaspSCxSeamless 29/37 pass 8 skip,
+    ไม่มี fail) ก่อน commit

@@ -65,7 +65,9 @@ const env = {
   lineChannelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
   lineChannelSecret: process.env.LINE_CHANNEL_SECRET || '',
   lineTargetId: process.env.LINE_TARGET_ID || '',
-  publicBaseUrl: process.env.PUBLIC_BASE_URL || '',
+  // Falls back to Render's own auto-injected RENDER_EXTERNAL_URL so download/view URLs come out
+  // absolute without needing a dedicated env var — see fileStorageService.js buildApiUrl.
+  publicBaseUrl: firstNonEmpty(process.env.PUBLIC_BASE_URL, process.env.RENDER_EXTERNAL_URL),
   storageDir: process.env.STORAGE_DIR || 'storage',
   sendgridApiKey: process.env.SENDGRID_API_KEY || '',
   mailFrom: process.env.MAIL_FROM || '',
