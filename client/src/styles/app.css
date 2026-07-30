@@ -43,7 +43,11 @@
   --accent: #9ed5d4;
   --accent-strong: #1dada8;
   --border: rgba(13, 81, 78, 0.35);
-  --navbar-bg: #1dada8;
+  --navbar-bg: #0d514e;
+}
+
+[data-theme="pharmcare"] .top-navbar {
+  border-bottom-color: #ed6422;
 }
 
 [data-theme="pharmcare"] .top-navbar-dropdown-item.active {
@@ -982,6 +986,11 @@ button:disabled {
 .top-navbar-dropdown-trigger[aria-expanded='true'] {
   color: #fff;
   background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="pharmcare"] .top-navbar-dropdown-trigger[data-active="true"] {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid #ed6422;
 }
 
 .top-navbar-dropdown-caret {
