@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import HistoryDashboard from './HistoryDashboard.jsx';
 import HistoryGrouped from './HistoryGrouped.jsx';
 import HistoryTable from './HistoryTable.jsx';
+import PrintQueueSummary from './PrintQueueSummary.jsx';
 import {
   fetchProcessingHistory,
   markProcessingHistoryPrinted,
@@ -293,6 +294,8 @@ export default function HistoryPanel({ reloadKey }) {
         onSelectReportDate={handleSelectReportDate}
         records={records}
       />
+
+      <PrintQueueSummary records={records} />
 
       <div className="history-view-toggle" role="tablist" aria-label="History View">
         <button
