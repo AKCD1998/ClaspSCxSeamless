@@ -30,6 +30,26 @@
   --navbar-bg: #113366;
 }
 
+/* Pharm Care "Clean Healthcare Blue" palette. Blue (#1DADA8) carries the visible accent text/
+   links/eyebrows (--accent-strong, the widely-repeated role in this stylesheet) so blue reads as
+   the most prominent color after white, per spec. Dark green (#0D514E) is scoped to --border only
+   (thin card outlines), never a large fill. Orange (#ED6422) is scoped to a single small
+   attention spot -- the active dropdown item -- rather than any broad role, staying within the
+   intended ~2-3% usage. */
+[data-theme="pharmcare"] {
+  --bg-top: #ebf6f7;
+  --bg-bottom: #9ed5d4;
+  --panel: rgba(250, 251, 251, 0.96);
+  --accent: #9ed5d4;
+  --accent-strong: #1dada8;
+  --border: rgba(13, 81, 78, 0.35);
+  --navbar-bg: #1dada8;
+}
+
+[data-theme="pharmcare"] .top-navbar-dropdown-item.active {
+  background: #ed6422;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -81,6 +101,11 @@ a {
 .theme-background-shopee {
   background-image: linear-gradient(-45deg, #ee4d2d, #ffffff, #ff9a56, #113366, #ee4d2d);
   animation: themeGradientShift 16s ease infinite;
+}
+
+.theme-background-pharmcare {
+  background-image: linear-gradient(-45deg, #fafbfb, #ebf6f7, #9ed5d4, #1dada8, #fafbfb);
+  animation: themeGradientShift 20s ease infinite;
 }
 
 @keyframes themeGradientShift {

@@ -20,6 +20,15 @@ const NAV_GROUPS = [
       { to: '/shopee/history', end: false, label: 'ประวัติ' },
     ],
   },
+  {
+    key: 'pharmcare',
+    label: 'Pharm Care',
+    basePath: '/pharmcare',
+    items: [
+      { to: '/pharmcare/upload', end: false, label: 'อัปโหลดข้อมูล Pharm Care' },
+      { to: '/pharmcare/history', end: false, label: 'ประวัติ' },
+    ],
+  },
 ];
 
 function isGroupActive(group, pathname) {
