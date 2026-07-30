@@ -1,8 +1,15 @@
 const crypto = require('node:crypto');
 const { env } = require('../config/env');
 const { unauthorized } = require('../utils/apiError');
+const { hasValidSessionCookie } = require('./session');
 
-const EXEMPT_PATHS = ['/api/line/webhook', '/api/health'];
+const EXEMPT_PATHS = [
+  '/api/line/webhook',
+  '/api/health',
+  '/api/app/session',
+  '/api/app/session/login',
+  '/api/app/session/logout',
+];
 
 function isExempt(req) {
   return EXEMPT_PATHS.includes(req.path);
@@ -60,6 +67,11 @@ function appAuth(req, res, next) {
   }
 
   if (isExempt(req)) {
+    next();
+    return;
+  }
+
+  if (hasValidSessionCookie(req)) {
     next();
     return;
   }

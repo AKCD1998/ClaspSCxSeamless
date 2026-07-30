@@ -203,6 +203,89 @@ test('/api/line/webhook is exempt from appAuth (a correctly HMAC-signed request 
   }
 });
 
+test('GET /api/app/session reports unauthenticated with no cookie, even when credentials are required', async () => {
+  const originalUser = env.appBasicUser;
+  const originalPassword = env.appBasicPassword;
+  env.appBasicUser = 'test-user';
+  env.appBasicPassword = 'test-password';
+
+  try {
+    const response = await fetch(`${baseUrl}/api/app/session`);
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(payload, { authenticated: false });
+  } finally {
+    env.appBasicUser = originalUser;
+    env.appBasicPassword = originalPassword;
+  }
+});
+
+test('POST /api/app/session/login rejects incorrect credentials', async () => {
+  const originalUser = env.appBasicUser;
+  const originalPassword = env.appBasicPassword;
+  env.appBasicUser = 'test-user';
+  env.appBasicPassword = 'test-password';
+
+  try {
+    const response = await fetch(`${baseUrl}/api/app/session/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'test-user', password: 'wrong-password' }),
+    });
+
+    assert.equal(response.status, 401);
+  } finally {
+    env.appBasicUser = originalUser;
+    env.appBasicPassword = originalPassword;
+  }
+});
+
+test('a session cookie from a successful login lets appAuth-protected routes through, and logout revokes it', async () => {
+  const originalUser = env.appBasicUser;
+  const originalPassword = env.appBasicPassword;
+  env.appBasicUser = 'test-user';
+  env.appBasicPassword = 'test-password';
+
+  try {
+    const loginResponse = await fetch(`${baseUrl}/api/app/session/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'test-user', password: 'test-password' }),
+    });
+    assert.equal(loginResponse.status, 200);
+
+    const setCookieHeader = loginResponse.headers.get('set-cookie');
+    assert.ok(setCookieHeader, 'expected a Set-Cookie header on successful login');
+    const cookie = setCookieHeader.split(';')[0];
+
+    const sessionResponse = await fetch(`${baseUrl}/api/app/session`, {
+      headers: { Cookie: cookie },
+    });
+    assert.deepEqual(await sessionResponse.json(), { authenticated: true });
+
+    const protectedResponse = await fetch(`${baseUrl}/api/app/processing-records`, {
+      headers: { Cookie: cookie },
+    });
+    assert.equal(protectedResponse.status, 200);
+
+    const logoutResponse = await fetch(`${baseUrl}/api/app/session/logout`, {
+      method: 'POST',
+      headers: { Cookie: cookie },
+    });
+    const clearedSetCookieHeader = logoutResponse.headers.get('set-cookie');
+    const clearedCookie = clearedSetCookieHeader.split(';')[0];
+
+    const afterLogoutResponse = await fetch(`${baseUrl}/api/app/processing-records`, {
+      headers: { Cookie: clearedCookie },
+    });
+    assert.equal(afterLogoutResponse.status, 401);
+  } finally {
+    env.appBasicUser = originalUser;
+    env.appBasicPassword = originalPassword;
+  }
+});
+
 test('the React SPA shell also requires auth when enabled', async () => {
   const originalUser = env.appBasicUser;
   const originalPassword = env.appBasicPassword;

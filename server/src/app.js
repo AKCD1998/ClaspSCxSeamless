@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const express = require('express');
 const morgan = require('morgan');
@@ -33,7 +34,8 @@ function createApp() {
   }
 
   app.disable('x-powered-by');
-  app.use(cors({ origin: env.corsOrigin }));
+  app.use(cors({ origin: env.corsOrigin, credentials: true }));
+  app.use(cookieParser());
   app.use(express.json({
     limit: '30mb',
     verify: (req, res, buf) => {

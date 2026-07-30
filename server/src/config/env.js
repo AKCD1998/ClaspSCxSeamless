@@ -55,6 +55,12 @@ const env = {
   internalApiToken: process.env.INTERNAL_API_TOKEN || '',
   appBasicUser: process.env.APP_BASIC_USER || '',
   appBasicPassword: process.env.APP_BASIC_PASSWORD || '',
+  sessionSecret: firstNonEmpty(
+    process.env.SESSION_SECRET,
+    process.env.INTERNAL_API_TOKEN,
+    process.env.APP_BASIC_PASSWORD,
+  ),
+  sessionDays: readNumber(process.env.SESSION_DAYS, 7),
   autoPrintSince: process.env.AUTO_PRINT_SINCE || '',
   lineChannelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
   lineChannelSecret: process.env.LINE_CHANNEL_SECRET || '',

@@ -596,3 +596,29 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+.login-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-panel {
+  width: min(420px, 100%);
+}
+
+.login-panel h2 {
+  margin-top: 4px;
+}
+
+.logout-button {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+}

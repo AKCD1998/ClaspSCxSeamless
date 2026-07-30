@@ -13,6 +13,7 @@
     "db:seed:force": "node src/db/run-seeds.js --force"
   },
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",

@@ -70,6 +70,21 @@ export async function getBootstrap() {
   return requestJson('/bootstrap');
 }
 
+export async function getSession() {
+  return requestJson('/app/session');
+}
+
+export async function login(username, password) {
+  return requestJson('/app/session/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function logout() {
+  return requestJson('/app/session/logout', { method: 'POST' });
+}
+
 export async function processWorkbookPayload(payload) {
   const file = payload?.file;
 
