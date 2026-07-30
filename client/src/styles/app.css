@@ -416,6 +416,27 @@ button:disabled {
   cursor: help;
 }
 
+.history-queue-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.history-queue-badge[data-state="ok"] {
+  background: rgba(10, 95, 67, 0.12);
+  color: var(--success);
+}
+
+.history-queue-badge[data-state="pending"] {
+  background: rgba(140, 90, 17, 0.12);
+  color: var(--warning);
+}
+
 .history-branch-list {
   display: flex;
   flex-wrap: wrap;
@@ -460,7 +481,53 @@ button:disabled {
 .history-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1120px;
+  min-width: 1220px;
+  table-layout: fixed;
+}
+
+.history-table .history-col-filename {
+  width: 13%;
+}
+
+.history-table .history-col-type {
+  width: 8%;
+}
+
+.history-table .history-col-date,
+.history-table .history-col-link {
+  width: 6%;
+}
+
+.history-table .history-col-branch {
+  width: 7%;
+}
+
+.history-table .history-col-timestamp {
+  width: 9%;
+}
+
+.history-table .history-col-printed {
+  width: 8%;
+}
+
+.history-table .history-col-queue {
+  width: 9%;
+}
+
+.history-table .history-col-notify {
+  width: 8%;
+}
+
+.history-table .history-col-source {
+  width: 7%;
+}
+
+.history-table .history-col-actions {
+  width: 10%;
+}
+
+.history-table td {
+  overflow-wrap: break-word;
 }
 
 .history-dashboard-table {

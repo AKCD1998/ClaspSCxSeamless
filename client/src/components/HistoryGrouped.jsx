@@ -1,5 +1,6 @@
 import HistoryActions from './HistoryActions.jsx';
 import NotifyStatus from './NotifyStatus.jsx';
+import PrintQueueStatus from './PrintQueueStatus.jsx';
 import {
   formatHistoryDate,
   formatHistoryTimestamp,
@@ -98,6 +99,8 @@ export default function HistoryGrouped({ busyRecordId, onPrintAction, onRequestP
                         {formatPrintedStatus(record.printed)}
                       </span>
                     </div>
+                    <div className="history-group-label">คิวปริ้น</div>
+                    <PrintQueueStatus record={record} />
                     <HistoryActions
                       busyRecordId={busyRecordId}
                       onPrintAction={onPrintAction}

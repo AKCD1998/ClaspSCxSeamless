@@ -1,5 +1,6 @@
 import HistoryActions from './HistoryActions.jsx';
 import NotifyStatus from './NotifyStatus.jsx';
+import PrintQueueStatus from './PrintQueueStatus.jsx';
 import {
   formatHistoryDate,
   formatHistoryTimestamp,
@@ -30,6 +31,20 @@ export default function HistoryTable({ busyRecordId, onPrintAction, onRequestPri
   return (
     <div className="history-table-wrap">
       <table className="history-table">
+        <colgroup>
+          <col className="history-col-filename" />
+          <col className="history-col-type" />
+          <col className="history-col-date" />
+          <col className="history-col-branch" />
+          <col className="history-col-timestamp" />
+          <col className="history-col-printed" />
+          <col className="history-col-queue" />
+          <col className="history-col-timestamp" />
+          <col className="history-col-notify" />
+          <col className="history-col-link" />
+          <col className="history-col-source" />
+          <col className="history-col-actions" />
+        </colgroup>
         <thead>
           <tr>
             <th>ชื่อไฟล์</th>
@@ -38,6 +53,7 @@ export default function HistoryTable({ busyRecordId, onPrintAction, onRequestPri
             <th>เอกสารของสาขา</th>
             <th>อัปโหลดเมื่อ</th>
             <th>ปริ้นท์ส่งพี่เอแล้ว</th>
+            <th>คิวปริ้น</th>
             <th>ปริ้นท์ส่งพี่เอเมื่อ</th>
             <th>แจ้งเตือน</th>
             <th>ลิงก์พรีวิว/ดาวน์โหลด</th>
@@ -61,6 +77,9 @@ export default function HistoryTable({ busyRecordId, onPrintAction, onRequestPri
                 <span className="history-pill" data-printed={String(!!record.printed)}>
                   {formatPrintedStatus(record.printed)}
                 </span>
+              </td>
+              <td>
+                <PrintQueueStatus record={record} />
               </td>
               <td>{formatHistoryTimestamp(record.printedAt)}</td>
               <td>
