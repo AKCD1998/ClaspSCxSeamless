@@ -115,6 +115,24 @@ test('copyWorksheet (used to build the preview workbook) preserves merged ranges
   assert.equal(copiedSheet.getCell('A10').master.address, 'A8');
 });
 
+test('copyWorksheet (used to build the preview workbook) preserves pageSetup and frozen view', async () => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('REP');
+  worksheet.getCell('A1').value = 'test';
+  worksheet.pageSetup = { ...worksheet.pageSetup, orientation: 'landscape', scale: 100 };
+  worksheet.views = [{ state: 'frozen', ySplit: 10 }];
+
+  const targetWorkbook = new ExcelJS.Workbook();
+  const copiedSheet = copyWorksheet(worksheet, targetWorkbook, 'preview-copy');
+
+  // Real bug: the preview workbook (the file users actually download/print first) silently
+  // reverted to Portrait even though the processed_xlsx output was correctly landscape,
+  // because copyWorksheet only copied cells/columns/merges, never these worksheet-level
+  // properties.
+  assert.equal(copiedSheet.pageSetup.orientation, 'landscape');
+  assert.deepEqual(copiedSheet.views, [{ state: 'frozen', ySplit: 10 }]);
+});
+
 for (const variant of ['individual', 'summary']) {
   test(`transformWorkbook sets landscape page setup matching the legacy reference output (${variant})`, async () => {
     const workbook = new ExcelJS.Workbook();
