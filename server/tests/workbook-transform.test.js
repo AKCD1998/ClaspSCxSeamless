@@ -145,13 +145,14 @@ for (const variant of ['individual', 'summary']) {
       requestedVariant: variant,
     });
 
-    // Verified directly against real legacy reference output files — the raw uploaded
-    // workbook's own pageSetup never has these fields at all (portrait by omission).
+    // Verified directly against a real reprocessed report: fitToPage:false/scale:100
+    // let the last column protrude onto a second page for wide (individual) tables, so
+    // fitToPage/fitToWidth is used instead to guarantee the print engine always fits the
+    // page to one page wide, regardless of the manual column-width squeeze's estimate.
     assert.equal(result.worksheet.pageSetup.orientation, 'landscape');
-    assert.equal(result.worksheet.pageSetup.fitToPage, false);
+    assert.equal(result.worksheet.pageSetup.fitToPage, true);
     assert.equal(result.worksheet.pageSetup.fitToWidth, 1);
-    assert.equal(result.worksheet.pageSetup.fitToHeight, 1);
-    assert.equal(result.worksheet.pageSetup.scale, 100);
+    assert.equal(result.worksheet.pageSetup.fitToHeight, 0);
     assert.equal(result.worksheet.pageSetup.paperSize, 9);
     assert.deepEqual(result.worksheet.pageSetup.margins, {
       left: 0.7,
