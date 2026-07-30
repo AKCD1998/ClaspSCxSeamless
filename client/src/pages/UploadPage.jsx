@@ -66,10 +66,11 @@ export default function UploadPage() {
         intro="ผู้ใช้งานต้องอัปโหลดเอกสารจาก Seamless for DMIS ของ สปสช.ทั้งหมด 2 ไฟล์ต่อสัปดาห์ ได้แก่เอกสารแจกแจงการชดเชยรายบุคคล
         (individual) และเอกสารสรุปการชดเชยทั้งหมด (summary) ผ่านหน้าเว็บนี้โดยตรง ระบบจะสร้างไฟล์ที่ปรับรูปแบบแล้วและบันทึกประวัติการดำเนินการไว้ใน backend/database
         โดยไม่ต้องพึ่งหน้าเว็บ GAS เดิมอีกต่อไป หากเกิดความผิดพลาดจากการอัปโหลดผิดไฟล์หรืออัปโหลดซ้ำ กรุณาติดต่อผู้ดูแลระบบ"
-      />
-      <p className="api-status status" data-state={bootstrapStatus.state}>
-        {bootstrapStatus.message}
-      </p>
+      >
+        <p className="api-status status" data-state={bootstrapStatus.state}>
+          {bootstrapStatus.message}
+        </p>
+      </Hero>
       {uploadPanels.map((panel) => (
         <UploadPanel
           key={panel.mode}
