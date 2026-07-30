@@ -87,14 +87,27 @@ a {
   font-size: 0.92rem;
 }
 
-.eyebrow,
-.panel-eyebrow {
+.eyebrow {
   margin: 0 0 12px;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--accent-strong);
+}
+
+.panel-eyebrow {
+  margin: 0 0 8px;
+  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--accent-strong);
+}
+
+.panel h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 h1,
