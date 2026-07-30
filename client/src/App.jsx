@@ -45,15 +45,10 @@ export default function App() {
   }
 
   return (
-    <>
-      <button className="logout-button" onClick={handleLogout} type="button">
-        ออกจากระบบ
-      </button>
-      <Routes>
-        <Route index element={<HomePage />} />
-        <Route path="history" element={<HomePage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </>
+    <Routes>
+      <Route index element={<HomePage onLogout={handleLogout} />} />
+      <Route path="history" element={<HomePage onLogout={handleLogout} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

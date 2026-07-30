@@ -28,7 +28,7 @@ const uploadPanels = [
   },
 ];
 
-export default function HomePage() {
+export default function HomePage({ onLogout }) {
   const [bootstrap, setBootstrap] = useState(DEFAULT_BOOTSTRAP);
   const [bootstrapStatus, setBootstrapStatus] = useState({
     message: 'กำลังเชื่อมต่อ backend...',
@@ -63,7 +63,7 @@ export default function HomePage() {
 
   return (
     <main className="shell">
-      <Hero />
+      <Hero onLogout={onLogout} />
       <p className="api-status status" data-state={bootstrapStatus.state}>
         {bootstrapStatus.message}
       </p>
