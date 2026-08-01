@@ -156,6 +156,57 @@ test('processWorkbookPayload surfaces duplicate-upload failures from backend pay
   );
 });
 
+test('getPharmcareInbox builds a query string from filters and returns the payload', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(
+      JSON.stringify({
+        documents: [{ id: 'doc-1', documentType: 'e_credit_invoice' }],
+        nextCursor: null,
+        summary: { autoClassified: 1, conflict: 0, duplicate: 0, manualReview: 0 },
+      }),
+      { status: 200 },
+    );
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const payload = await api.getPharmcareInbox({ documentType: 'e_credit_invoice', status: 'auto_classified' });
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/pharmcare/inbox?documentType=e_credit_invoice&status=auto_classified',
+  );
+  assert.equal(payload.documents.length, 1);
+});
+
+test('getPharmcareInbox omits the query string when no filters are set', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ documents: [], nextCursor: null, summary: null }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.getPharmcareInbox({});
+
+  assert.equal(calls[0].url, 'http://api.test.local/api/app/pharmcare/inbox');
+});
+
+test('getPharmcareMessage fetches a single message by id', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ id: 'msg-1', attachments: [], documents: [] }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const payload = await api.getPharmcareMessage('msg-1');
+
+  assert.equal(calls[0].url, 'http://api.test.local/api/app/pharmcare/messages/msg-1');
+  assert.equal(payload.id, 'msg-1');
+});
+
 test('requestProcessingHistoryPrint posts requestedBy and reason to the request-print endpoint', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

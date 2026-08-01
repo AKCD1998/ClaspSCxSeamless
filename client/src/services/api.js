@@ -164,3 +164,20 @@ export async function sendGeneratedFileEmail(fileId, options = {}) {
     body: JSON.stringify({ to: options.to || '' }),
   });
 }
+
+export async function getPharmcareInbox(filters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  return requestJson(`/app/pharmcare/inbox${query ? `?${query}` : ''}`);
+}
+
+export async function getPharmcareMessage(id) {
+  return requestJson(`/app/pharmcare/messages/${encodeURIComponent(id)}`);
+}
