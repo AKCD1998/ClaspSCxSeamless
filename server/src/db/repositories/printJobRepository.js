@@ -101,7 +101,12 @@ async function listPrintQueueCandidates(autoPrintSince = null, client = null) {
       SELECT pr.*
       FROM ${tables.processingRecords} pr
       WHERE (
-        ($1::timestamptz IS NOT NULL AND pr.printed = false AND pr.uploaded_at >= $1::timestamptz)
+        (
+          $1::timestamptz IS NOT NULL
+          AND pr.printed = false
+          AND pr.uploaded_at >= $1::timestamptz
+          AND COALESCE(pr.metadata->>'printPolicy', 'auto') <> 'manual'
+        )
         OR EXISTS (
           SELECT 1 FROM ${tables.printJobs} pj
           WHERE pj.processing_record_id = pr.id AND pj.status = 'queued' AND pj.scheduled_for <= now()

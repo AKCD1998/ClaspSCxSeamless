@@ -2,7 +2,12 @@
 
 ## Scope
 
-This repository is the document-processing system for the Seamless workflow. It is not the CRM/loyalty/POS stack.
+This repository is the document-processing system for the front-store to accounting workflow. It began with
+Seamless and now supports source-specific profiles such as Shopee while sharing one history, storage, notification,
+and print-agent foundation. It is not the CRM/loyalty/POS stack.
+
+Shopee MVP behavior, privacy rules, manual-print policy, and sample regression baseline are documented in
+`docs/15-shopee-document-mvp.md`.
 
 The app shares a Supabase project with other systems, but this repo must stay isolated inside schema `clasp_scx_seamless`.
 
@@ -23,6 +28,9 @@ The app shares a Supabase project with other systems, but this repo must stay is
 2. React calls same-origin backend routes under `/api`.
 3. Express processes uploads, writes history to Supabase, and stores generated `.xlsx` files on the Render disk.
 4. History UI reads from `clasp_scx_seamless.processing_records`.
+
+Shopee records use `metadata.printPolicy = 'manual'`. They do not enter the automatic-upload queue; the same
+print-agent will see them only after an admin creates a queued print job with the existing request-print action.
 
 ## Authentication
 

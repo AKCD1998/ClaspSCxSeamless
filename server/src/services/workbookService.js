@@ -261,11 +261,13 @@ async function processSingleWorkbook({
     const sourceStoredFile = await writeStoredFile('source_upload', originalFilename, file.buffer);
     const transformResult = await transformWorkbook(file.buffer, {
       requestedVariant,
+      originalFilename,
     });
     const filenameResult = buildOutputFilename(
       transformResult.worksheet,
       originalFilename,
       transformResult.effectiveVariant,
+      transformResult.metadata || {},
     );
     const outputFilename = filenameResult.filename;
     const warnings = [...transformResult.warnings, ...filenameResult.warnings];
@@ -334,6 +336,7 @@ async function processSingleWorkbook({
           effectiveVariant: transformResult.effectiveVariant,
           deletedColumns: transformResult.deletedColumns,
           highlightCount: transformResult.highlightCount,
+          transformMetadata: transformResult.metadata || {},
         },
       },
       client,
@@ -377,11 +380,14 @@ async function processSingleWorkbook({
           previewFileId: previewResult.previewFile.id,
           outputFileId: processedFile.id,
           outputFilename,
+          outputDownloadUrl: processedFile.downloadUrl,
           detectedVariant: transformResult.detectedVariant,
           effectiveVariant: transformResult.effectiveVariant,
           parsedDate: filenameResult.parsedDate || '',
           rawDateSource: filenameResult.rawDateSource || '',
           rawBranchSource: filenameResult.rawBranchSource || '',
+          printPolicy: transformResult.metadata?.printPolicy || 'auto',
+          transformSummary: transformResult.metadata || {},
         },
       },
       client,
@@ -403,6 +409,7 @@ async function processSingleWorkbook({
           previewSheetName: previewResult.previewSheetName,
           branchCode: filenameResult.branchCode || '',
           parsedDate: filenameResult.parsedDate || '',
+          ...(transformResult.metadata || {}),
         },
       },
       client,
@@ -458,6 +465,7 @@ async function processSingleWorkbook({
       previewSheetId: previewResult.previewSheet.id,
       previewSheetName: previewResult.previewSheetName,
       processingRecordId: registryResult.record.id,
+      transformSummary: transformResult.metadata || {},
     };
   } catch (error) {
     await client.query('ROLLBACK');

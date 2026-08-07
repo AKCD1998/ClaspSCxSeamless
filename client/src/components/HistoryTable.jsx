@@ -6,6 +6,8 @@ import {
   formatHistoryTimestamp,
   formatPrintedStatus,
   formatReportType,
+  getHistoryDisplayFilename,
+  getHistoryDocumentUrl,
   normalizeBranchCodeList,
 } from '../utils/historyFormatting.js';
 
@@ -65,7 +67,7 @@ export default function HistoryTable({ busyRecordId, onPrintAction, onRequestPri
           {records.map((record) => (
             <tr key={record.id}>
               <td>
-                <div className="history-filename">{record.filename || '-'}</div>
+                <div className="history-filename">{getHistoryDisplayFilename(record) || '-'}</div>
               </td>
               <td>{formatReportType(record.reportType)}</td>
               <td>{formatHistoryDate(record.reportDate)}</td>
@@ -86,8 +88,8 @@ export default function HistoryTable({ busyRecordId, onPrintAction, onRequestPri
                 <NotifyStatus record={record} />
               </td>
               <td>
-                {record.driveFileUrl ? (
-                  <a href={record.driveFileUrl} target="_blank" rel="noopener noreferrer">
+                {getHistoryDocumentUrl(record) ? (
+                  <a href={getHistoryDocumentUrl(record)} target="_blank" rel="noopener noreferrer">
                     เปิดไฟล์
                   </a>
                 ) : (

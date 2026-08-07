@@ -28,29 +28,45 @@ test.after(async () => {
   }
 });
 
-async function renderApp(route = '/') {
-  const { default: App } = await vite.ssrLoadModule('/src/App.jsx');
+async function renderPage(modulePath, route = '/') {
+  const { default: Page } = await vite.ssrLoadModule(modulePath);
   return renderToString(
     React.createElement(
       MemoryRouter,
       { initialEntries: [route] },
-      React.createElement(App),
+      React.createElement(Page),
     ),
   );
 }
 
 test('main React page renders migrated upload and history sections', async () => {
-  const html = await renderApp('/');
+  const html = await renderPage('/src/pages/UploadPage.jsx');
 
-  assert.match(html, /Individual Formatter/);
-  assert.match(html, /Summary Formatter/);
-  assert.match(html, /รายการประวัติการดำเนินการ/);
+  assert.match(html, /อัปโหลดไฟล์จาก Seamless/);
+  assert.match(html, /แจกแจงการชดเชยรายคน/);
+  assert.match(html, /สรุปจำนวนการชดชยทั้งหมด/);
 });
 
 test('history route renders the same migration-friendly page shell', async () => {
-  const html = await renderApp('/history');
+  const html = await renderPage('/src/pages/HistoryPage.jsx', '/history');
 
   assert.match(html, /ประวัติการจัดการไฟล์/);
   assert.match(html, /Table View/);
   assert.match(html, /Grouped View/);
+});
+
+test('Shopee upload route renders the live workbook upload workflow', async () => {
+  const html = await renderPage('/src/pages/ShopeeUploadPage.jsx', '/shopee/upload');
+
+  assert.match(html, /อัปโหลดยอดขาย Shopee/);
+  assert.match(html, /อัปโหลดรายงานคำสั่งซื้อ Shopee/);
+  assert.doesNotMatch(html, /กำลังพัฒนา/);
+});
+
+test('Shopee history route is locked to Shopee records and exposes admin print controls', async () => {
+  const html = await renderPage('/src/pages/ShopeeHistoryPage.jsx', '/shopee/history');
+
+  assert.match(html, /ประวัติเอกสาร Shopee และคิวปริ้นท์/);
+  assert.match(html, /รายงานคำสั่งซื้อ Shopee/);
+  assert.match(html, /กดสั่งพิมพ์/);
 });

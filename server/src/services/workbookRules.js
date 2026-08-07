@@ -364,7 +364,119 @@ function getSummaryFilenameMetadata(worksheet) {
   };
 }
 
-function buildOutputFilename(worksheet, originalFilename, variant) {
+function parseCompactGregorianDate(value) {
+  const match = /^(\d{4})(\d{2})(\d{2})$/.exec(String(value || ''));
+  if (!match) {
+    return '';
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!isValidDateParts(year, match[2], day)) {
+    return '';
+  }
+
+  return `${year}-${match[2]}-${match[3]}`;
+}
+
+function getShopeeFilenameMetadata(originalFilename, options = {}) {
+  const dataPeriodStart = String(options.periodStart || '').trim();
+  const dataPeriodEnd = String(options.periodEnd || '').trim();
+  let periodStart = dataPeriodStart;
+  let periodEnd = dataPeriodEnd;
+  let sourceLabel = 'Shopee order rows';
+  let filenamePeriodStart = '';
+  let filenamePeriodEnd = '';
+  const filenameMatch = String(originalFilename || '').match(/(\d{8})[_-](\d{8})/);
+
+  if (filenameMatch) {
+    filenamePeriodStart = parseCompactGregorianDate(filenameMatch[1]);
+    filenamePeriodEnd = parseCompactGregorianDate(filenameMatch[2]);
+    if (filenamePeriodStart && filenamePeriodEnd) {
+      periodStart = filenamePeriodStart;
+      periodEnd = filenamePeriodEnd;
+      sourceLabel = 'Shopee export filename';
+    }
+  }
+
+  return {
+    periodStart,
+    periodEnd,
+    dataPeriodStart,
+    dataPeriodEnd,
+    filenamePeriodStart,
+    filenamePeriodEnd,
+    sourceLabel,
+  };
+}
+
+function buildOutputFilename(worksheet, originalFilename, variant, options = {}) {
+  if (variant === 'shopee') {
+    const metadata = getShopeeFilenameMetadata(originalFilename, options);
+    const warnings = [];
+
+    // For the DR.Morepen accounting output, the resolved accounting-cycle period carried in
+    // metadata (periodStart/periodEnd) is authoritative — it reflects the actual weekly cycle
+    // window (e.g. 2026-06-01..2026-06-28), not the raw export filename's calendar-month span
+    // (which can include carryover days like June 29-30 that belong to the next cycle). The
+    // filename-derived period that getShopeeFilenameMetadata prefers is only a fallback when
+    // the cycle metadata is absent.
+    const cyclePeriodStart = String(options.periodStart || '').trim();
+    const cyclePeriodEnd = String(options.periodEnd || '').trim();
+    if (cyclePeriodStart && cyclePeriodEnd) {
+      metadata.periodStart = cyclePeriodStart;
+      metadata.periodEnd = cyclePeriodEnd;
+      metadata.sourceLabel = 'Shopee accounting cycle';
+    }
+
+    if (
+      metadata.filenamePeriodStart &&
+      metadata.filenamePeriodEnd &&
+      metadata.dataPeriodStart &&
+      metadata.dataPeriodEnd &&
+      (metadata.filenamePeriodStart !== metadata.dataPeriodStart ||
+        metadata.filenamePeriodEnd !== metadata.dataPeriodEnd)
+    ) {
+      warnings.push(
+        `Shopee filename period ${metadata.filenamePeriodStart}..${metadata.filenamePeriodEnd} did not match ` +
+          `the first/last order rows ${metadata.dataPeriodStart}..${metadata.dataPeriodEnd}. Kept the export filename ` +
+          'period because a valid report range can include days with no orders.',
+      );
+    }
+
+    if (metadata.periodStart && metadata.periodEnd) {
+      return {
+        variant,
+        filename: `${metadata.periodStart}_to_${metadata.periodEnd}-dr-morepen-accounting.xlsx`,
+        warnings,
+        parsedDate: metadata.periodEnd,
+        periodStart: metadata.periodStart,
+        periodEnd: metadata.periodEnd,
+        branchCode: null,
+        rawDateSource: `${metadata.periodStart}..${metadata.periodEnd}`,
+        rawBranchSource: '',
+        dateSourceLabel: metadata.sourceLabel,
+        branchSourceLabel: '',
+      };
+    }
+
+    warnings.push('Could not determine the Shopee report period. Used a fallback output filename.');
+    return {
+      variant,
+      filename: `${sanitizeBaseName(originalFilename)}-shopee-processed.xlsx`,
+      warnings,
+      parsedDate: metadata.periodEnd || metadata.periodStart || '',
+      periodStart: metadata.periodStart,
+      periodEnd: metadata.periodEnd,
+      branchCode: null,
+      rawDateSource: [metadata.periodStart, metadata.periodEnd].filter(Boolean).join('..'),
+      rawBranchSource: '',
+      dateSourceLabel: metadata.sourceLabel,
+      branchSourceLabel: '',
+    };
+  }
+
   if (variant === 'summary') {
     const metadata = getSummaryFilenameMetadata(worksheet);
     const warnings = [];

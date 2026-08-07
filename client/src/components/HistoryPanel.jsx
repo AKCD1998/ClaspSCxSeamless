@@ -3,6 +3,7 @@ import HistoryDashboard from './HistoryDashboard.jsx';
 import HistoryGrouped from './HistoryGrouped.jsx';
 import HistoryTable from './HistoryTable.jsx';
 import PrintQueueSummary from './PrintQueueSummary.jsx';
+import { getHistoryDisplayFilename } from '../utils/historyFormatting.js';
 import {
   fetchProcessingHistory,
   markProcessingHistoryPrinted,
@@ -11,11 +12,13 @@ import {
   sendGeneratedFileEmail,
 } from '../services/api.js';
 
-const emptyFilters = {
-  reportType: '',
-  reportDate: '',
-  printed: '',
-};
+function emptyFiltersFor(reportType = '') {
+  return {
+    reportType,
+    reportDate: '',
+    printed: '',
+  };
+}
 
 const RECORDS_PAGE_SIZE = 10;
 
@@ -47,8 +50,8 @@ function filterProcessingHistoryRecords(records, filters) {
   });
 }
 
-export default function HistoryPanel({ reloadKey }) {
-  const [filters, setFilters] = useState(emptyFilters);
+export default function HistoryPanel({ fixedReportType = '', reloadKey, showDashboard = true }) {
+  const [filters, setFilters] = useState(() => emptyFiltersFor(fixedReportType));
   const [records, setRecords] = useState([]);
   const [currentView, setCurrentView] = useState('table');
   const [status, setStatus] = useState({ message: 'กำลังโหลด', state: 'idle' });
@@ -77,7 +80,7 @@ export default function HistoryPanel({ reloadKey }) {
     setStatus({ message: 'กำลังโหลดประวัติการจัดการไฟล์...', state: 'working' });
 
     try {
-      const response = await fetchProcessingHistory({});
+      const response = await fetchProcessingHistory(fixedReportType ? { reportType: fixedReportType } : {});
       const nextRecords = Array.isArray(response) ? response : response.records || [];
 
       setRecords(nextRecords);
@@ -101,8 +104,9 @@ export default function HistoryPanel({ reloadKey }) {
   }
 
   useEffect(() => {
+    setFilters(emptyFiltersFor(fixedReportType));
     loadProcessingHistory();
-  }, [reloadKey]);
+  }, [reloadKey, fixedReportType]);
 
   function handleFilterChange(event) {
     const { name, value } = event.target;
@@ -125,7 +129,7 @@ export default function HistoryPanel({ reloadKey }) {
   }
 
   function handleClearFilters() {
-    setFilters(emptyFilters);
+    setFilters(emptyFiltersFor(fixedReportType));
     setStatus({ message: 'ล้างการกรองแล้ว', state: 'success' });
   }
 
@@ -139,9 +143,10 @@ export default function HistoryPanel({ reloadKey }) {
 
   async function handlePrintAction(action, record) {
     const isPrintedAction = action === 'printed';
+    const displayFilename = getHistoryDisplayFilename(record);
     const confirmMessage = isPrintedAction
-      ? `ยืนยันว่าปริ้นท์ไฟล์นี้ส่งพี่เอแล้ว?\n\n${record.filename || ''}`
-      : `ยืนยันเปลี่ยนสถานะเป็นยังไม่ได้ปริ้นท์?\n\n${record.filename || ''}`;
+      ? `ยืนยันว่าปริ้นท์ไฟล์นี้ส่งพี่เอแล้ว?\n\n${displayFilename}`
+      : `ยืนยันเปลี่ยนสถานะเป็นยังไม่ได้ปริ้นท์?\n\n${displayFilename}`;
 
     if (!window.confirm(confirmMessage)) {
       return;
@@ -178,7 +183,8 @@ export default function HistoryPanel({ reloadKey }) {
   }
 
   async function handleRequestPrint(record) {
-    if (!window.confirm(`ยืนยันสั่งปริ้น / ขอปริ้นใหม่สำหรับไฟล์นี้?\n\n${record.filename || ''}`)) {
+    const displayFilename = getHistoryDisplayFilename(record);
+    if (!window.confirm(`ยืนยันสั่งปริ้น / ขอปริ้นใหม่สำหรับไฟล์นี้?\n\n${displayFilename}`)) {
       return;
     }
 
@@ -215,7 +221,7 @@ export default function HistoryPanel({ reloadKey }) {
       return;
     }
 
-    if (!window.confirm(`ยืนยันส่งเอกสารนี้เข้าอีเมลที่ตั้งไว้?\n\n${record.filename || ''}`)) {
+    if (!window.confirm(`ยืนยันส่งเอกสารนี้เข้าอีเมลที่ตั้งไว้?\n\n${getHistoryDisplayFilename(record)}`)) {
       return;
     }
 
@@ -253,10 +259,16 @@ export default function HistoryPanel({ reloadKey }) {
       <form className="history-filters" onSubmit={handleSubmit}>
         <label className="history-filter-field">
           <span>Report Type</span>
-          <select name="reportType" value={filters.reportType} onChange={handleFilterChange}>
+          <select
+            disabled={!!fixedReportType}
+            name="reportType"
+            value={filters.reportType}
+            onChange={handleFilterChange}
+          >
             <option value="">ทั้งหมด</option>
             <option value="summary">สรุปจำนวนการชดชยทั้งหมดในรอบนั้นๆ(Summary)</option>
             <option value="individual">แจกแจงการชดเชยรายคน(Individual)</option>
+            <option value="shopee">รายงานคำสั่งซื้อ Shopee</option>
           </select>
         </label>
 
@@ -289,15 +301,18 @@ export default function HistoryPanel({ reloadKey }) {
         </button>
       </form>
 
-      <HistoryDashboard
-        activeReportDate={filters.reportDate}
-        onSelectReportDate={handleSelectReportDate}
-        records={records}
-      />
+      {showDashboard ? (
+        <HistoryDashboard
+          activeReportDate={filters.reportDate}
+          onSelectReportDate={handleSelectReportDate}
+          records={records}
+        />
+      ) : null}
 
       <PrintQueueSummary records={records} />
 
-      <div className="history-view-toggle" role="tablist" aria-label="History View">
+      {!fixedReportType ? (
+        <div className="history-view-toggle" role="tablist" aria-label="History View">
         <button
           aria-pressed={currentView === 'table'}
           className={`history-view-button${currentView === 'table' ? '' : ' secondary'}`}
@@ -314,7 +329,8 @@ export default function HistoryPanel({ reloadKey }) {
         >
           Grouped View
         </button>
-      </div>
+        </div>
+      ) : null}
 
       <section className="status-panel history-status-panel" aria-live="polite">
         <p className="status" data-state={status.state}>
@@ -325,7 +341,7 @@ export default function HistoryPanel({ reloadKey }) {
           <div className="history-empty">ไม่พบการค้นหาที่ตรงกับการกรองนี้</div>
         ) : (
           <>
-            {currentView === 'table' ? (
+            {fixedReportType || currentView === 'table' ? (
               <HistoryTable
                 busyRecordId={busyRecordId}
                 onPrintAction={handlePrintAction}

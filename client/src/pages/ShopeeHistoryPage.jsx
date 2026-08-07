@@ -1,16 +1,14 @@
 import Hero from '../components/Hero.jsx';
+import HistoryPanel from '../components/HistoryPanel.jsx';
 
 export default function ShopeeHistoryPage() {
   return (
     <main className="shell shell-single-column">
       <Hero
-        title="ประวัติยอดขาย Shopee"
-        intro="หน้านี้อยู่ระหว่างการพัฒนา — ประวัติการอัปโหลดยอดขาย Shopee จะแสดงที่นี่เมื่อฟีเจอร์พร้อมใช้งาน"
+        title="ประวัติเอกสาร Shopee และคิวปริ้นท์"
+        intro="ตรวจไฟล์ผลลัพธ์ ดาวน์โหลด ส่งอีเมล และสั่งพิมพ์ไปยังเครื่องพิมพ์สำนักงานใหญ่ งาน Shopee จะไม่เข้าคิวอัตโนมัติจนกว่า admin กดสั่งพิมพ์"
       />
-      <section className="panel">
-        <p className="panel-eyebrow">กำลังพัฒนา</p>
-        <p className="panel-copy">ยังไม่มีข้อมูลประวัติ Shopee ในตอนนี้</p>
-      </section>
+      <HistoryPanel fixedReportType="shopee" reloadKey={0} showDashboard={false} />
     </main>
   );
 }

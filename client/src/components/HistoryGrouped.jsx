@@ -6,6 +6,8 @@ import {
   formatHistoryTimestamp,
   formatPrintedStatus,
   formatReportType,
+  getHistoryDisplayFilename,
+  getHistoryDocumentUrl,
   groupRecordsByReportDate,
   normalizeBranchCodeList,
 } from '../utils/historyFormatting.js';
@@ -62,10 +64,10 @@ export default function HistoryGrouped({ busyRecordId, onPrintAction, onRequestP
                 <div className="history-group-record" key={record.id}>
                   <div className="history-group-main">
                     <div className="history-group-label">ชื่อไฟล์</div>
-                    <div className="history-filename">{record.filename || '-'}</div>
+                    <div className="history-filename">{getHistoryDisplayFilename(record) || '-'}</div>
                     <div className="history-group-links">
-                      {record.driveFileUrl ? (
-                        <a href={record.driveFileUrl} target="_blank" rel="noopener noreferrer">
+                      {getHistoryDocumentUrl(record) ? (
+                        <a href={getHistoryDocumentUrl(record)} target="_blank" rel="noopener noreferrer">
                           เปิดไฟล์
                         </a>
                       ) : (

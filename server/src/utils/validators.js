@@ -33,6 +33,10 @@ function parseFormatterMode(value, options = {}) {
     return 'summary';
   }
 
+  if (normalized === 'shopee' || normalized === 'order' || normalized === 'orders') {
+    return 'shopee';
+  }
+
   throw badRequest('The selected formatter mode is not supported.', {
     formatterMode: value,
   });

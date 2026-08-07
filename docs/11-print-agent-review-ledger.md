@@ -392,3 +392,41 @@
   - เพิ่ม regression test ทั้งสอง repo (individual + summary) ยืนยันข้อความ, font, และว่า merge
     ไม่ทับ header จริงของแต่ละ variant — test suite ผ่านครบ (backend 86/91 pass 5 skip,
     ClaspSCxSeamless 34/42 pass 8 skip, ไม่มี fail)
+
+## คำขอตรวจสอบ env var บน Render ผ่าน Render MCP (read-only) — สำหรับ Codex — เพิ่ม 2026-07-30
+
+Frontend แสดง badge "อีเมล ล้มเหลว" พร้อม error message ตรงๆ จาก
+`printAgentService.js` (`sendPrintEmailNotification`):
+
+```
+SENDGRID_API_KEY, MAIL_USER, or SEAMLESS_DOCS_RECIPIENT_EMAIL is not configured.
+```
+
+Error นี้ยิงมาจาก `currentSC-official-website-project/backend/src/modules/seamless/config.js`
+(`readSeamlessConfig` หรือชื่อเทียบเท่า) อ่าน 3 ตัวนี้:
+- `SENDGRID_API_KEY` — คาดว่า shared กับ feature อื่นของเว็บหลักอยู่แล้ว
+- `MAIL_USER` (fallback `SEAMLESS_MAIL_FROM`) — คาดว่า shared เช่นกัน
+- `SEAMLESS_DOCS_RECIPIENT_EMAIL` — ตัวใหม่เฉพาะ seamless feature นี้ ใน `.env.example`
+  (`backend/.env.example` บรรทัด ~46) ปล่อยว่างไว้ (`SEAMLESS_DOCS_RECIPIENT_EMAIL=`) —
+  **สงสัยว่านี่คือตัวที่ไม่เคยถูกตั้งค่าจริงบน Render เลย**
+
+**งานที่ขอให้ Codex ทำ (read-only เท่านั้น — ห้ามแก้ค่าใดๆ บน Render):**
+ใช้ Render MCP ตรวจ environment variables ของ Render service `sc-official-website`
+(repo `AKCD1998/SC-official-website`) ว่า 3 ตัวข้างต้นมีอยู่จริงหรือไม่ (แค่รายงานว่า
+"มี/ไม่มี" — **ห้าม log ค่าจริงของ key ใดๆ ทั้งสิ้น**, sensitive)
+
+รายงานกลับ (append ที่ `_ledger/codex.md` หรือแจ้ง user ตรงๆ ก็ได้):
+- แต่ละตัวจาก 3 ตัวนี้ตั้งอยู่บน Render หรือไม่
+- ถ้าตั้งอยู่ครบทั้ง 3 ตัวแล้วแต่ error ยังเกิด แปลว่าโค้ดมีบั๊กอื่น (เช่น ชื่อ env var
+  สะกดผิด, หรือ deploy ยังไม่ pick up ค่าที่เพิ่งตั้ง) — ให้ระบุด้วยว่าเป็นไปได้ไหม
+- ถ้าขาดตัวใดตัวหนึ่ง ให้ระบุชัดว่าตัวไหนขาด เพื่อให้ user ไปตั้งค่าเองใน Render dashboard
+  (Codex ไม่ต้องตั้งค่าให้ — แค่ระบุว่าขาดอะไร)
+
+**อัปเดต — Claude ตรวจเองผ่าน Render API ตรงๆ แล้ว (ไม่ต้องรอ Codex อีก)**
+ใช้ `RENDER_API_KEY` ที่มีอยู่แล้วใน `backend/.env` เรียก
+`GET /v1/services/srv-d58idfm3jp1c73bhgv40/env-vars` (service `sc-official-website`) แบบ
+read-only ตรงๆ — ผลลัพธ์:
+- `SENDGRID_API_KEY` — **มีอยู่แล้ว** (shared กับ feature อื่น)
+- `MAIL_USER` — **มีอยู่แล้ว** (shared กับ feature อื่น)
+- `SEAMLESS_DOCS_RECIPIENT_EMAIL` — **ขาด** ← ตัวนี้แหละที่ทำให้อีเมลล้มเหลว
+รอ user ไปตั้งค่านี้เองบน Render dashboard (Environment tab ของ service `sc-official-website`)

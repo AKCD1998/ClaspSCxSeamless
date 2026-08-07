@@ -209,3 +209,51 @@ test(
     await closePool();
   },
 );
+
+test(
+  'manual print policy skips auto-print but still allows a due admin-requested job',
+  { skip: testDatabaseUrl ? false : 'Set TEST_DATABASE_URL to run database write/read parity test.' },
+  async () => {
+    process.env.DATABASE_URL = testDatabaseUrl;
+
+    const processingRecordRepository = require('../src/db/repositories/processingRecordRepository');
+    const printJobRepository = require('../src/db/repositories/printJobRepository');
+    const { query } = require('../src/db/pool');
+    const { tables } = require('../src/db/identifiers');
+
+    const record = await processingRecordRepository.createProcessingRecord({
+      reportDate: '20260630',
+      reportType: 'individual',
+      filename: `test-manual-print-policy-${Date.now()}.xlsx`,
+      sourceUploadName: 'Order.all.synthetic.xlsx',
+      metadata: { printPolicy: 'manual', testRun: true },
+    });
+
+    try {
+      const autoCandidates = await printJobRepository.listPrintQueueCandidates(
+        new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      );
+      assert.ok(
+        !autoCandidates.some((candidate) => candidate.id === record.id),
+        'manual records must not print just because they were recently uploaded',
+      );
+
+      const requestedJob = await printJobRepository.createPrintJob({
+        processingRecordId: record.id,
+        requestedBy: 'admin-test',
+        reprintReason: 'manual_first_print',
+        documentUploadedAt: record.uploadedAt,
+      });
+      await query(`UPDATE ${tables.printJobs} SET scheduled_for = now() WHERE id = $1`, [requestedJob.id]);
+
+      const requestedCandidates = await printJobRepository.listPrintQueueCandidates(null);
+      assert.ok(
+        requestedCandidates.some((candidate) => candidate.id === record.id),
+        'a due admin-requested job must override the manual auto-print policy',
+      );
+    } finally {
+      await query(`DELETE FROM ${tables.printJobs} WHERE processing_record_id = $1`, [record.id]);
+      await query(`DELETE FROM ${tables.processingRecords} WHERE id = $1`, [record.id]);
+    }
+  },
+);

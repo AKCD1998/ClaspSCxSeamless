@@ -51,7 +51,7 @@ test('GET /api/bootstrap returns upload limits and supported modes', async () =>
   assert.equal(payload.appName, 'Seamless X GAS Excel Formatter');
   assert.equal(payload.maxUploadMb, 20);
   assert.equal(payload.maxBatchFiles, 20);
-  assert.deepEqual(payload.formatterModes, ['individual', 'summary']);
+  assert.deepEqual(payload.formatterModes, ['individual', 'summary', 'shopee']);
 });
 
 test('GET /api/health returns a stable health envelope', async () => {

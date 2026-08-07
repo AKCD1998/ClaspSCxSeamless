@@ -34,7 +34,27 @@ export function formatReportType(value) {
     return 'แจกแจงการชดเชยรายคน(Individual)';
   }
 
+  if (text === 'shopee') {
+    return 'รายงานคำสั่งซื้อ Shopee';
+  }
+
   return text || '-';
+}
+
+export function getHistoryDisplayFilename(record) {
+  if (record?.reportType === 'shopee' && record?.metadata?.outputFilename) {
+    return record.metadata.outputFilename;
+  }
+
+  return record?.filename || '';
+}
+
+export function getHistoryDocumentUrl(record) {
+  if (record?.reportType === 'shopee' && record?.metadata?.outputDownloadUrl) {
+    return record.metadata.outputDownloadUrl;
+  }
+
+  return record?.driveFileUrl || '';
 }
 
 export function formatPrintedStatus(value) {

@@ -28,8 +28,9 @@ function createApp() {
 
   if (!env.appBasicUser || !env.appBasicPassword) {
     console.warn(
-      '[appAuth] APP_BASIC_USER/APP_BASIC_PASSWORD not set — the app and /api/app/*, /api/files/* ' +
-        'are open without authentication. Set both env vars in production.',
+      '[appAuth] APP_BASIC_USER/APP_BASIC_PASSWORD (or SEAMLESS_APP_BASIC_USER/' +
+        'SEAMLESS_APP_BASIC_PASSWORD) not set — the app and /api/app/*, /api/files/* are open ' +
+        'without authentication. Set both env vars in production.',
     );
   }
 

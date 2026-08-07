@@ -18,6 +18,7 @@ agent.lock
 # and full DB dumps, never committed.
 exports/
 backups/
+outputs/
 
 .DS_Store
 Thumbs.db
