@@ -62,3 +62,9 @@ work log + review ระดับ "task ละแถว"
 - **2026-08-19** — ยืนยันกับ git status จริง: ไฟล์ dirty ทั้งหมดใน repo เป็นของ workstream
   Shopee (`server/`, `print-agent/`, `docs/07`) — **ไม่มีไฟล์ `client/` ตัวไหน dirty** เริ่มงาน
   frontend PharmCare ได้โดยไม่ชน
+- **2026-08-19** — Task 1 + 2 ผ่านรีวิว (Claude Sonnet 5, ดูรายละเอียดในตารางด้านบน) — **เจ้าของ
+  repo สั่งให้ Sonnet 5 commit เอง** (นอกเหนือ protocol ปกติที่ให้เจ้าของ repo commit) commit
+  แล้วที่ `dfba43b` (`main`) — stage เฉพาะ 7 ไฟล์ของงานนี้ ไม่แตะไฟล์ Shopee ที่ยัง dirty เลย —
+  push แล้ว Render จะ auto-deploy frontend ให้เอง **GLM 5.2 อ่านต่อจากตรงนี้ได้เลยสำหรับ task ถัดไป**
+  — ข้อสังเกตเดียวที่ค้างจาก review (ไม่ block): `.pharmcare-detail-row-tr` ไม่มี CSS rule นิยามไว้
+  ใน `app.css` ถ้ามี task ถัดไปแตะ styling ของ detail row อยู่แล้ว เพิ่มให้ด้วยได้
