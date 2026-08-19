@@ -156,3 +156,9 @@ work log + review ระดับ "task ละแถว"
   และ `npm --prefix client test` + `run build` เอง (**50/50 ผ่าน + build สำเร็จ** ตรงกับที่จด)
   ไม่มี regression ทั้งสองฝั่ง — **Sonnet 5 commit เอง** ตามที่เจ้าของ repo สั่งไว้ ทำตาม
   หมายเหตุที่ implementer ทิ้งไว้เป๊ะ: แยก commit task 7/8, ไม่ปนไฟล์ Shopee/RX1011
+- **2026-08-19** — Task 7 + 8 commit แล้ว — backend `currentSC-official-website-project` commit
+  `145ed33` push แล้ว, frontend (repo นี้) commit `859e973` push แล้ว (รวม task 7+8 commit
+  เดียวกันเพราะ `app.css` มีการแก้ของทั้งสอง task ปนกันจนแยก commit สะอาดๆ ไม่ได้ — ตามที่
+  implementer เปิดทางไว้ว่า "แยกหรือรวมตามดุลยพินิจ reviewer") ไม่ปนไฟล์ RX1011/Shopee เลยทั้ง
+  สองฝั่ง ตรวจสอบแล้ว **GLM 5.2 อ่านต่อจากตรงนี้ได้เลยสำหรับ task ถัดไป** — ยังไม่มี task ใหม่
+  ที่ระบุไว้ ณ ตอนนี้ รอเจ้าของ repo สั่งเพิ่ม
