@@ -70,6 +70,11 @@ export async function getBootstrap() {
   return requestJson('/bootstrap');
 }
 
+// Response includes `role` ('admin' | 'user') alongside `authenticated` once logged in — the
+// admin role unlocks classification diagnostics and a few extra table columns in the PharmCare
+// Inbox (see PharmCareInboxPanel.jsx). Regular Basic Auth credentials always resolve to 'user';
+// a separate admin credential pair (backend env: SEAMLESS_APP_ADMIN_BASIC_USER/PASSWORD) resolves
+// to 'admin'.
 export async function getSession() {
   return requestJson('/app/session');
 }

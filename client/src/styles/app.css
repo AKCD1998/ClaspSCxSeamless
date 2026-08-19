@@ -724,6 +724,18 @@ button:disabled {
 .pharmcare-col-status { width: 14%; }
 .pharmcare-col-detail { width: 7%; }
 
+/* Regular (non-admin) users don't get the เส้นทาง/เลขเอกสาร/สถานะ columns at all (owner
+   request, 2026-08-19 — those are operational detail, not something a regular user needs) — a
+   separate 7-column set so the freed width goes to the columns that remain instead of leaving
+   the table looking sparse. Widths sum to 100%. */
+.pharmcare-col-user-received { width: 12%; }
+.pharmcare-col-user-subject { width: 24%; }
+.pharmcare-col-user-from { width: 14%; }
+.pharmcare-col-user-type { width: 16%; }
+.pharmcare-col-user-attachment { width: 16%; }
+.pharmcare-col-user-period { width: 10%; }
+.pharmcare-col-user-detail { width: 8%; }
+
 .pharmcare-detail-row-tr > td {
   padding: 0;
 }

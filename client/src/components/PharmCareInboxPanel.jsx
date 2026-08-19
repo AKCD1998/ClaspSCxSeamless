@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PharmCareInboxView from './PharmCareInboxView.jsx';
-import { fetchPharmcareAttachmentBlob, getPharmcareInbox, getPharmcareMessage } from '../services/api.js';
+import { fetchPharmcareAttachmentBlob, getPharmcareInbox, getPharmcareMessage, getSession } from '../services/api.js';
 
 const emptyFilters = {
   status: '',
@@ -16,6 +16,11 @@ export default function PharmCareInboxPanel() {
   const [status, setStatus] = useState({ message: 'กำลังโหลด', state: 'idle' });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // 'user' until proven otherwise — the routing/document-number/status columns and classification
+  // evidence stay hidden by default rather than flashing visible for a moment while this loads.
+  // The backend also strips those fields server-side for non-admin sessions regardless of what
+  // this renders, so a stale/failed role fetch never over-exposes anything.
+  const [appRole, setAppRole] = useState('user');
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [messageDetail, setMessageDetail] = useState(null);
   const [detailStatus, setDetailStatus] = useState({ message: '', state: 'idle' });
@@ -119,6 +124,26 @@ export default function PharmCareInboxPanel() {
     loadInbox(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getSession()
+      .then((payload) => {
+        if (!cancelled && payload?.role === 'admin') {
+          setAppRole('admin');
+        }
+      })
+      .catch(() => {
+        // Stays 'user' (the safe default) — the login gate at the App level already establishes
+        // a valid session before this panel ever mounts, so a failure here is unexpected, not a
+        // sign the user is logged out.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function closeMessageDetail() {
     selectedMessageIdRef.current = null;
@@ -242,6 +267,7 @@ export default function PharmCareInboxPanel() {
 
   return (
     <PharmCareInboxView
+      appRole={appRole}
       documents={documents}
       filters={filters}
       isLoading={isLoading}

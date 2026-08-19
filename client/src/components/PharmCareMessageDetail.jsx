@@ -7,23 +7,24 @@ import {
   formatReceivedAt,
 } from './pharmcareLabels.js';
 
-// Hidden by owner decision (2026-08-19): classification reason codes and the classifier version
-// are diagnostic info end users don't need to see — flip to true to bring the section back
-// (e.g. while debugging a misclassified document).
-const SHOW_CLASSIFICATION_EVIDENCE = false;
-
 // Pure presentation of one message's detail (expanded inline under its inbox row). Row-level
 // fields render immediately from the inbox row; the fetched detail (getMessageWithEvidence via
 // GET /messages/:id) adds the full picture: every document parsed from the same email, every
 // attachment, and ingestion error info — the things the inbox table cannot show.
-export default function PharmCareMessageDetail({ row, detail, status, onRetry, onOpenPreview }) {
+//
+// Classification reason codes and the classifier version are diagnostic info a regular user
+// doesn't need to see (owner decision, 2026-08-19) — gated on `isAdmin` rather than always
+// hidden. The backend already strips these fields from the response for non-admin sessions
+// (see pharmcareController.js), so `row.reasonCodes`/`document.reasonCodes` are simply absent
+// there regardless of this check; the check just avoids rendering an empty section.
+export default function PharmCareMessageDetail({ row, detail, isAdmin, status, onRetry, onOpenPreview }) {
   const message = detail || {};
   const attachments = detail?.attachments || [];
   const documents = detail?.documents || [];
 
   return (
     <div className="pharmcare-detail">
-      {SHOW_CLASSIFICATION_EVIDENCE ? (
+      {isAdmin ? (
         <section className="pharmcare-detail-section">
           <p className="pharmcare-detail-title">เหตุผลการจัดประเภท (เอกสารนี้)</p>
           {row.reasonCodes?.length ? (
@@ -101,33 +102,37 @@ export default function PharmCareMessageDetail({ row, detail, status, onRetry, o
                         {document.documentNumber ? ` — ${document.documentNumber}` : ''}
                       </span>
                     </div>
-                    <div className="pharmcare-detail-row">
-                      <span className="pharmcare-detail-label">สถานะ</span>
-                      <span className="pharmcare-detail-value">
-                        {REVIEW_STATUS_LABELS[document.reviewStatus] || document.reviewStatus}
-                        {document.duplicateOfDocumentId ? ' (ซ้ำกับฉบับก่อนหน้า)' : ''}
-                      </span>
-                    </div>
+                    {isAdmin ? (
+                      <div className="pharmcare-detail-row">
+                        <span className="pharmcare-detail-label">สถานะ</span>
+                        <span className="pharmcare-detail-value">
+                          {REVIEW_STATUS_LABELS[document.reviewStatus] || document.reviewStatus}
+                          {document.duplicateOfDocumentId ? ' (ซ้ำกับฉบับก่อนหน้า)' : ''}
+                        </span>
+                      </div>
+                    ) : null}
                     <div className="pharmcare-detail-row">
                       <span className="pharmcare-detail-label">รอบ/ช่วงเวลา</span>
                       <span className="pharmcare-detail-value">{formatPeriod(document)}</span>
                     </div>
-                    <div className="pharmcare-detail-row">
-                      <span className="pharmcare-detail-label">เหตุผล</span>
-                      <span className="pharmcare-detail-value">
-                        {document.reasonCodes?.length ? (
-                          <ul className="pharmcare-detail-reasons">
-                            {document.reasonCodes.map((code) => (
-                              <li key={code}>
-                                <span className="history-pill">{formatReasonCode(code)}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          '-'
-                        )}
-                      </span>
-                    </div>
+                    {isAdmin ? (
+                      <div className="pharmcare-detail-row">
+                        <span className="pharmcare-detail-label">เหตุผล</span>
+                        <span className="pharmcare-detail-value">
+                          {document.reasonCodes?.length ? (
+                            <ul className="pharmcare-detail-reasons">
+                              {document.reasonCodes.map((code) => (
+                                <li key={code}>
+                                  <span className="history-pill">{formatReasonCode(code)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            '-'
+                          )}
+                        </span>
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>

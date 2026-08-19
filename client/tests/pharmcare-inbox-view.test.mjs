@@ -32,6 +32,10 @@ async function renderView(props) {
   const { default: PharmCareInboxView } = await vite.ssrLoadModule('/src/components/PharmCareInboxView.jsx');
   return renderToString(
     React.createElement(PharmCareInboxView, {
+      // Most existing tests below were written against the full (admin) view — default to
+      // 'admin' here so they keep exercising that, and pass appRole: 'user' explicitly for the
+      // tests that specifically cover the trimmed-down regular-user table.
+      appRole: 'admin',
       documents: [],
       filters: emptyFilters,
       isLoading: false,
@@ -251,8 +255,24 @@ test('detail: every document row renders a ดู toggle button', async () => {
   assert.match(html, /aria-expanded="false"[^>]*>ดู</);
 });
 
-test('detail: the expanded row hides the row-level classification evidence section by default', async () => {
+test('detail: an admin session shows the row-level classification evidence section', async () => {
   const html = await renderView({
+    documents: [sampleDocument],
+    selectedMessageId: 'msg-1',
+    detailStatus: { message: 'กำลังโหลดรายละเอียด...', state: 'working' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /aria-expanded="true"[^>]*>ปิด</);
+  assert.match(html, /กำลังโหลดรายละเอียด/);
+  assert.match(html, /เหตุผลการจัดประเภท \(เอกสารนี้\)/);
+  assert.match(html, /รุ่นตัวจัดประเภท/);
+  assert.match(html, /ชื่อไฟล์ตรงรูปแบบที่รู้จัก/);
+});
+
+test('detail: a regular-user session hides the row-level classification evidence section', async () => {
+  const html = await renderView({
+    appRole: 'user',
     documents: [sampleDocument],
     selectedMessageId: 'msg-1',
     detailStatus: { message: 'กำลังโหลดรายละเอียด...', state: 'working' },
@@ -346,6 +366,61 @@ test('layout: the inbox table defines explicit per-column widths via a colgroup'
     'pharmcare-col-status',
     'pharmcare-col-detail',
   ]);
+});
+
+test('layout: a regular-user session uses a 7-column table without route/documentNumber/status', async () => {
+  const html = await renderView({
+    appRole: 'user',
+    documents: [sampleDocument],
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  const columns = [...html.matchAll(/<col class="(pharmcare-col-user-[a-z]+)"\/>/g)].map((match) => match[1]);
+  assert.deepEqual(columns, [
+    'pharmcare-col-user-received',
+    'pharmcare-col-user-subject',
+    'pharmcare-col-user-from',
+    'pharmcare-col-user-type',
+    'pharmcare-col-user-attachment',
+    'pharmcare-col-user-period',
+    'pharmcare-col-user-detail',
+  ]);
+  assert.doesNotMatch(html, /<th>เส้นทาง<\/th>/);
+  assert.doesNotMatch(html, /<th>เลขเอกสาร<\/th>/);
+  assert.doesNotMatch(html, /<th>สถานะ<\/th>/);
+  // 7 <td> per data row (received/subject/from/type/attachment/period/detail), not 10.
+  const cellsInRow = (html.match(/<tbody><tr>(.*?)<\/tr>/s) || ['', ''])[1].match(/<td/g) || [];
+  assert.equal(cellsInRow.length, 7);
+});
+
+test('layout: an admin session still gets the full 10-column table', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /<th>เส้นทาง<\/th>/);
+  assert.match(html, /<th>เลขเอกสาร<\/th>/);
+  assert.match(html, /<th>สถานะ<\/th>/);
+});
+
+test('detail: a regular-user session hides per-document status and reason rows in the sibling list', async () => {
+  const html = await renderView({
+    appRole: 'user',
+    documents: [sampleDocument],
+    selectedMessageId: 'msg-1',
+    messageDetail: {
+      id: 'msg-1',
+      attachments: [],
+      documents: [{ ...sampleDocument, id: 'doc-1' }],
+    },
+    detailStatus: { message: '', state: 'success' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.doesNotMatch(html, /ชื่อไฟล์ตรงรูปแบบที่รู้จัก/);
+  const statusLabels = html.match(/<span class="pharmcare-detail-label">สถานะ<\/span>/g) || [];
+  assert.equal(statusLabels.length, 0);
 });
 
 test('preview: the overlay is hidden (renders nothing) when no attachment is being previewed', async () => {

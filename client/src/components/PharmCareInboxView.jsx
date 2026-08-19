@@ -29,6 +29,7 @@ function ReviewStatusBadge({ reviewStatus }) {
 // tested directly (via renderToString with fixed props) without needing a DOM environment to
 // exercise React effects.
 export default function PharmCareInboxView({
+  appRole,
   documents,
   filters,
   isLoading,
@@ -52,6 +53,13 @@ export default function PharmCareInboxView({
   status,
   summary,
 }) {
+  const isAdmin = appRole === 'admin';
+  // Route, document number, and review status are operational/diagnostic detail — a regular
+  // user only needs to know what arrived and open it, and hiding these three lets the remaining
+  // columns breathe instead of everything being squeezed to fit ten columns (owner request,
+  // 2026-08-19). The backend already strips these fields from the response for non-admin
+  // sessions (see pharmcareController.js), so this is belt-and-suspenders, not the only guard.
+  const columnCount = isAdmin ? 10 : 7;
   return (
     <section className="panel">
       <p className="panel-eyebrow">PharmCare Inbox</p>
@@ -125,29 +133,41 @@ export default function PharmCareInboxView({
       ) : documents.length ? (
         <div className="history-table-wrap">
           <table className="history-table">
-            <colgroup>
-              <col className="pharmcare-col-received" />
-              <col className="pharmcare-col-subject" />
-              <col className="pharmcare-col-from" />
-              <col className="pharmcare-col-route" />
-              <col className="pharmcare-col-type" />
-              <col className="pharmcare-col-number" />
-              <col className="pharmcare-col-attachment" />
-              <col className="pharmcare-col-period" />
-              <col className="pharmcare-col-status" />
-              <col className="pharmcare-col-detail" />
-            </colgroup>
+            {isAdmin ? (
+              <colgroup>
+                <col className="pharmcare-col-received" />
+                <col className="pharmcare-col-subject" />
+                <col className="pharmcare-col-from" />
+                <col className="pharmcare-col-route" />
+                <col className="pharmcare-col-type" />
+                <col className="pharmcare-col-number" />
+                <col className="pharmcare-col-attachment" />
+                <col className="pharmcare-col-period" />
+                <col className="pharmcare-col-status" />
+                <col className="pharmcare-col-detail" />
+              </colgroup>
+            ) : (
+              <colgroup>
+                <col className="pharmcare-col-user-received" />
+                <col className="pharmcare-col-user-subject" />
+                <col className="pharmcare-col-user-from" />
+                <col className="pharmcare-col-user-type" />
+                <col className="pharmcare-col-user-attachment" />
+                <col className="pharmcare-col-user-period" />
+                <col className="pharmcare-col-user-detail" />
+              </colgroup>
+            )}
             <thead>
               <tr>
                 <th>ได้รับเมื่อ</th>
                 <th>หัวเรื่อง</th>
                 <th>ผู้ส่งต้นทาง</th>
-                <th>เส้นทาง</th>
+                {isAdmin ? <th>เส้นทาง</th> : null}
                 <th>ประเภทเอกสาร</th>
-                <th>เลขเอกสาร</th>
+                {isAdmin ? <th>เลขเอกสาร</th> : null}
                 <th>ไฟล์แนบ</th>
                 <th>รอบ/ช่วงเวลา</th>
-                <th>สถานะ</th>
+                {isAdmin ? <th>สถานะ</th> : null}
                 <th>รายละเอียด</th>
               </tr>
             </thead>
@@ -155,7 +175,9 @@ export default function PharmCareInboxView({
               {documents.map((document) => (
                 <MessageRow
                   key={document.id}
+                  columnCount={columnCount}
                   document={document}
+                  isAdmin={isAdmin}
                   isExpanded={Boolean(document.messageId) && selectedMessageId === document.messageId}
                   detail={messageDetail}
                   detailStatus={detailStatus}
@@ -195,18 +217,30 @@ export default function PharmCareInboxView({
   );
 }
 
-function MessageRow({ document, isExpanded, detail, detailStatus, onToggle, onRetryDetail, onOpenAttachmentPreview }) {
+function MessageRow({
+  columnCount,
+  document,
+  isAdmin,
+  isExpanded,
+  detail,
+  detailStatus,
+  onToggle,
+  onRetryDetail,
+  onOpenAttachmentPreview,
+}) {
   return (
     <>
       <tr>
         <td>{formatReceivedAt(document.receivedAt)}</td>
         <td>{document.normalizedSubject || '-'}</td>
         <td>{document.originalFrom || '-'}</td>
-        <td>
-          <RouteBadge route={document.route} />
-        </td>
+        {isAdmin ? (
+          <td>
+            <RouteBadge route={document.route} />
+          </td>
+        ) : null}
         <td>{DOCUMENT_TYPE_LABELS[document.documentType] || document.documentType}</td>
-        <td>{document.documentNumber || '-'}</td>
+        {isAdmin ? <td>{document.documentNumber || '-'}</td> : null}
         <td>
           {document.attachmentId && document.attachmentFilename ? (
             <button
@@ -226,9 +260,11 @@ function MessageRow({ document, isExpanded, detail, detailStatus, onToggle, onRe
           )}
         </td>
         <td>{formatPeriod(document)}</td>
-        <td>
-          <ReviewStatusBadge reviewStatus={document.reviewStatus} />
-        </td>
+        {isAdmin ? (
+          <td>
+            <ReviewStatusBadge reviewStatus={document.reviewStatus} />
+          </td>
+        ) : null}
         <td>
           <button
             aria-expanded={isExpanded ? 'true' : 'false'}
@@ -242,8 +278,9 @@ function MessageRow({ document, isExpanded, detail, detailStatus, onToggle, onRe
       </tr>
       {isExpanded ? (
         <tr className="pharmcare-detail-row-tr">
-          <td colSpan={10}>
+          <td colSpan={columnCount}>
             <PharmCareMessageDetail
+              isAdmin={isAdmin}
               row={document}
               detail={detail}
               status={detailStatus}
