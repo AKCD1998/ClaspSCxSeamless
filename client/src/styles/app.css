@@ -709,6 +709,25 @@ button:disabled {
   overflow-wrap: break-word;
 }
 
+/* The PharmCare inbox reuses .history-table (table-layout: fixed — widths come from the first
+   row), and without an explicit colgroup the 10 columns split evenly (~142px each), letting the
+   nowrap status pill ("จัดประเภทอัตโนมัติแล้ว") overflow into the ดู button column. Widths sum
+   to 100%; the status column is sized for that longest pill. */
+.pharmcare-col-received { width: 9%; }
+.pharmcare-col-subject { width: 13%; }
+.pharmcare-col-from { width: 10%; }
+.pharmcare-col-route { width: 6%; }
+.pharmcare-col-type { width: 12%; }
+.pharmcare-col-number { width: 9%; }
+.pharmcare-col-attachment { width: 11%; }
+.pharmcare-col-period { width: 9%; }
+.pharmcare-col-status { width: 14%; }
+.pharmcare-col-detail { width: 7%; }
+
+.pharmcare-detail-row-tr > td {
+  padding: 0;
+}
+
 .history-dashboard-table {
   width: 100%;
   border-collapse: collapse;
@@ -1118,5 +1137,115 @@ button:disabled {
 .pharmcare-detail-muted {
   color: var(--muted);
   font-size: 0.88rem;
+}
+
+/* Attachment filename in the inbox table/detail — looks like the link it replaced (direct
+   download), but opens the in-app preview overlay instead. */
+.pharmcare-preview-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent-strong);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+  word-break: break-word;
+}
+
+.pharmcare-preview-link:hover {
+  opacity: 0.8;
+}
+
+.pharmcare-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 20, 18, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  outline: none;
+}
+
+.pharmcare-preview {
+  width: min(960px, 100%);
+  height: min(88vh, 960px);
+  background: #fff;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+}
+
+.pharmcare-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(31, 42, 40, 0.08);
+  flex-wrap: wrap;
+}
+
+.pharmcare-preview-filename {
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.pharmcare-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* The download action is a plain <a> (it must navigate so the browser's save dialog takes
+   over), so it misses the element-level `button` styles — mirror them here. */
+a.history-view-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.history-view-button.secondary {
+  background: rgba(31, 42, 40, 0.08);
+  color: var(--ink);
+}
+
+a.history-view-button.secondary:hover {
+  background: rgba(31, 42, 40, 0.12);
+}
+
+.pharmcare-preview-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.pharmcare-preview-body iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.pharmcare-preview-message {
+  padding: 28px;
+  text-align: center;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  color: var(--muted);
 }
 

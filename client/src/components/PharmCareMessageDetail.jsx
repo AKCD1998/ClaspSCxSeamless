@@ -1,4 +1,3 @@
-import { getPharmcareAttachmentDownloadUrl } from '../services/api.js';
 import {
   DOCUMENT_TYPE_LABELS,
   REVIEW_STATUS_LABELS,
@@ -12,7 +11,7 @@ import {
 // fields render immediately from the inbox row; the fetched detail (getMessageWithEvidence via
 // GET /messages/:id) adds the full picture: every document parsed from the same email, every
 // attachment, and ingestion error info — the things the inbox table cannot show.
-export default function PharmCareMessageDetail({ row, detail, status, onRetry }) {
+export default function PharmCareMessageDetail({ row, detail, status, onRetry, onOpenPreview }) {
   const message = detail || {};
   const attachments = detail?.attachments || [];
   const documents = detail?.documents || [];
@@ -137,13 +136,15 @@ export default function PharmCareMessageDetail({ row, detail, status, onRetry })
                 {attachments.map((attachment) => (
                   <li key={attachment.id} className="pharmcare-detail-item">
                     {attachment.id ? (
-                      <a
-                        href={getPharmcareAttachmentDownloadUrl(attachment.id)}
-                        rel="noreferrer"
-                        target="_blank"
+                      <button
+                        className="pharmcare-preview-link"
+                        onClick={() =>
+                          onOpenPreview?.({ id: attachment.id, filename: attachment.originalFilename })
+                        }
+                        type="button"
                       >
                         {attachment.originalFilename}
-                      </a>
+                      </button>
                     ) : (
                       attachment.originalFilename
                     )}

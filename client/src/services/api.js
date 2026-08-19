@@ -188,3 +188,28 @@ export async function getPharmcareMessage(id) {
 export function getPharmcareAttachmentDownloadUrl(attachmentId) {
   return `${API_BASE_URL}/app/pharmcare/attachments/${encodeURIComponent(attachmentId)}/download`;
 }
+
+// Fetches an attachment's binary for in-app preview. The download endpoint sets
+// Content-Disposition: attachment, which forces a save dialog on normal navigation — fetching
+// via fetch() instead lets the caller hand the blob to an <iframe> object URL without the file
+// ever being written to disk.
+export async function fetchPharmcareAttachmentBlob(attachmentId) {
+  const response = await fetch(getPharmcareAttachmentDownloadUrl(attachmentId), {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with HTTP ${response.status}`;
+    try {
+      const payload = await response.json();
+      message = payload?.error?.message || payload?.message || message;
+    } catch (error) {
+      // Not a JSON error body — keep the HTTP status message.
+    }
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+
+  return response.blob();
+}

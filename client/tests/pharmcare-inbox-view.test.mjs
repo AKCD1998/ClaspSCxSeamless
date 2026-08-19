@@ -43,6 +43,13 @@ async function renderView(props) {
       detailStatus: { message: '', state: 'idle' },
       onToggleMessageDetail: noop,
       onRetryDetail: noop,
+      previewAttachment: null,
+      previewStatus: { message: '', state: 'idle' },
+      previewUrl: null,
+      previewIsPdf: false,
+      onOpenAttachmentPreview: noop,
+      onCloseAttachmentPreview: noop,
+      onRetryAttachmentPreview: noop,
       onFilterChange: noop,
       onRetry: noop,
       status: { message: '', state: 'idle' },
@@ -111,7 +118,7 @@ test('success state renders a table row per document with a Direct badge for gma
   assert.match(html, /จัดประเภทแล้ว.*1/s);
 });
 
-test('a document with an attachment renders its filename as a download link', async () => {
+test('a document with an attachment renders its filename as an in-app preview button', async () => {
   const html = await renderView({
     documents: [
       {
@@ -120,6 +127,7 @@ test('a document with an attachment renders its filename as a download link', as
         documentNumber: 'CIV2601000123',
         documentType: 'e_credit_invoice',
         id: 'doc-1',
+        messageId: 'msg-1',
         normalizedSubject: 'PharmCare e-credit invoice CIV2601000123',
         originalFrom: 'info@pharmcare.co',
         receivedAt: '2026-08-01T03:00:00.000Z',
@@ -130,7 +138,8 @@ test('a document with an attachment renders its filename as a download link', as
     status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
   });
 
-  assert.match(html, /<a[^>]+href="[^"]*\/app\/pharmcare\/attachments\/att-1\/download"[^>]*>CIV2601000123\.pdf<\/a>/);
+  assert.match(html, /<button class="pharmcare-preview-link" type="button">CIV2601000123\.pdf<\/button>/);
+  assert.doesNotMatch(html, /\/attachments\/att-1\/download/);
 });
 
 test('a document with no attachment (receipt_link_pending) renders plain text, not a link', async () => {
@@ -306,7 +315,7 @@ test('detail: a loaded detail lists sibling documents and all attachments of the
   assert.match(html, /Settlement \(MRR\)<!-- --> — MRR-0726/);
   assert.match(html, /หัวเรื่องไม่ตรงรูปแบบที่รู้จัก/);
   assert.match(html, /ไฟล์แนบทั้งหมด \(<!-- -->2<!-- -->\)/);
-  assert.match(html, /\/app\/pharmcare\/attachments\/att-2\/download/);
+  assert.match(html, /<button class="pharmcare-preview-link" type="button">SETTLEMENT-MRR-0726\.pdf<\/button>/);
   assert.match(html, /200 KB/);
 });
 
@@ -316,4 +325,93 @@ test('detail: an unknown reason code falls back to the raw code, and report_pref
   assert.equal(formatReasonCode('some_future_code'), 'some_future_code');
   assert.equal(formatReasonCode('report_prefix_mrr'), 'ชื่อไฟล์ตรงรูปแบบรายงาน MRR');
   assert.equal(formatReasonCode(undefined), '-');
+});
+
+test('layout: the inbox table defines explicit per-column widths via a colgroup', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  const columns = [...html.matchAll(/<col class="(pharmcare-col-[a-z]+)"\/>/g)].map((match) => match[1]);
+  assert.deepEqual(columns, [
+    'pharmcare-col-received',
+    'pharmcare-col-subject',
+    'pharmcare-col-from',
+    'pharmcare-col-route',
+    'pharmcare-col-type',
+    'pharmcare-col-number',
+    'pharmcare-col-attachment',
+    'pharmcare-col-period',
+    'pharmcare-col-status',
+    'pharmcare-col-detail',
+  ]);
+});
+
+test('preview: the overlay is hidden (renders nothing) when no attachment is being previewed', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.doesNotMatch(html, /pharmcare-preview-overlay/);
+  assert.doesNotMatch(html, /role="dialog"/);
+});
+
+test('preview: opening an attachment shows a dialog with loading state and a close button', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    previewAttachment: { id: 'att-1', filename: 'CIV2601000123.pdf' },
+    previewStatus: { message: 'กำลังเปิดพรีวิว...', state: 'working' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /role="dialog"/);
+  assert.match(html, /กำลังเปิดพรีวิว/);
+  assert.match(html, />ปิด<\/button>/);
+  assert.doesNotMatch(html, /<iframe/);
+});
+
+test('preview: a failed preview fetch shows the error and a retry button inside the dialog', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    previewAttachment: { id: 'att-1', filename: 'CIV2601000123.pdf' },
+    previewStatus: { message: 'เปิดพรีวิวไม่สำเร็จ', state: 'error' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /เปิดพรีวิวไม่สำเร็จ/);
+  const retryMatches = html.match(/ลองใหม่/g) || [];
+  assert.equal(retryMatches.length, 1);
+});
+
+test('preview: a loaded PDF renders in an iframe with print and download actions', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    previewAttachment: { id: 'att-1', filename: 'CIV2601000123.pdf' },
+    previewStatus: { message: '', state: 'success' },
+    previewUrl: 'blob:http://localhost/mock',
+    previewIsPdf: true,
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /<iframe[^>]+src="blob:http:\/\/localhost\/mock"/);
+  assert.match(html, /<button class="history-view-button secondary" type="button">พิมพ์<\/button>/);
+  assert.match(html, /<a class="history-view-button secondary" href="[^"]*\/app\/pharmcare\/attachments\/att-1\/download">ดาวน์โหลด<\/a>/);
+});
+
+test('preview: a non-PDF attachment shows the fallback message instead of an iframe', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    previewAttachment: { id: 'att-9', filename: 'contract.zip' },
+    previewStatus: { message: '', state: 'success' },
+    previewUrl: 'blob:http://localhost/mock-zip',
+    previewIsPdf: false,
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.doesNotMatch(html, /<iframe/);
+  assert.doesNotMatch(html, />พิมพ์</);
+  assert.match(html, /ไม่สามารถพรีวิวไฟล์ชนิดนี้ในหน้าเว็บได้/);
+  assert.match(html, /\/app\/pharmcare\/attachments\/att-9\/download/);
 });

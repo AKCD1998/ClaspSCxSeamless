@@ -216,6 +216,39 @@ test('getPharmcareAttachmentDownloadUrl builds the authenticated download proxy 
   );
 });
 
+test('fetchPharmcareAttachmentBlob fetches with credentials and returns the blob', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(new Blob(['%PDF-1.4 fake'], { type: 'application/pdf' }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const blob = await api.fetchPharmcareAttachmentBlob('att-1');
+
+  assert.equal(calls[0].url, 'http://api.test.local/api/app/pharmcare/attachments/att-1/download');
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(blob.type, 'application/pdf');
+});
+
+test('fetchPharmcareAttachmentBlob surfaces backend error messages on failure', async () => {
+  globalThis.fetch = async () => new Response(
+    JSON.stringify({ error: { message: 'Attachment content not found.' } }),
+    { status: 404 },
+  );
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+
+  await assert.rejects(
+    () => api.fetchPharmcareAttachmentBlob('att-missing'),
+    (error) => {
+      assert.equal(error.message, 'Attachment content not found.');
+      assert.equal(error.status, 404);
+      return true;
+    },
+  );
+});
+
 test('requestProcessingHistoryPrint posts requestedBy and reason to the request-print endpoint', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

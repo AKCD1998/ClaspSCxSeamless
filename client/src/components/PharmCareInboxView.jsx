@@ -1,5 +1,5 @@
+import PharmCareAttachmentPreview from './PharmCareAttachmentPreview.jsx';
 import PharmCareMessageDetail from './PharmCareMessageDetail.jsx';
-import { getPharmcareAttachmentDownloadUrl } from '../services/api.js';
 import {
   DOCUMENT_TYPE_LABELS,
   REVIEW_STATUS_LABELS,
@@ -40,6 +40,13 @@ export default function PharmCareInboxView({
   detailStatus,
   onToggleMessageDetail,
   onRetryDetail,
+  previewAttachment,
+  previewStatus,
+  previewUrl,
+  previewIsPdf,
+  onOpenAttachmentPreview,
+  onCloseAttachmentPreview,
+  onRetryAttachmentPreview,
   onFilterChange,
   onRetry,
   status,
@@ -118,6 +125,18 @@ export default function PharmCareInboxView({
       ) : documents.length ? (
         <div className="history-table-wrap">
           <table className="history-table">
+            <colgroup>
+              <col className="pharmcare-col-received" />
+              <col className="pharmcare-col-subject" />
+              <col className="pharmcare-col-from" />
+              <col className="pharmcare-col-route" />
+              <col className="pharmcare-col-type" />
+              <col className="pharmcare-col-number" />
+              <col className="pharmcare-col-attachment" />
+              <col className="pharmcare-col-period" />
+              <col className="pharmcare-col-status" />
+              <col className="pharmcare-col-detail" />
+            </colgroup>
             <thead>
               <tr>
                 <th>ได้รับเมื่อ</th>
@@ -142,6 +161,7 @@ export default function PharmCareInboxView({
                   detailStatus={detailStatus}
                   onToggle={onToggleMessageDetail}
                   onRetryDetail={onRetryDetail}
+                  onOpenAttachmentPreview={onOpenAttachmentPreview}
                 />
               ))}
             </tbody>
@@ -162,11 +182,20 @@ export default function PharmCareInboxView({
       ) : (
         <div className="history-empty">ไม่พบเอกสาร PharmCare ตามเงื่อนไขที่เลือก</div>
       )}
+
+      <PharmCareAttachmentPreview
+        attachment={previewAttachment}
+        status={previewStatus}
+        previewUrl={previewUrl}
+        isPdf={previewIsPdf}
+        onClose={onCloseAttachmentPreview}
+        onRetry={onRetryAttachmentPreview}
+      />
     </section>
   );
 }
 
-function MessageRow({ document, isExpanded, detail, detailStatus, onToggle, onRetryDetail }) {
+function MessageRow({ document, isExpanded, detail, detailStatus, onToggle, onRetryDetail, onOpenAttachmentPreview }) {
   return (
     <>
       <tr>
@@ -180,13 +209,18 @@ function MessageRow({ document, isExpanded, detail, detailStatus, onToggle, onRe
         <td>{document.documentNumber || '-'}</td>
         <td>
           {document.attachmentId && document.attachmentFilename ? (
-            <a
-              href={getPharmcareAttachmentDownloadUrl(document.attachmentId)}
-              rel="noreferrer"
-              target="_blank"
+            <button
+              className="pharmcare-preview-link"
+              onClick={() =>
+                onOpenAttachmentPreview({
+                  id: document.attachmentId,
+                  filename: document.attachmentFilename,
+                })
+              }
+              type="button"
             >
               {document.attachmentFilename}
-            </a>
+            </button>
           ) : (
             document.attachmentFilename || '-'
           )}
@@ -214,6 +248,7 @@ function MessageRow({ document, isExpanded, detail, detailStatus, onToggle, onRe
               detail={detail}
               status={detailStatus}
               onRetry={onRetryDetail}
+              onOpenPreview={onOpenAttachmentPreview}
             />
           </td>
         </tr>

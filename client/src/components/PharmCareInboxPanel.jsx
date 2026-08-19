@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PharmCareInboxView from './PharmCareInboxView.jsx';
-import { getPharmcareInbox, getPharmcareMessage } from '../services/api.js';
+import { fetchPharmcareAttachmentBlob, getPharmcareInbox, getPharmcareMessage } from '../services/api.js';
 
 const emptyFilters = {
   status: '',
@@ -25,6 +25,15 @@ export default function PharmCareInboxPanel() {
   const detailCacheRef = useRef({});
   // Guards against applying a detail response after the user has already switched rows.
   const selectedMessageIdRef = useRef(null);
+
+  const [previewAttachment, setPreviewAttachment] = useState(null);
+  const [previewStatus, setPreviewStatus] = useState({ message: '', state: 'idle' });
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewIsPdf, setPreviewIsPdf] = useState(false);
+  // Object URLs must be revoked to free the blob behind them; the ref also guards against
+  // applying a fetch result after the user already closed/switched the preview.
+  const previewUrlRef = useRef(null);
+  const previewTargetRef = useRef(null);
 
   async function loadInbox(activeFilters) {
     setIsLoading(true);
@@ -149,6 +158,79 @@ export default function PharmCareInboxPanel() {
     }
   }
 
+  function releasePreviewUrl() {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+  }
+
+  async function loadAttachmentPreview(attachment) {
+    setPreviewStatus({ message: 'กำลังเปิดพรีวิว...', state: 'working' });
+
+    try {
+      const blob = await fetchPharmcareAttachmentBlob(attachment.id);
+      if (previewTargetRef.current?.id !== attachment.id) {
+        return;
+      }
+
+      const looksLikePdf =
+        blob.type === 'application/pdf' || /\.pdf$/i.test(attachment.filename || '');
+      // Gmail sometimes reports real PDFs as application/octet-stream (the MIME validation bug
+      // fixed in PharmCare M2, docs/18) — re-wrap so the iframe's PDF viewer engages instead of
+      // the browser trying to download an unknown binary.
+      const previewBlob =
+        looksLikePdf && blob.type !== 'application/pdf'
+          ? new Blob([blob], { type: 'application/pdf' })
+          : blob;
+
+      releasePreviewUrl();
+      const url = URL.createObjectURL(previewBlob);
+      previewUrlRef.current = url;
+      setPreviewUrl(url);
+      setPreviewIsPdf(looksLikePdf);
+      setPreviewStatus({ message: '', state: 'success' });
+    } catch (error) {
+      if (previewTargetRef.current?.id !== attachment.id) {
+        return;
+      }
+      setPreviewStatus({
+        message: error?.message || 'เปิดพรีวิวไม่สำเร็จ',
+        state: 'error',
+      });
+    }
+  }
+
+  function handleOpenAttachmentPreview(attachment) {
+    if (!attachment?.id) {
+      return;
+    }
+
+    releasePreviewUrl();
+    previewTargetRef.current = attachment;
+    setPreviewAttachment(attachment);
+    setPreviewUrl(null);
+    setPreviewIsPdf(false);
+    loadAttachmentPreview(attachment);
+  }
+
+  function handleCloseAttachmentPreview() {
+    previewTargetRef.current = null;
+    releasePreviewUrl();
+    setPreviewAttachment(null);
+    setPreviewUrl(null);
+    setPreviewIsPdf(false);
+    setPreviewStatus({ message: '', state: 'idle' });
+  }
+
+  function handleRetryAttachmentPreview() {
+    if (previewTargetRef.current) {
+      loadAttachmentPreview(previewTargetRef.current);
+    }
+  }
+
+  useEffect(() => releasePreviewUrl, []);
+
   function handleFilterChange(event) {
     const { name, value } = event.target;
     setFilters((current) => ({ ...current, [name]: value }));
@@ -171,6 +253,13 @@ export default function PharmCareInboxPanel() {
       detailStatus={detailStatus}
       onToggleMessageDetail={handleToggleMessageDetail}
       onRetryDetail={handleRetryDetail}
+      previewAttachment={previewAttachment}
+      previewStatus={previewStatus}
+      previewUrl={previewUrl}
+      previewIsPdf={previewIsPdf}
+      onOpenAttachmentPreview={handleOpenAttachmentPreview}
+      onCloseAttachmentPreview={handleCloseAttachmentPreview}
+      onRetryAttachmentPreview={handleRetryAttachmentPreview}
       onFilterChange={handleFilterChange}
       onRetry={handleRetry}
       status={status}
