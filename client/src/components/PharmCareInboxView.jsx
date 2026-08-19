@@ -1,3 +1,5 @@
+import { getPharmcareAttachmentDownloadUrl } from '../services/api.js';
+
 export const DOCUMENT_TYPE_LABELS = {
   e_credit_invoice: 'E-Credit Invoice',
   settlement_mrr: 'Settlement (MRR)',
@@ -165,7 +167,19 @@ export default function PharmCareInboxView({
                   </td>
                   <td>{DOCUMENT_TYPE_LABELS[document.documentType] || document.documentType}</td>
                   <td>{document.documentNumber || '-'}</td>
-                  <td>{document.attachmentFilename || '-'}</td>
+                  <td>
+                    {document.attachmentId && document.attachmentFilename ? (
+                      <a
+                        href={getPharmcareAttachmentDownloadUrl(document.attachmentId)}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        {document.attachmentFilename}
+                      </a>
+                    ) : (
+                      document.attachmentFilename || '-'
+                    )}
+                  </td>
                   <td>{formatPeriod(document)}</td>
                   <td>
                     <ReviewStatusBadge reviewStatus={document.reviewStatus} />

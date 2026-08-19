@@ -103,6 +103,50 @@ test('success state renders a table row per document with a Direct badge for gma
   assert.match(html, /จัดประเภทแล้ว.*1/s);
 });
 
+test('a document with an attachment renders its filename as a download link', async () => {
+  const html = await renderView({
+    documents: [
+      {
+        attachmentFilename: 'CIV2601000123.pdf',
+        attachmentId: 'att-1',
+        documentNumber: 'CIV2601000123',
+        documentType: 'e_credit_invoice',
+        id: 'doc-1',
+        normalizedSubject: 'PharmCare e-credit invoice CIV2601000123',
+        originalFrom: 'info@pharmcare.co',
+        receivedAt: '2026-08-01T03:00:00.000Z',
+        reviewStatus: 'auto_classified',
+        route: 'gmail_filter_forward',
+      },
+    ],
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /<a[^>]+href="[^"]*\/app\/pharmcare\/attachments\/att-1\/download"[^>]*>CIV2601000123\.pdf<\/a>/);
+});
+
+test('a document with no attachment (receipt_link_pending) renders plain text, not a link', async () => {
+  const html = await renderView({
+    documents: [
+      {
+        attachmentFilename: '',
+        attachmentId: null,
+        documentNumber: '',
+        documentType: 'receipt_link_pending',
+        id: 'doc-2',
+        normalizedSubject: 'แจ้งใบเสร็จรับเงิน',
+        originalFrom: 'info@pharmcare.co',
+        receivedAt: '2026-08-01T03:00:00.000Z',
+        reviewStatus: 'manual_review',
+        route: 'gmail_filter_forward',
+      },
+    ],
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.doesNotMatch(html, /\/attachments\/.*\/download/);
+});
+
 test('a manual_forward document renders the Forwarded badge instead of Direct', async () => {
   const html = await renderView({
     documents: [

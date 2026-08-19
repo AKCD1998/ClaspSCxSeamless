@@ -207,6 +207,15 @@ test('getPharmcareMessage fetches a single message by id', async () => {
   assert.equal(payload.id, 'msg-1');
 });
 
+test('getPharmcareAttachmentDownloadUrl builds the authenticated download proxy URL', async () => {
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+
+  assert.equal(
+    api.getPharmcareAttachmentDownloadUrl('att-1'),
+    'http://api.test.local/api/app/pharmcare/attachments/att-1/download',
+  );
+});
+
 test('requestProcessingHistoryPrint posts requestedBy and reason to the request-print endpoint', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

@@ -181,3 +181,10 @@ export async function getPharmcareInbox(filters = {}) {
 export async function getPharmcareMessage(id) {
   return requestJson(`/app/pharmcare/messages/${encodeURIComponent(id)}`);
 }
+
+// Absolute URL for the authenticated download proxy — used as a plain <a href> so the browser
+// handles the file save; the browser already carries the same session cookie/Basic Auth
+// credentials it uses for the rest of this app on a direct navigation to the same origin.
+export function getPharmcareAttachmentDownloadUrl(attachmentId) {
+  return `${API_BASE_URL}/app/pharmcare/attachments/${encodeURIComponent(attachmentId)}/download`;
+}
