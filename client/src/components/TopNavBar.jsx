@@ -26,6 +26,7 @@ const NAV_GROUPS = [
     basePath: '/pharmcare',
     items: [
       { to: '/pharmcare/upload', end: false, label: 'อัปโหลดข้อมูล Pharm Care' },
+      { to: '/pharmcare/inbox', end: false, label: 'รายงานอีเมล์จาก Pharm Care' },
       { to: '/pharmcare/history', end: false, label: 'ประวัติ' },
     ],
   },

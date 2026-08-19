@@ -70,3 +70,21 @@ test('Shopee history route is locked to Shopee records and exposes admin print c
   assert.match(html, /รายงานคำสั่งซื้อ Shopee/);
   assert.match(html, /กดสั่งพิมพ์/);
 });
+
+test('PharmCare reports route renders the email inbox under its new menu name', async () => {
+  const html = await renderPage('/src/pages/PharmCareReportsPage.jsx', '/pharmcare/inbox');
+
+  assert.match(html, /รายงานอีเมล์จาก Pharm Care/);
+  assert.match(html, /PharmCare Inbox/);
+  assert.doesNotMatch(html, /กำลังพัฒนา/);
+});
+
+test('PharmCare upload route is back to a placeholder pointing at the reports menu', async () => {
+  const html = await renderPage('/src/pages/PharmCareUploadPage.jsx', '/pharmcare/upload');
+
+  assert.match(html, /อัปโหลดข้อมูล Pharm Care/);
+  assert.match(html, /กำลังพัฒนา/);
+  assert.match(html, /รายงานอีเมล์จาก Pharm Care/);
+  // The inbox panel itself no longer lives on this page.
+  assert.doesNotMatch(html, /panel-eyebrow">PharmCare Inbox/);
+});
