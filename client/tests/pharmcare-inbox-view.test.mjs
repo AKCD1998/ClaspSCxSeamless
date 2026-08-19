@@ -251,7 +251,7 @@ test('detail: every document row renders a ดู toggle button', async () => {
   assert.match(html, /aria-expanded="false"[^>]*>ดู</);
 });
 
-test('detail: the expanded row shows row-level reason codes immediately', async () => {
+test('detail: the expanded row hides the row-level classification evidence section by default', async () => {
   const html = await renderView({
     documents: [sampleDocument],
     selectedMessageId: 'msg-1',
@@ -260,10 +260,10 @@ test('detail: the expanded row shows row-level reason codes immediately', async 
   });
 
   assert.match(html, /aria-expanded="true"[^>]*>ปิด</);
-  assert.match(html, /เหตุผลการจัดประเภท/);
-  assert.match(html, /ชื่อไฟล์ตรงรูปแบบที่รู้จัก/);
-  assert.match(html, /ดึงเลขเอกสาร CIV จากชื่อไฟล์ได้/);
   assert.match(html, /กำลังโหลดรายละเอียด/);
+  assert.doesNotMatch(html, /เหตุผลการจัดประเภท \(เอกสารนี้\)/);
+  assert.doesNotMatch(html, /รุ่นตัวจัดประเภท/);
+  assert.doesNotMatch(html, /ชื่อไฟล์ตรงรูปแบบที่รู้จัก/);
 });
 
 test('detail: a failed detail fetch shows the error and a retry button', async () => {

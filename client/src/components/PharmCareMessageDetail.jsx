@@ -7,6 +7,11 @@ import {
   formatReceivedAt,
 } from './pharmcareLabels.js';
 
+// Hidden by owner decision (2026-08-19): classification reason codes and the classifier version
+// are diagnostic info end users don't need to see — flip to true to bring the section back
+// (e.g. while debugging a misclassified document).
+const SHOW_CLASSIFICATION_EVIDENCE = false;
+
 // Pure presentation of one message's detail (expanded inline under its inbox row). Row-level
 // fields render immediately from the inbox row; the fetched detail (getMessageWithEvidence via
 // GET /messages/:id) adds the full picture: every document parsed from the same email, every
@@ -18,24 +23,26 @@ export default function PharmCareMessageDetail({ row, detail, status, onRetry, o
 
   return (
     <div className="pharmcare-detail">
-      <section className="pharmcare-detail-section">
-        <p className="pharmcare-detail-title">เหตุผลการจัดประเภท (เอกสารนี้)</p>
-        {row.reasonCodes?.length ? (
-          <ul className="pharmcare-detail-reasons">
-            {row.reasonCodes.map((code) => (
-              <li key={code}>
-                <span className="history-pill">{formatReasonCode(code)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="pharmcare-detail-muted">ไม่มีรหัสเหตุผล</p>
-        )}
-        <div className="pharmcare-detail-row">
-          <span className="pharmcare-detail-label">รุ่นตัวจัดประเภท</span>
-          <span className="pharmcare-detail-value">{row.classifierVersion || '-'}</span>
-        </div>
-      </section>
+      {SHOW_CLASSIFICATION_EVIDENCE ? (
+        <section className="pharmcare-detail-section">
+          <p className="pharmcare-detail-title">เหตุผลการจัดประเภท (เอกสารนี้)</p>
+          {row.reasonCodes?.length ? (
+            <ul className="pharmcare-detail-reasons">
+              {row.reasonCodes.map((code) => (
+                <li key={code}>
+                  <span className="history-pill">{formatReasonCode(code)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="pharmcare-detail-muted">ไม่มีรหัสเหตุผล</p>
+          )}
+          <div className="pharmcare-detail-row">
+            <span className="pharmcare-detail-label">รุ่นตัวจัดประเภท</span>
+            <span className="pharmcare-detail-value">{row.classifierVersion || '-'}</span>
+          </div>
+        </section>
+      ) : null}
 
       <section className="status-panel history-status-panel" aria-live="polite">
         <p className="status" data-state={status?.state || 'idle'}>
