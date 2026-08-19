@@ -39,7 +39,7 @@ function isGroupActive(group, pathname) {
   return pathname.startsWith(group.basePath);
 }
 
-export default function TopNavBar({ onLogout }) {
+export default function TopNavBar({ onLogout, colorMode = 'light', onToggleColorMode }) {
   const [openGroupKey, setOpenGroupKey] = useState('');
   const containerRef = useRef(null);
   const location = useLocation();
@@ -112,6 +112,16 @@ export default function TopNavBar({ onLogout }) {
         </nav>
 
         <div className="top-navbar-actions">
+          {onToggleColorMode ? (
+            <button
+              aria-label={colorMode === 'dark' ? 'สลับเป็นโหมดสว่าง' : 'สลับเป็นโหมดมืด'}
+              className="top-navbar-theme-toggle"
+              onClick={onToggleColorMode}
+              type="button"
+            >
+              {colorMode === 'dark' ? '☀️ โหมดสว่าง' : '🌙 โหมดมืด'}
+            </button>
+          ) : null}
           {onLogout ? (
             <button className="top-navbar-logout" onClick={onLogout} type="button">
               ออกจากระบบ

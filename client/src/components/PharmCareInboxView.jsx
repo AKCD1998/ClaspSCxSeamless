@@ -41,6 +41,7 @@ export default function PharmCareInboxView({
   detailStatus,
   onToggleMessageDetail,
   onRetryDetail,
+  onToggleOrder,
   previewAttachment,
   previewStatus,
   previewUrl,
@@ -115,6 +116,24 @@ export default function PharmCareInboxView({
             <option value="false">ไม่รวมรายการซ้ำ</option>
           </select>
         </label>
+        <label className="history-filter-field">
+          <span>ได้รับจากวันที่</span>
+          <input
+            name="receivedFrom"
+            onChange={onFilterChange}
+            type="date"
+            value={filters.receivedFrom || ''}
+          />
+        </label>
+        <label className="history-filter-field">
+          <span>ถึงวันที่</span>
+          <input
+            name="receivedTo"
+            onChange={onFilterChange}
+            type="date"
+            value={filters.receivedTo || ''}
+          />
+        </label>
       </form>
 
       <section className="status-panel history-status-panel" aria-live="polite">
@@ -159,7 +178,20 @@ export default function PharmCareInboxView({
             )}
             <thead>
               <tr>
-                <th>ได้รับเมื่อ</th>
+                <th aria-sort={filters.order === 'asc' ? 'ascending' : 'descending'}>
+                  <button
+                    className="pharmcare-sort-toggle"
+                    onClick={onToggleOrder}
+                    title={
+                      filters.order === 'asc'
+                        ? 'เรียงจากเก่าสุดก่อน — กดเพื่อสลับเป็นใหม่สุดก่อน'
+                        : 'เรียงจากใหม่สุดก่อน — กดเพื่อสลับเป็นเก่าสุดก่อน'
+                    }
+                    type="button"
+                  >
+                    ได้รับเมื่อ {filters.order === 'asc' ? '▲' : '▼'}
+                  </button>
+                </th>
                 <th>หัวเรื่อง</th>
                 <th>ผู้ส่งต้นทาง</th>
                 {isAdmin ? <th>เส้นทาง</th> : null}

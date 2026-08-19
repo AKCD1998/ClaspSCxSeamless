@@ -6,7 +6,24 @@ const emptyFilters = {
   status: '',
   documentType: '',
   duplicate: '',
+  receivedFrom: '',
+  receivedTo: '',
+  order: 'desc',
 };
+
+// Pure filter-state transition, exported for direct testing. Keeps the date range coherent:
+// picking a start after the current end (or an end before the start) moves the other side to
+// the same day — a one-day range (from == to) is explicitly supported by the backend.
+export function applyFilterChange(current, name, value) {
+  const next = { ...current, [name]: value };
+  if (name === 'receivedFrom' && value && next.receivedTo && value > next.receivedTo) {
+    next.receivedTo = value;
+  }
+  if (name === 'receivedTo' && value && next.receivedFrom && value < next.receivedFrom) {
+    next.receivedFrom = value;
+  }
+  return next;
+}
 
 export default function PharmCareInboxPanel() {
   const [filters, setFilters] = useState(emptyFilters);
@@ -258,7 +275,11 @@ export default function PharmCareInboxPanel() {
 
   function handleFilterChange(event) {
     const { name, value } = event.target;
-    setFilters((current) => ({ ...current, [name]: value }));
+    setFilters((current) => applyFilterChange(current, name, value));
+  }
+
+  function handleToggleOrder() {
+    setFilters((current) => ({ ...current, order: current.order === 'asc' ? 'desc' : 'asc' }));
   }
 
   function handleRetry() {
@@ -279,6 +300,7 @@ export default function PharmCareInboxPanel() {
       detailStatus={detailStatus}
       onToggleMessageDetail={handleToggleMessageDetail}
       onRetryDetail={handleRetryDetail}
+      onToggleOrder={handleToggleOrder}
       previewAttachment={previewAttachment}
       previewStatus={previewStatus}
       previewUrl={previewUrl}

@@ -193,6 +193,22 @@ test('getPharmcareInbox omits the query string when no filters are set', async (
   assert.equal(calls[0].url, 'http://api.test.local/api/app/pharmcare/inbox');
 });
 
+test('getPharmcareInbox passes the sort order and received date range through as query params', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ documents: [], nextCursor: null, summary: null }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.getPharmcareInbox({ order: 'asc', receivedFrom: '2026-08-01', receivedTo: '2026-08-01' });
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/pharmcare/inbox?order=asc&receivedFrom=2026-08-01&receivedTo=2026-08-01',
+  );
+});
+
 test('getPharmcareMessage fetches a single message by id', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

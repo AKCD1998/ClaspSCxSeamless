@@ -23,14 +23,39 @@ function resolveTheme(pathname) {
   return 'default';
 }
 
+const COLOR_MODE_STORAGE_KEY = 'colorMode';
+
+function readInitialColorMode() {
+  // localStorage can be missing or throw (SSR, privacy modes) — default to light, the look the
+  // app has always had.
+  try {
+    return window.localStorage?.getItem(COLOR_MODE_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+  } catch (error) {
+    return 'light';
+  }
+}
+
 function AuthenticatedApp({ onLogout }) {
   const location = useLocation();
   const theme = resolveTheme(location.pathname);
+  const [colorMode, setColorMode] = useState(readInitialColorMode);
+
+  useEffect(() => {
+    try {
+      window.localStorage?.setItem(COLOR_MODE_STORAGE_KEY, colorMode);
+    } catch (error) {
+      // Persisting the preference is best-effort only.
+    }
+  }, [colorMode]);
 
   return (
-    <div data-theme={theme}>
+    <div data-theme={theme} data-color-mode={colorMode}>
       <AnimatedThemeBackground theme={theme} />
-      <TopNavBar onLogout={onLogout} />
+      <TopNavBar
+        colorMode={colorMode}
+        onToggleColorMode={() => setColorMode((mode) => (mode === 'dark' ? 'light' : 'dark'))}
+        onLogout={onLogout}
+      />
       <Routes>
         <Route index element={<UploadPage />} />
         <Route path="history" element={<HistoryPage />} />

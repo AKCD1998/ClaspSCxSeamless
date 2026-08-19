@@ -1169,6 +1169,23 @@ button:disabled {
   opacity: 0.8;
 }
 
+/* The received-at header is a sort toggle for the whole column — styled as plain th text so the
+   table header stays quiet, with the arrow carrying the current direction. */
+.pharmcare-sort-toggle {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pharmcare-sort-toggle:hover {
+  opacity: 0.75;
+}
+
 .pharmcare-preview-overlay {
   position: fixed;
   inset: 0;
@@ -1238,6 +1255,136 @@ a.history-view-button.secondary {
 
 a.history-view-button.secondary:hover {
   background: rgba(31, 42, 40, 0.12);
+}
+
+/* ---------- Dark color mode (navbar toggle; App.jsx sets data-color-mode on the same wrapper
+   as data-theme) ----------
+   Per the owner's request this is a surface inversion, not a re-theme: white surfaces flip to
+   dark grey/near-black with near-white text, while accent hues stay in the same family — only
+   lightened slightly so links/eyebrows/status colors keep contrast on dark surfaces.
+   Deliberately additive-only: every rule above is untouched, so light mode is pixel-identical
+   to before; everything below applies only under [data-color-mode="dark"]. */
+[data-color-mode="dark"] {
+  --ink: #e7ece9;
+  --muted: #a3b2ab;
+  --panel: rgba(24, 31, 29, 0.94);
+  --border: rgba(231, 236, 233, 0.14);
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --success: #35b28a;
+  --warning: #d29a4e;
+  --error: #e0796a;
+  color: var(--ink);
+}
+
+/* --accent-strong carries eyebrows/links/table headers; its dark-theme values are unreadable on
+   dark surfaces, so lift each within its own hue. --accent (button gradient with white text) is
+   left as-is — buttons already sit right on dark. */
+[data-theme="default"][data-color-mode="dark"] {
+  --accent-strong: #3cb489;
+}
+
+[data-theme="shopee"][data-color-mode="dark"] {
+  --accent-strong: #f0684d;
+  --panel: rgba(27, 22, 21, 0.94);
+}
+
+[data-theme="pharmcare"][data-color-mode="dark"] {
+  --accent-strong: #45c9c3;
+  --panel: rgba(20, 29, 28, 0.94);
+}
+
+/* The animated pastel backdrop stays animated — just dimmed way down. */
+[data-color-mode="dark"] .theme-background-layer {
+  filter: brightness(0.34) saturate(1.05);
+}
+
+[data-color-mode="dark"] input,
+[data-color-mode="dark"] select {
+  background: rgba(33, 42, 39, 0.9);
+  border-color: rgba(231, 236, 233, 0.16);
+}
+
+[data-color-mode="dark"] .status-panel {
+  border-top-color: rgba(231, 236, 233, 0.12);
+}
+
+[data-color-mode="dark"] .history-table-wrap,
+[data-color-mode="dark"] .history-group,
+[data-color-mode="dark"] .print-queue-summary {
+  background: rgba(24, 31, 29, 0.75);
+  border-color: rgba(231, 236, 233, 0.12);
+}
+
+[data-color-mode="dark"] .history-dashboard-wrap {
+  background: rgba(28, 36, 33, 0.8);
+}
+
+[data-color-mode="dark"] .history-table th,
+[data-color-mode="dark"] .history-table td,
+[data-color-mode="dark"] .history-dashboard-table th,
+[data-color-mode="dark"] .history-dashboard-table td {
+  border-bottom-color: rgba(231, 236, 233, 0.1);
+}
+
+[data-color-mode="dark"] .history-summary-pill,
+[data-color-mode="dark"] .history-pill {
+  background: rgba(231, 236, 233, 0.12);
+  color: var(--ink);
+}
+
+[data-color-mode="dark"] .history-summary-pill[data-kind="available"],
+[data-color-mode="dark"] .history-pill[data-printed="true"] {
+  background: rgba(53, 178, 138, 0.2);
+  color: var(--success);
+}
+
+[data-color-mode="dark"] .history-summary-pill[data-kind="missing"],
+[data-color-mode="dark"] .history-pill[data-printed="false"] {
+  background: rgba(210, 154, 78, 0.18);
+  color: var(--warning);
+}
+
+[data-color-mode="dark"] .history-view-button.secondary,
+[data-color-mode="dark"] a.history-view-button.secondary {
+  background: rgba(231, 236, 233, 0.12);
+  color: var(--ink);
+}
+
+[data-color-mode="dark"] .history-view-button.secondary:hover:not(:disabled),
+[data-color-mode="dark"] a.history-view-button.secondary:hover {
+  background: rgba(231, 236, 233, 0.18);
+}
+
+[data-color-mode="dark"] .history-empty {
+  background: rgba(231, 236, 233, 0.07);
+}
+
+[data-color-mode="dark"] .history-group-header {
+  background: rgba(53, 178, 138, 0.12);
+  border-bottom-color: rgba(231, 236, 233, 0.1);
+}
+
+[data-color-mode="dark"] .pharmcare-detail {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+[data-color-mode="dark"] .pharmcare-preview {
+  background: #171d1b;
+}
+
+[data-color-mode="dark"] .pharmcare-preview-header {
+  border-bottom-color: rgba(231, 236, 233, 0.12);
+}
+
+.top-navbar-theme-toggle {
+  padding: 9px 16px;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.top-navbar-theme-toggle:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .pharmcare-preview-body {

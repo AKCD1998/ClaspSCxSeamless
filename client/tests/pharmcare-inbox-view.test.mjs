@@ -25,7 +25,14 @@ test.after(async () => {
   }
 });
 
-const emptyFilters = { status: '', documentType: '', duplicate: '' };
+const emptyFilters = {
+  status: '',
+  documentType: '',
+  duplicate: '',
+  receivedFrom: '',
+  receivedTo: '',
+  order: 'desc',
+};
 const noop = () => {};
 
 async function renderView(props) {
@@ -47,6 +54,7 @@ async function renderView(props) {
       detailStatus: { message: '', state: 'idle' },
       onToggleMessageDetail: noop,
       onRetryDetail: noop,
+      onToggleOrder: noop,
       previewAttachment: null,
       previewStatus: { message: '', state: 'idle' },
       previewUrl: null,
@@ -347,8 +355,7 @@ test('detail: an unknown reason code falls back to the raw code, and report_pref
   assert.equal(formatReasonCode(undefined), '-');
 });
 
-test('layout: the inbox table defines explicit per-column widths via a colgroup', async () => {
-  const html = await renderView({
+test('layout: the inbox table defines explicit per-column widths via a colgroup', async () => {  const html = await renderView({
     documents: [sampleDocument],
     status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
   });
@@ -489,4 +496,57 @@ test('preview: a non-PDF attachment shows the fallback message instead of an ifr
   assert.doesNotMatch(html, />พิมพ์</);
   assert.match(html, /ไม่สามารถพรีวิวไฟล์ชนิดนี้ในหน้าเว็บได้/);
   assert.match(html, /\/app\/pharmcare\/attachments\/att-9\/download/);
+});
+
+test('sort: the received-at header defaults to descending and toggles to ascending', async () => {
+  const descending = await renderView({
+    documents: [sampleDocument],
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+  assert.match(descending, /aria-sort="descending"/);
+  assert.match(descending, /<button class="pharmcare-sort-toggle"[^>]*>ได้รับเมื่อ <!-- -->▼<\/button>/);
+
+  const ascending = await renderView({
+    documents: [sampleDocument],
+    filters: { ...emptyFilters, order: 'asc' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+  assert.match(ascending, /aria-sort="ascending"/);
+  assert.match(ascending, /ได้รับเมื่อ <!-- -->▲/);
+});
+
+test('date range: the filter form renders from/to date inputs bound to the filter values', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    filters: { ...emptyFilters, receivedFrom: '2026-08-01', receivedTo: '2026-08-19' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /<input type="date" name="receivedFrom" value="2026-08-01"\/>/);
+  assert.match(html, /<input type="date" name="receivedTo" value="2026-08-19"\/>/);
+  assert.match(html, /ได้รับจากวันที่/);
+  assert.match(html, /ถึงวันที่/);
+});
+
+test('date range: picking a start after the end (or vice versa) snaps the other side to the same day', async () => {
+  const { applyFilterChange } = await vite.ssrLoadModule('/src/components/PharmCareInboxPanel.jsx');
+
+  const base = { ...emptyFilters, receivedFrom: '2026-08-01', receivedTo: '2026-08-19' };
+  const startAfterEnd = applyFilterChange(base, 'receivedFrom', '2026-08-25');
+  assert.equal(startAfterEnd.receivedFrom, '2026-08-25');
+  assert.equal(startAfterEnd.receivedTo, '2026-08-25');
+
+  const endBeforeStart = applyFilterChange(base, 'receivedTo', '2026-07-10');
+  assert.equal(endBeforeStart.receivedFrom, '2026-07-10');
+  assert.equal(endBeforeStart.receivedTo, '2026-07-10');
+
+  // A same-day pick and normal edits never move the other side.
+  const sameDay = applyFilterChange(base, 'receivedTo', '2026-08-01');
+  assert.equal(sameDay.receivedFrom, '2026-08-01');
+  assert.equal(sameDay.receivedTo, '2026-08-01');
+
+  const unrelated = applyFilterChange(base, 'status', 'manual_review');
+  assert.equal(unrelated.status, 'manual_review');
+  assert.equal(unrelated.receivedFrom, '2026-08-01');
+  assert.equal(unrelated.receivedTo, '2026-08-19');
 });
