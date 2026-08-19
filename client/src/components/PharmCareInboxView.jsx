@@ -1,44 +1,11 @@
+import PharmCareMessageDetail from './PharmCareMessageDetail.jsx';
 import { getPharmcareAttachmentDownloadUrl } from '../services/api.js';
-
-export const DOCUMENT_TYPE_LABELS = {
-  e_credit_invoice: 'E-Credit Invoice',
-  settlement_mrr: 'Settlement (MRR)',
-  settlement_sfr: 'Settlement (SFR)',
-  receipt_link_pending: 'ใบเสร็จ/ใบกำกับภาษี (รอลิงก์)',
-  contract: 'สัญญา',
-  unknown: 'ไม่ทราบประเภท',
-};
-
-export const REVIEW_STATUS_LABELS = {
-  auto_classified: 'จัดประเภทอัตโนมัติแล้ว',
-  manual_review: 'ต้องตรวจสอบ',
-  duplicate: 'ซ้ำ',
-  conflict: 'ขัดแย้ง',
-};
-
-export function formatReceivedAt(value) {
-  if (!value) {
-    return '-';
-  }
-
-  try {
-    return new Date(value).toLocaleString('th-TH', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  } catch (error) {
-    return value;
-  }
-}
-
-export function formatPeriod(document) {
-  if (!document.periodStart && !document.periodEnd) {
-    return '-';
-  }
-
-  const half = document.half ? ` (${document.half})` : '';
-  return `${document.periodStart || '?'} – ${document.periodEnd || '?'}${half}`;
-}
+import {
+  DOCUMENT_TYPE_LABELS,
+  REVIEW_STATUS_LABELS,
+  formatPeriod,
+  formatReceivedAt,
+} from './pharmcareLabels.js';
 
 function RouteBadge({ route }) {
   const isForwarded = route === 'manual_forward';
@@ -65,6 +32,14 @@ export default function PharmCareInboxView({
   documents,
   filters,
   isLoading,
+  nextCursor,
+  isLoadingMore,
+  onLoadMore,
+  selectedMessageId,
+  messageDetail,
+  detailStatus,
+  onToggleMessageDetail,
+  onRetryDetail,
   onFilterChange,
   onRetry,
   status,
@@ -154,44 +129,95 @@ export default function PharmCareInboxView({
                 <th>ไฟล์แนบ</th>
                 <th>รอบ/ช่วงเวลา</th>
                 <th>สถานะ</th>
+                <th>รายละเอียด</th>
               </tr>
             </thead>
             <tbody>
               {documents.map((document) => (
-                <tr key={document.id}>
-                  <td>{formatReceivedAt(document.receivedAt)}</td>
-                  <td>{document.normalizedSubject || '-'}</td>
-                  <td>{document.originalFrom || '-'}</td>
-                  <td>
-                    <RouteBadge route={document.route} />
-                  </td>
-                  <td>{DOCUMENT_TYPE_LABELS[document.documentType] || document.documentType}</td>
-                  <td>{document.documentNumber || '-'}</td>
-                  <td>
-                    {document.attachmentId && document.attachmentFilename ? (
-                      <a
-                        href={getPharmcareAttachmentDownloadUrl(document.attachmentId)}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        {document.attachmentFilename}
-                      </a>
-                    ) : (
-                      document.attachmentFilename || '-'
-                    )}
-                  </td>
-                  <td>{formatPeriod(document)}</td>
-                  <td>
-                    <ReviewStatusBadge reviewStatus={document.reviewStatus} />
-                  </td>
-                </tr>
+                <MessageRow
+                  key={document.id}
+                  document={document}
+                  isExpanded={Boolean(document.messageId) && selectedMessageId === document.messageId}
+                  detail={messageDetail}
+                  detailStatus={detailStatus}
+                  onToggle={onToggleMessageDetail}
+                  onRetryDetail={onRetryDetail}
+                />
               ))}
             </tbody>
           </table>
+          {nextCursor ? (
+            <div className="history-dashboard-pagination">
+              <button
+                className="history-view-button secondary"
+                disabled={isLoadingMore}
+                onClick={onLoadMore}
+                type="button"
+              >
+                {isLoadingMore ? 'กำลังโหลด...' : 'โหลดเพิ่ม'}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="history-empty">ไม่พบเอกสาร PharmCare ตามเงื่อนไขที่เลือก</div>
       )}
     </section>
+  );
+}
+
+function MessageRow({ document, isExpanded, detail, detailStatus, onToggle, onRetryDetail }) {
+  return (
+    <>
+      <tr>
+        <td>{formatReceivedAt(document.receivedAt)}</td>
+        <td>{document.normalizedSubject || '-'}</td>
+        <td>{document.originalFrom || '-'}</td>
+        <td>
+          <RouteBadge route={document.route} />
+        </td>
+        <td>{DOCUMENT_TYPE_LABELS[document.documentType] || document.documentType}</td>
+        <td>{document.documentNumber || '-'}</td>
+        <td>
+          {document.attachmentId && document.attachmentFilename ? (
+            <a
+              href={getPharmcareAttachmentDownloadUrl(document.attachmentId)}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {document.attachmentFilename}
+            </a>
+          ) : (
+            document.attachmentFilename || '-'
+          )}
+        </td>
+        <td>{formatPeriod(document)}</td>
+        <td>
+          <ReviewStatusBadge reviewStatus={document.reviewStatus} />
+        </td>
+        <td>
+          <button
+            aria-expanded={isExpanded ? 'true' : 'false'}
+            className="history-view-button secondary"
+            onClick={() => onToggle(document)}
+            type="button"
+          >
+            {isExpanded ? 'ปิด' : 'ดู'}
+          </button>
+        </td>
+      </tr>
+      {isExpanded ? (
+        <tr className="pharmcare-detail-row-tr">
+          <td colSpan={10}>
+            <PharmCareMessageDetail
+              row={document}
+              detail={detail}
+              status={detailStatus}
+              onRetry={onRetryDetail}
+            />
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }

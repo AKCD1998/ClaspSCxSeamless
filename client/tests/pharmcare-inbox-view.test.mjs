@@ -35,6 +35,14 @@ async function renderView(props) {
       documents: [],
       filters: emptyFilters,
       isLoading: false,
+      nextCursor: null,
+      isLoadingMore: false,
+      onLoadMore: noop,
+      selectedMessageId: null,
+      messageDetail: null,
+      detailStatus: { message: '', state: 'idle' },
+      onToggleMessageDetail: noop,
+      onRetryDetail: noop,
       onFilterChange: noop,
       onRetry: noop,
       status: { message: '', state: 'idle' },
@@ -177,4 +185,135 @@ test('filter selects reflect the currently selected filter values', async () => 
   assert.match(html, /<option value="manual_review"[^>]*selected/);
   assert.match(html, /<option value="contract"[^>]*selected/);
   assert.match(html, /<option value="true"[^>]*selected/);
+});
+
+const sampleDocument = {
+  attachmentFilename: 'CIV2601000123.pdf',
+  attachmentId: 'att-1',
+  classifierVersion: 'classifier-v1',
+  documentNumber: 'CIV2601000123',
+  documentType: 'e_credit_invoice',
+  half: '',
+  id: 'doc-1',
+  messageId: 'msg-1',
+  normalizedSubject: 'PharmCare e-credit invoice CIV2601000123',
+  originalFrom: 'info@pharmcare.co',
+  periodEnd: '',
+  periodStart: '',
+  reasonCodes: ['filename_pattern_match', 'civ_number_extracted'],
+  receivedAt: '2026-08-01T03:00:00.000Z',
+  reviewStatus: 'auto_classified',
+  route: 'gmail_filter_forward',
+};
+
+test('pagination: the load-more button only renders while a nextCursor exists', async () => {
+  const withCursor = await renderView({
+    documents: [sampleDocument],
+    nextCursor: 'cursor-2',
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+  assert.match(withCursor, /โหลดเพิ่ม/);
+
+  const withoutCursor = await renderView({
+    documents: [sampleDocument],
+    nextCursor: null,
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+  assert.doesNotMatch(withoutCursor, /โหลดเพิ่ม/);
+});
+
+test('pagination: the load-more button is disabled while loading more', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    nextCursor: 'cursor-2',
+    isLoadingMore: true,
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /<button[^>]*disabled[^>]*>กำลังโหลด\.\.\.<\/button>/);
+});
+
+test('detail: every document row renders a ดู toggle button', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /aria-expanded="false"[^>]*>ดู</);
+});
+
+test('detail: the expanded row shows row-level reason codes immediately', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    selectedMessageId: 'msg-1',
+    detailStatus: { message: 'กำลังโหลดรายละเอียด...', state: 'working' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /aria-expanded="true"[^>]*>ปิด</);
+  assert.match(html, /เหตุผลการจัดประเภท/);
+  assert.match(html, /ชื่อไฟล์ตรงรูปแบบที่รู้จัก/);
+  assert.match(html, /ดึงเลขเอกสาร CIV จากชื่อไฟล์ได้/);
+  assert.match(html, /กำลังโหลดรายละเอียด/);
+});
+
+test('detail: a failed detail fetch shows the error and a retry button', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    selectedMessageId: 'msg-1',
+    detailStatus: { message: 'โหลดรายละเอียดไม่สำเร็จ', state: 'error' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /โหลดรายละเอียดไม่สำเร็จ/);
+  const retryMatches = html.match(/ลองใหม่/g) || [];
+  assert.equal(retryMatches.length, 1);
+});
+
+test('detail: a loaded detail lists sibling documents and all attachments of the message', async () => {
+  const html = await renderView({
+    documents: [sampleDocument],
+    selectedMessageId: 'msg-1',
+    messageDetail: {
+      id: 'msg-1',
+      ingestedAt: '2026-08-01T04:00:00.000Z',
+      originalFrom: 'pharmcare.billing@example.com',
+      originalDate: 'Thu, 30 Jul 2026 10:00:00 +0700',
+      rawSubject: 'Fwd: E-Credit Invoice CIV2601000123',
+      attachments: [
+        { id: 'att-1', originalFilename: 'CIV2601000123.pdf', fileSizeBytes: 204800 },
+        { id: 'att-2', originalFilename: 'SETTLEMENT-MRR-0726.pdf', fileSizeBytes: 0 },
+      ],
+      documents: [
+        { ...sampleDocument, id: 'doc-1' },
+        {
+          id: 'doc-2',
+          documentType: 'settlement_mrr',
+          documentNumber: 'MRR-0726',
+          reviewStatus: 'manual_review',
+          reasonCodes: ['no_subject_pattern_match'],
+          periodStart: '2026-07-01',
+          periodEnd: '2026-07-31',
+          half: '',
+        },
+      ],
+    },
+    detailStatus: { message: '', state: 'success' },
+    status: { message: 'พบเอกสาร 1 รายการ', state: 'success' },
+  });
+
+  assert.match(html, /เอกสารทั้งหมดในอีเมลนี้ \(<!-- -->2<!-- -->\)/);
+  assert.match(html, /Settlement \(MRR\)<!-- --> — MRR-0726/);
+  assert.match(html, /หัวเรื่องไม่ตรงรูปแบบที่รู้จัก/);
+  assert.match(html, /ไฟล์แนบทั้งหมด \(<!-- -->2<!-- -->\)/);
+  assert.match(html, /\/app\/pharmcare\/attachments\/att-2\/download/);
+  assert.match(html, /200 KB/);
+});
+
+test('detail: an unknown reason code falls back to the raw code, and report_prefix codes map', async () => {
+  const { formatReasonCode } = await vite.ssrLoadModule('/src/components/pharmcareLabels.js');
+
+  assert.equal(formatReasonCode('some_future_code'), 'some_future_code');
+  assert.equal(formatReasonCode('report_prefix_mrr'), 'ชื่อไฟล์ตรงรูปแบบรายงาน MRR');
+  assert.equal(formatReasonCode(undefined), '-');
 });

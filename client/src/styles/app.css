@@ -1050,3 +1050,73 @@ button:disabled {
 .top-navbar-logout:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.16);
 }
+
+.pharmcare-detail {
+  padding: 14px 16px;
+  display: grid;
+  gap: 14px;
+  background: rgba(31, 42, 40, 0.03);
+}
+
+.pharmcare-detail-section {
+  display: grid;
+  gap: 6px;
+}
+
+.pharmcare-detail-title {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-strong);
+}
+
+.pharmcare-detail-rows {
+  display: grid;
+  gap: 4px;
+}
+
+.pharmcare-detail-row {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.pharmcare-detail-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.pharmcare-detail-value {
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+.pharmcare-detail-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pharmcare-detail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.pharmcare-detail-item {
+  display: grid;
+  gap: 4px;
+}
+
+.pharmcare-detail-muted {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
