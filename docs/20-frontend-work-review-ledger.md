@@ -100,3 +100,23 @@ work log + review ระดับ "task ละแถว"
   ก่อนฟีเจอร์ admin จะใช้งานได้จริง (ไม่ตั้ง = ทุกคนเห็น view แบบ user ทั้งหมด ปลอดภัยไว้ก่อน).
   **GLM 5.2 อ่านต่อจากตรงนี้ได้เลยสำหรับ task ถัดไป** — task 7 (resolve manual_review + group
   เอกสาร) ยังไม่เริ่ม รอ spec เพิ่มเติม
+- **2026-08-19** — อัปเดตสถานะล่าสุดให้ผู้ implement (GLM 5.2) อ่านก่อนเริ่มงานต่อ เพื่อไม่ให้งง:
+  หลัง task 6 (ผ่านรีวิว, commit แล้วทั้ง 2 repo) เจ้าของ repo ขอเพิ่มอีก 1 อย่างที่ **ยังไม่ได้
+  จดเป็น task แยกในตารางด้านบน** — รองรับ staff หลาย username ใช้รหัสผ่านชุดเดียวกัน
+  (`SEAMLESS_APP_BASIC_USER` เปลี่ยนจากรับ username เดียว เป็นรับ comma-separated list เช่น
+  `staff000,staff001,staff003,staff004,staff005`) — Sonnet 5 implement เองที่ backend
+  (`currentSC-official-website-project`) เพราะเป็นส่วนต่อขยายของ auth boundary เดียวกับ task 6
+  ไม่แตะฝั่ง frontend repo นี้เลย (ไม่มีการเปลี่ยนแปลง UI ที่เกี่ยวข้อง). Backend test 203/203
+  ผ่าน commit `a132251` push แล้วที่ `currentSC-official-website-project` main (ต่อจาก `eb11a3e`
+  ของ task 6). เจ้าของ repo ตั้งค่า env vars บน Render เองแล้ว (ทั้ง admin pair จาก task 6 และ
+  staff usernames ชุดนี้).
+
+  **สรุปสถานะรวมล่าสุด (สำหรับอ่านก่อนรับงานต่อ)**:
+  - Task 1–6 เสร็จ + ผ่านรีวิวหมดแล้ว, commit+push แล้วทั้ง backend และ frontend repo
+  - Backend commits ล่าสุด (`currentSC-official-website-project` main): `eb11a3e` (role split
+    admin/user) → `a132251` (multi-username staff list)
+  - Frontend commits ล่าสุด (repo นี้ main): `2284ed5` (task 5 flag) → `00d8903` (task 6 role
+    gating ของตาราง/detail)
+  - Task 7 (admin resolve manual_review + group เอกสารที่เกี่ยวข้องกัน) — **ยังไม่เริ่ม** รอ spec
+    เพิ่มเติมจากเจ้าของ repo ก่อน (ต้องมี DB migration ใหม่ + endpoint ใหม่ที่ backend)
+  - ไม่มีงาน frontend ค้างให้ GLM 5.2 ทำตอนนี้ — รอ task ถัดไปจากเจ้าของ repo
