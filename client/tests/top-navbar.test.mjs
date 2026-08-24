@@ -63,3 +63,15 @@ test('navbar hides the color mode toggle when no handler is provided', async () 
   assert.doesNotMatch(html, /top-navbar-theme-toggle/);
   assert.match(html, /ออกจากระบบ/);
 });
+
+test('Shopee navigation includes the live email report route', async () => {
+  const { NAV_GROUPS } = await vite.ssrLoadModule('/src/components/TopNavBar.jsx');
+  const shopee = NAV_GROUPS.find((group) => group.key === 'shopee');
+
+  assert.ok(shopee);
+  assert.deepEqual(
+    shopee.items.map((item) => item.to),
+    ['/shopee/upload', '/shopee/inbox', '/shopee/history'],
+  );
+  assert.equal(shopee.items[1].label, 'รายงานอีเมล์จาก Shopee');
+});

@@ -180,6 +180,35 @@ test('getPharmcareInbox builds a query string from filters and returns the paylo
   assert.equal(payload.documents.length, 1);
 });
 
+test('getShopeeEmailInbox builds the live Gmail inbox query and keeps an opaque cursor', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(
+      JSON.stringify({
+        emails: [{ id: 'gmail-1', category: 'shipment_due' }],
+        nextCursor: 'opaque-page-token',
+        source: 'info@mail.shopee.co.th',
+      }),
+      { status: 200 },
+    );
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const payload = await api.getShopeeEmailInbox({
+    category: 'shipment_due',
+    cursor: 'page 2/token',
+    receivedFrom: '2026-08-24',
+  });
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/shopee/inbox?category=shipment_due&cursor=page+2%2Ftoken&receivedFrom=2026-08-24',
+  );
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(payload.source, 'info@mail.shopee.co.th');
+});
+
 test('getPharmcareInbox omits the query string when no filters are set', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

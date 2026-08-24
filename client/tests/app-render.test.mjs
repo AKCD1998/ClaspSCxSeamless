@@ -71,6 +71,15 @@ test('Shopee history route is locked to Shopee records and exposes admin print c
   assert.match(html, /กดสั่งพิมพ์/);
 });
 
+test('Shopee reports route renders the read-only Gmail inbox', async () => {
+  const html = await renderPage('/src/pages/ShopeeReportsPage.jsx', '/shopee/inbox');
+
+  assert.match(html, /รายงานอีเมล์จาก Shopee/);
+  assert.match(html, /Shopee Email Inbox/);
+  assert.match(html, /info@mail\.shopee\.co\.th/);
+  assert.doesNotMatch(html, /กำลังพัฒนา/);
+});
+
 test('PharmCare reports route renders the email inbox under its new menu name', async () => {
   const html = await renderPage('/src/pages/PharmCareReportsPage.jsx', '/pharmcare/inbox');
 

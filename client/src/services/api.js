@@ -170,6 +170,19 @@ export async function sendGeneratedFileEmail(fileId, options = {}) {
   });
 }
 
+export async function getShopeeEmailInbox(filters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  return requestJson(`/app/shopee/inbox${query ? `?${query}` : ''}`);
+}
+
 export async function getPharmcareInbox(filters = {}) {
   const params = new URLSearchParams();
 

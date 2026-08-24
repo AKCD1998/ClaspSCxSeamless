@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
-const NAV_GROUPS = [
+export const NAV_GROUPS = [
   {
     key: 'seamless',
     label: 'Seamless X GAS',
@@ -17,6 +17,7 @@ const NAV_GROUPS = [
     basePath: '/shopee',
     items: [
       { to: '/shopee/upload', end: false, label: 'อัปโหลดยอดขาย' },
+      { to: '/shopee/inbox', end: false, label: 'รายงานอีเมล์จาก Shopee' },
       { to: '/shopee/history', end: false, label: 'ประวัติ' },
     ],
   },
