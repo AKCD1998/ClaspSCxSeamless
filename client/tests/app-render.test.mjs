@@ -80,6 +80,14 @@ test('Shopee reports route renders the read-only Gmail inbox', async () => {
   assert.doesNotMatch(html, /กำลังพัฒนา/);
 });
 
+test('Shopee orders route renders the privacy-safe order timeline', async () => {
+  const html = await renderPage('/src/pages/ShopeeOrdersPage.jsx', '/shopee/orders');
+
+  assert.match(html, /ไทม์ไลน์คำสั่งซื้อ Shopee/);
+  assert.match(html, /Shopee Order Timeline/);
+  assert.match(html, /ไม่เก็บหัวเรื่อง เนื้อหาอีเมล หรือข้อมูลผู้ซื้อ/);
+});
+
 test('PharmCare reports route renders the email inbox under its new menu name', async () => {
   const html = await renderPage('/src/pages/PharmCareReportsPage.jsx', '/pharmcare/inbox');
 

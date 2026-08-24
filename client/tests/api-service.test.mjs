@@ -209,6 +209,35 @@ test('getShopeeEmailInbox builds the live Gmail inbox query and keeps an opaque 
   assert.equal(payload.source, 'info@mail.shopee.co.th');
 });
 
+test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    if (url.endsWith('/sync')) {
+      return new Response(JSON.stringify({ storedEvents: 1, nextCursor: 'gmail-older' }), { status: 200 });
+    }
+    if (url.includes('/orders/26082471YK8C02')) {
+      return new Response(JSON.stringify({ order: { orderNumber: '26082471YK8C02' }, events: [] }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ orders: [], nextCursor: 'db-cursor' }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.getShopeeOrders({ status: 'shipment_due', cursor: 'db page/token' });
+  await api.getShopeeOrder('26082471YK8C02');
+  await api.syncShopeeOrders({ cursor: 'gmail page/token', limit: 25 });
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/shopee/orders?status=shipment_due&cursor=db+page%2Ftoken',
+  );
+  assert.equal(calls[1].url, 'http://api.test.local/api/app/shopee/orders/26082471YK8C02');
+  assert.equal(calls[2].url, 'http://api.test.local/api/app/shopee/orders/sync');
+  assert.equal(calls[2].options.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[2].options.body), { cursor: 'gmail page/token', limit: 25 });
+  assert.equal(calls[2].options.credentials, 'include');
+});
+
 test('getPharmcareInbox omits the query string when no filters are set', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

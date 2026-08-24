@@ -183,6 +183,33 @@ export async function getShopeeEmailInbox(filters = {}) {
   return requestJson(`/app/shopee/inbox${query ? `?${query}` : ''}`);
 }
 
+export async function getShopeeOrders(filters = {}) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+
+  const query = params.toString();
+  return requestJson(`/app/shopee/orders${query ? `?${query}` : ''}`);
+}
+
+export async function getShopeeOrder(orderNumber) {
+  return requestJson(`/app/shopee/orders/${encodeURIComponent(orderNumber)}`);
+}
+
+export async function syncShopeeOrders(options = {}) {
+  return requestJson('/app/shopee/orders/sync', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...(options.cursor ? { cursor: options.cursor } : {}),
+      limit: options.limit || 25,
+    }),
+  });
+}
+
 export async function getPharmcareInbox(filters = {}) {
   const params = new URLSearchParams();
 

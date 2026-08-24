@@ -193,3 +193,205 @@ work log + review ระดับ "task ละแถว"
   deploy ต้องตรวจ Cloud Console ของ project จริงและเฝ้าดู quota หลังเปิดใช้. **Final review:
   approve with non-blocking notes.** Code commit backend `8f45b9f` และ frontend `81b714d` push
   ขึ้น `main` แล้วโดย stage เฉพาะไฟล์งานนี้; **ยังไม่ deploy** ตาม quota gate.
+
+- **2026-08-24 — Task 11: Shopee order timeline (Codex implementation, รอ independent
+  review)** — เชื่อมอีเมล Shopee ที่มีเลขคำสั่งซื้อเดียวกันเป็น current state + chronological
+  events โดยเพิ่มตารางแยก `shopee_orders`/`shopee_order_events`; ไม่ใช้
+  `processing_records`/print pipeline และไม่เขียน raw subject/body, buyer username, ชื่อผู้รับ,
+  ที่อยู่ หรือเบอร์โทรลง DB. Parser เก็บเฉพาะเลขคำสั่งซื้อ, วันสั่ง/กำหนดส่ง, รายการสินค้า,
+  จำนวน/ราคา/ยอดเงิน, delivery method และ cancellation reason code ที่กำหนดไว้. Idempotency
+  บังคับด้วย unique Gmail message ID ต่อ mailbox (ไม่ dedupe ด้วย subject เพราะอีเมลพัสดุคืน
+  อาจมี subject ซ้ำ). API ใหม่: `GET /api/app/shopee/orders`,
+  `GET /api/app/shopee/orders/:orderNumber` สำหรับ session ที่ login และ
+  `POST /api/app/shopee/orders/sync` เฉพาะ admin; sync อ่านครั้งละไม่เกิน 25 ข้อความ,
+  concurrency 5, timeout 10 วินาที, ปิด automatic retry, ข้ามเฉพาะ Gmail 404 และส่ง opaque
+  Gmail cursor กลับเพื่อให้ admin เลือกโหลดอีเมลเก่าต่อเอง. Frontend เพิ่ม
+  `/shopee/orders`, filter สถานะ, ตารางสรุป, expandable item/amount detail และ timeline สีตาม
+  event; sync controls default-hidden จนยืนยัน role admin และ backend ตรวจ role ซ้ำอีกชั้น.
+  ผล local ณ ก่อน review: backend Shopee + Gmail adapter targeted **77/77 ผ่าน**, backend
+  regression ไม่รวม DB integration **218 ผ่าน/5 skip**, backend full **263 ผ่าน/5 skip**, frontend
+  **67/67 ผ่าน**, Vite production build ผ่าน. **Deployment order ที่ห้ามสลับ:** ตรวจ Gmail quota
+  gate → รัน `npm run seamless:migrate` ใน backend เพื่อ apply
+  `008_shopee_order_timeline.sql` → deploy backend → deploy frontend → admin กด sync latest และ
+  ตรวจ sample 1–3 orders. ตอนนี้ยังไม่ stage/commit/push/deploy และห้ามรวม dirty RX1011,
+  `server/`, `print-agent/`, `docs/07`, `docs/17` เข้า commit งานนี้.
+
+- **2026-08-24 — Task 11 remediation assignment (`TASK11-SENIOR-REMEDIATION`)** — เจ้าของงาน
+  มอบหมายให้ **Codex Senior Dev ในอีก session เป็น implementer** และให้ Codex session เดิมเป็น
+  coordinator/reviewer หลังส่งมอบ เพื่อไม่ให้สอง session แก้ไฟล์เดียวกันพร้อมกัน. สถานะเริ่มต้น:
+  **assigned / ยังไม่เริ่มแก้ / ยังไม่อนุญาตให้ commit-push-deploy**. Senior Dev ต้องแก้ findings
+  จาก independent review ให้ครบ: (1) High privacy — product parser ต้องยืนยัน product section,
+  fail closed เมื่อพบ sensitive buyer/recipient labels และมี egress allowlist ก่อนคืน JSONB
+  items พร้อม adversarial regression tests (2) Medium frontend race — sync เสร็จต้อง refresh ด้วย
+  filter ล่าสุด ไม่ใช่ closure เก่า พร้อม async/component-level regression test (3) Low — ใช้
+  order-number rule `[A-Z0-9]{8,40}` เดียวกันใน parser/controller/SQL constraint พร้อม tests
+  (4) เพิ่ม PostgreSQL migration smoke test ใน Backend CI ด้วย ephemeral service container ห้ามใช้
+  production secret/database. Residual quota risk (หลาย sync requests พร้อมกันข้าม tab/instance)
+  ต้องประเมินและเลือก PostgreSQL advisory lock/per-mailbox protection ที่ทดสอบได้ หรือบันทึกเหตุผล
+  ชัดเจนหากยังไม่ implement; browser-only `isSyncing` ไม่ถือเป็น server-side protection.
+
+  Working agreement: อ่าน `docs/23` และ Task 10–11 ใน ledger นี้ก่อนแก้; backend จริงอยู่ที่
+  `currentSC-official-website-project/backend/src/modules/seamless`, frontend จริงอยู่เฉพาะ
+  `ClaspSCxSeamless/client`. ห้ามแตะ/stage dirty RX1011 ใน backend และห้ามแตะ/stage
+  `ClaspSCxSeamless/server`, `print-agent`, `docs/07`, `docs/17`. ใช้ `apply_patch`, ไม่รัน
+  migration กับฐานข้อมูลจริง, ไม่ stage/commit/push/deploy. เมื่อเสร็จให้แก้ entry นี้ต่อท้ายด้วย
+  `Implementation handoff:` ระบุไฟล์ที่แก้, design decisions, targeted/regression/full/frontend/
+  build/migration-smoke results, residual risks และ explicit stage list แล้วหยุดรอ coordinator
+  review. Coordinator จะตรวจ diff/test ซ้ำและเป็นผู้ขออนุมัติ commit/push จากเจ้าของ repo.
+
+  **Implementation handoff:** remediation เสร็จครบและสถานะคือ **Ready for coordinator review**.
+  Privacy boundary เปลี่ยนเป็น fail closed: parser จะรับสินค้าเฉพาะภายใน heading ที่ยืนยันว่าเป็น
+  product section, ต้องพบขอบเขตยอดรวมและ quantity/price ที่ parse ได้ และทิ้ง items ทั้ง section
+  เมื่อพบ buyer/recipient/name/address/phone label. เพิ่ม shared allowlist sanitizer ที่ใช้ทั้งก่อน
+  persist และตอน map JSONB ออกจาก repository; event details ก็คืนเฉพาะ
+  `shippingDeadline`/`cancellationReasonCode`. Order number ใช้ shared
+  `^[A-Z0-9]{8,40}$` ใน parser/controller/repository และ SQL constraint เดียวกัน.
+
+  Server-side quota protection ใช้ PostgreSQL session advisory lock ต่อ normalized mailbox แบบ
+  `pg_try_advisory_lock` ก่อน Gmail call แรก; request ที่ชน lock ตอบ `409 CONFLICT` ทันที และ
+  unlock/release client ใน success, callback failure และ unlock failure paths. Frontend sync
+  orchestration อ่าน `filtersRef.current` หลัง sync resolve จึง refresh ด้วย filter ล่าสุด;
+  generation guard เดิมยังกัน response เก่าเขียนทับ state. Backend CI เดิมถูกขยายด้วย
+  `postgres:16-alpine`, test-only local URL/schema, migration สองรอบและ verifier ที่ refuse
+  non-local/non-`*_ci` target; regression ignore ของ `backend-integration.test.cjs` คงเดิม.
+
+  ไฟล์ remediation ที่แก้/เพิ่มโดยตรง: backend `.github/workflows/backend-ci.yml`,
+  `backend/package.json`, `backend/scripts/verify-seamless-migrations.cjs`,
+  `shopeeOrderValidation.js`, order parser/controller/repository/timeline service, migration 008
+  และ order parser/repository/route/service tests; frontend
+  `client/src/components/ShopeeOrderTimelinePanel.jsx`,
+  `client/tests/shopee-order-timeline-view.test.mjs` และ ledger entry นี้.
+
+  ผลตรวจสุดท้าย: backend targeted Shopee + Gmail adapter **88/88 ผ่าน**; regression ไม่รวม
+  integration **229 ผ่าน/5 skip**; full backend **274 ผ่าน/5 skip**; frontend **68/68 ผ่าน**;
+  Vite production build ผ่าน; Backend CI YAML parse ผ่าน; `git diff --check` ผ่านโดยมีเพียง
+  CRLF warnings. Migration smoke ผ่านบน PostgreSQL ชั่วคราว local-only: apply migration SQL
+  ทั้ง 9 ไฟล์สำเร็จ, รอบสอง skip ทั้งหมดตาม ledger และ verifier ยืนยัน migration ledger,
+  สองตาราง, invalid short order constraint และ valid order/event insert โดย rollback test data.
+  ไม่ได้ apply migration กับฐานข้อมูลจริง.
+
+  Residual risks/gates: ต้องยืนยัน Gmail quota regime เดิมก่อน deploy; template อีเมลที่เปลี่ยน
+  heading/structure จะถูก fail closed เป็น order/event ที่ไม่มี items จนเพิ่ม fixture ที่ตรวจแล้ว;
+  advisory lock ป้องกันข้าม tab/process/instance เมื่อทุก instance ใช้ PostgreSQL เดียวกัน แต่ถ้า
+  DB ใช้งานไม่ได้ sync จะ fail ก่อนแตะ Gmail; CI workflow ยังไม่เกิด run จริงจน coordinator
+  อนุมัติ commit/push. Local unit/full suite ยังพิมพ์ warning ว่าขาด
+  `SC_OFFICIAL_SUPABASE_DATABASE_URL` ตาม baseline แต่ไม่มี test fail.
+
+  **Explicit stage list — backend repo (Task 11 only):**
+  `.github/workflows/backend-ci.yml`, `backend/package.json`,
+  `backend/scripts/verify-seamless-migrations.cjs`,
+  `backend/src/modules/seamless/controllers/shopeeOrderController.js`,
+  `backend/src/modules/seamless/db/migrations/008_shopee_order_timeline.sql`,
+  `backend/src/modules/seamless/db/shopeeOrderRepository.js`,
+  `backend/src/modules/seamless/routes/shopeeEmailRoutes.js`,
+  `backend/src/modules/seamless/services/pharmcare/gmailAdapter.js`,
+  `backend/src/modules/seamless/services/shopeeEmailInboxService.js`,
+  `backend/src/modules/seamless/services/shopeeOrderEmailParser.js`,
+  `backend/src/modules/seamless/services/shopeeOrderTimelineService.js`,
+  `backend/src/modules/seamless/shopeeOrderValidation.js`,
+  `backend/src/modules/seamless/tables.js`,
+  `backend/tests/pharmcare-gmail-adapter.test.cjs`,
+  `backend/tests/shopee-order-email-parser.test.cjs`,
+  `backend/tests/shopee-order-repository.test.cjs`,
+  `backend/tests/shopee-order-routes.test.cjs`,
+  `backend/tests/shopee-order-timeline-service.test.cjs`.
+
+  **Explicit stage list — frontend/docs repo (Task 11 only):** `client/src/App.jsx`,
+  `client/src/components/TopNavBar.jsx`, `client/src/components/shopeeEmailLabels.js`,
+  `client/src/components/ShopeeOrderTimelinePanel.jsx`,
+  `client/src/components/ShopeeOrderTimelineView.jsx`,
+  `client/src/pages/ShopeeOrdersPage.jsx`, `client/src/services/api.js`,
+  `client/src/styles/app.css`, `client/tests/api-service.test.mjs`,
+  `client/tests/app-render.test.mjs`, `client/tests/shopee-order-timeline-view.test.mjs`,
+  `client/tests/top-navbar.test.mjs`, `docs/20-frontend-work-review-ledger.md`,
+  `docs/23-tech-lead-handoff-2026-08-19.md`.
+
+  Explicitly exclude backend RX1011/report/integration/env-audit incident files and frontend
+  `docs/07`, `docs/17`, `server/`, `print-agent/` dirty workstreams. ยังไม่ได้ stage, commit,
+  push, apply migration กับฐานข้อมูลจริง หรือ deploy.
+
+  **Coordinator review round 1 (Codex session เดิม, 2026-08-24): Request changes.** ตรวจ diff
+  และ reproduce แยกจาก implementer แล้วพบ 2 confirmed defects: (1) **High privacy** — sensitive
+  detector ยัง bypass ได้ด้วย label ที่มีคำนำหน้า เช่น `ข้อมูลผู้ซื้อ: <name>`;
+  `containsSensitiveShopeeLabel()` คืน false, parser รับเป็น `item.name` เมื่อมี quantity/price
+  ครบ และ egress sanitizer ตัวเดียวกันก็ปล่อยออก API จึงยัง persist/return PII ได้. ต้อง normalize
+  optional metadata prefixes/bullets และเพิ่ม adversarial matrix เช่น `ข้อมูลผู้ซื้อ`,
+  `ข้อมูลผู้รับ`, `ที่อยู่สำหรับจัดส่ง`, `เบอร์โทรมือถือ` ทั้ง parser + ingress/egress tests.
+  (2) **Medium functional/data quality** — Gmail จริงที่ตรวจแบบ read-only และไม่บันทึกข้อมูลส่วนตัว
+  พบว่า COD template ใช้ heading `รายละเอียดคำสั่งซื้อ` พร้อม numbered item/quantity/price/total
+  ครบ แต่ `PRODUCT_SECTION_HEADING_PATTERN` ไม่รับ heading นี้ ทำให้ parser คืน `items: []`.
+  Probe local ยืนยัน `itemCount: 0`; ต้องรับ heading จริงนี้โดยยังคง verified totals boundary,
+  structural quantity/price และ sensitive-label fail-closed พร้อม fixture regression ที่ตรงโครงสร้าง
+  Gmail จริง. จาก sample แยก shipment/COD/cancellation 3 ประเภท ทุกฉบับมี
+  `รายละเอียดคำสั่งซื้อ`, numbered item และ totals boundary และไม่มี sensitive label อยู่ในช่วง
+  heading→ยอดรวม; COD sample ไม่มี specific heading อีกสามแบบ จึงโดน defect แน่นอน.
+
+  ส่วนอื่น coordinator ตรวจแล้วผ่าน: shared order-number rule ตรง parser/controller/repository/SQL;
+  stale-filter refresh อ่าน `filtersRef.current`; PostgreSQL advisory lock เกิดก่อน Gmail, conflict
+  เป็น 409, unlock แล้ว reacquire ได้จริงบน local PostgreSQL; migration verifier ปฏิเสธ non-local/
+  non-`*_ci` และตรวจครบ 9 migrations. รันเอง: targeted **88/88**, regression แบบ CI ต่อ
+  ephemeral PostgreSQL **229 ผ่าน/5 skip**, full backend **274 ผ่าน/5 skip**, frontend **68/68**,
+  Vite build และ migration idempotency/verifier ผ่าน. CI-like regression มี Jest open-handle warning
+  จาก PostgreSQL pool แล้วปิดเองหลัง idle timeout แต่ exit 0 — non-blocking note. PostgreSQL
+  ชั่วคราวถูก coordinator start เพื่อ verify และ stop แล้ว; data directory เดิมยังไม่ถูกลบ.
+  **สถานะยังไม่พร้อม stage/commit/push/deploy**; ส่งกลับ Senior Dev แก้สอง defect และเพิ่ม tests
+  แล้วต่อท้าย `Implementation handoff round 2` ใต้ marker เดิม.
+
+  **Implementation handoff round 2 (2026-08-24):** แก้ confirmed defects ทั้งสองข้อแล้วและสถานะ
+  คือ **Ready for coordinator review round 2**. Sensitive-label normalizer ลอก bullet/numbered
+  prefixes และ metadata prefixes `ข้อมูล`/`รายละเอียด` แบบซ้ำได้ก่อนตรวจ label; matrix ครอบ
+  `ข้อมูลผู้ซื้อ`, `ข้อมูลผู้รับ`, `ที่อยู่สำหรับจัดส่ง`, `เบอร์โทรมือถือ` และ
+  `หมายเลขโทรศัพท์มือถือ`. Parser ทิ้ง items ทั้ง section เมื่อพบ label เหล่านี้ และ shared
+  persistence/API-egress sanitizer ทิ้ง items ทั้ง array หาก `name` หรือ `variant` ตัวใดมี
+  sensitive label จึงไม่เหลือ safe sibling ที่อาจทำให้เข้าใจผิดว่า section ผ่าน validation.
+
+  Product-section allowlist เพิ่ม verified heading `รายละเอียดคำสั่งซื้อ` ตาม Gmail template จริง
+  โดยยังต้องมี numbered item, quantity, price และ totals boundary ครบ. COD real-template fixture
+  ใช้ลำดับ heading → numbered item → quantity → price → `ยอดรวมค่าสินค้า` และยืนยัน
+  `itemCount: 1`/item fields จริง; negative matrix ยืนยันว่าขาด structural field ใด field หนึ่ง
+  จะ fail closed เป็น `items: []`. Adversarial parser tests วาง sensitive metadata ต่อจาก valid
+  item เพื่อยืนยันว่าทิ้งทั้ง section ส่วน repository tests ยืนยันทั้ง SQL persistence parameter
+  และ `mapOrder()` API egress ไม่คืน matrix เดียวกัน.
+
+  ไฟล์ที่แก้ใน round 2 เท่านั้น: backend
+  `backend/src/modules/seamless/shopeeOrderValidation.js`,
+  `backend/src/modules/seamless/services/shopeeOrderEmailParser.js`,
+  `backend/tests/shopee-order-email-parser.test.cjs`,
+  `backend/tests/shopee-order-repository.test.cjs`; frontend/docs
+  `docs/20-frontend-work-review-ledger.md`. Explicit stage list ของ Task 11 ทั้งก้อนยังคงเป็นรายการ
+  ใน Implementation handoff รอบแรก; ห้ามรวม dirty RX1011/report/integration/env-audit incident
+  files หรือ frontend `docs/07`, `docs/17`, `server/`, `print-agent/` เช่นเดิม.
+
+  ผลตรวจ round 2: backend targeted Shopee + Gmail adapter **102/102 ผ่าน**; regression ไม่รวม
+  integration **243 ผ่าน/5 skip**; full backend **288 ผ่าน/5 skip**; frontend **68/68 ผ่าน**;
+  Vite production build ผ่าน; Node syntax checks ผ่าน. Migration smoke รันใหม่บน PostgreSQL
+  ชั่วคราว local-only schema `clasp_scx_seamless_round2_ci`: apply SQL ทั้ง 9 files สำเร็จ,
+  รอบสอง skip ทั้งหมดและ verifier ผ่าน migration ledger/tables/order constraint/valid insert.
+  `git diff --check` ทั้งสอง repo ผ่านโดยมีเพียง CRLF warnings. Local backend suites ยังมี baseline
+  warning ว่าขาด `SC_OFFICIAL_SUPABASE_DATABASE_URL` แต่ไม่มี test fail.
+
+  Residual gates ไม่เปลี่ยน: ต้องตรวจ Gmail quota regime ก่อน deploy, CI workflow จริงยังไม่รัน
+  จน commit/push และ migration 008 ยังไม่ถูก apply กับฐานข้อมูลจริง. ยังไม่ได้ stage, commit, push,
+  apply migration กับฐานข้อมูลจริง หรือ deploy และไม่ได้แตะ dirty workstreams เดิม.
+
+  **Coordinator review round 2 (Codex session เดิม, 2026-08-24): Approve with non-blocking
+  notes.** ไม่พบ Critical, High, Medium หรือ Low defect เพิ่มเติมจาก delta รอบ 2. อ่าน
+  sensitive-label normalizer/parser/repository boundaries และ tests ที่เพิ่มทั้งหมด แล้วทำ
+  independent synthetic probes แยกจาก fixture ของ implementer: matrix 5 รูปแบบเดิม รวม
+  bullet/numbered/full-width colon, nested metadata prefixes และ English label ถูกตรวจพบและ
+  fail closed เป็น `items: []` ทั้ง parser และ shared persistence/API-egress sanitizer. Probe
+  heading จริง `รายละเอียดคำสั่งซื้อ` ได้สินค้า 1 รายการพร้อม quantity/price ถูกต้อง ขณะที่กรณี
+  ไม่มี totals boundary ยังได้ 0 รายการตาม fail-closed contract.
+
+  Coordinator รันซ้ำ: backend targeted Shopee + Gmail adapter **102/102 ผ่าน**, regression ไม่รวม
+  integration **243 ผ่าน/5 skip**, full backend **288 ผ่าน/5 skip**, frontend **68/68 ผ่าน** และ
+  Vite production build ผ่าน. `git diff --check` ทั้งสอง repo ผ่านโดยมีเพียง CRLF warnings เดิม;
+  test/build ไม่สร้างไฟล์ใหม่ และ dirty workstreams ที่ explicitly excluded ยังอยู่ครบ. Migration/
+  CI files ไม่ได้เปลี่ยนใน round 2; migration smoke/idempotency/verifier ผ่านจาก handoff รอบ 2
+  และ coordinator เคยตรวจกลไกเดียวกันบน PostgreSQL ชั่วคราวในรอบ 1 แล้ว จึงไม่ได้ apply หรือแตะ
+  ฐานข้อมูลจริงซ้ำใน review นี้.
+
+  **Verdict:** Task 11 พร้อมให้เจ้าของอนุมัติ stage แบบ explicit ตามรายการด้านบน แล้ว commit/push
+  เพื่อให้ remote CI ทำงาน. ยังไม่พร้อม deploy จนยืนยัน Gmail quota regime และทำ deployment gate
+  ตามลำดับเดิม (apply migration 008 ก่อน backend/frontend deploy). Coordinator รอบนี้ไม่ได้ stage,
+  commit, push, apply production migration หรือ deploy.

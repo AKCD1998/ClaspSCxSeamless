@@ -71,7 +71,8 @@ test('Shopee navigation includes the live email report route', async () => {
   assert.ok(shopee);
   assert.deepEqual(
     shopee.items.map((item) => item.to),
-    ['/shopee/upload', '/shopee/inbox', '/shopee/history'],
+    ['/shopee/upload', '/shopee/inbox', '/shopee/orders', '/shopee/history'],
   );
   assert.equal(shopee.items[1].label, 'รายงานอีเมล์จาก Shopee');
+  assert.equal(shopee.items[2].label, 'ไทม์ไลน์คำสั่งซื้อ');
 });

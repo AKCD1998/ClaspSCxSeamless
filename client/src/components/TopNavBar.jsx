@@ -18,6 +18,7 @@ export const NAV_GROUPS = [
     items: [
       { to: '/shopee/upload', end: false, label: 'อัปโหลดยอดขาย' },
       { to: '/shopee/inbox', end: false, label: 'รายงานอีเมล์จาก Shopee' },
+      { to: '/shopee/orders', end: false, label: 'ไทม์ไลน์คำสั่งซื้อ' },
       { to: '/shopee/history', end: false, label: 'ประวัติ' },
     ],
   },

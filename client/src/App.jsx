@@ -8,6 +8,7 @@ import PharmCareHistoryPage from './pages/PharmCareHistoryPage.jsx';
 import PharmCareReportsPage from './pages/PharmCareReportsPage.jsx';
 import PharmCareUploadPage from './pages/PharmCareUploadPage.jsx';
 import ShopeeHistoryPage from './pages/ShopeeHistoryPage.jsx';
+import ShopeeOrdersPage from './pages/ShopeeOrdersPage.jsx';
 import ShopeeReportsPage from './pages/ShopeeReportsPage.jsx';
 import ShopeeUploadPage from './pages/ShopeeUploadPage.jsx';
 import UploadPage from './pages/UploadPage.jsx';
@@ -64,6 +65,7 @@ function AuthenticatedApp({ onLogout }) {
         <Route path="shopee" element={<Navigate to="/shopee/upload" replace />} />
         <Route path="shopee/upload" element={<ShopeeUploadPage />} />
         <Route path="shopee/inbox" element={<ShopeeReportsPage />} />
+        <Route path="shopee/orders" element={<ShopeeOrdersPage />} />
         <Route path="shopee/history" element={<ShopeeHistoryPage />} />
         <Route path="pharmcare" element={<Navigate to="/pharmcare/inbox" replace />} />
         <Route path="pharmcare/upload" element={<PharmCareUploadPage />} />

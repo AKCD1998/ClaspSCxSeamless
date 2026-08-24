@@ -480,3 +480,40 @@ Final review ไม่พบ defect เพิ่มและ approve แล้�
 
 Stage แบบ explicit เฉพาะไฟล์ Shopee; dirty RX1011, `server/`, `print-agent/`, `docs/07` และ
 `docs/17` ไม่ติด commit. **ยังไม่ deploy จนกว่าจะยืนยัน Gmail quota regime ของ Cloud project**.
+
+---
+
+## Addendum 2026-08-24 — Shopee order timeline (local, รอ independent review)
+
+งานต่อจาก live inbox คือจับอีเมลที่มีเลขคำสั่งซื้อเดียวกันเป็น order timeline ที่
+`/shopee/orders`. งานนี้ **แยกจาก Shopee workbook/print pipeline**: เพิ่มตารางใหม่ใน schema
+`clasp_scx_seamless` คือ `shopee_orders` (current state) และ `shopee_order_events`
+(append-only events) ผ่าน migration `008_shopee_order_timeline.sql`; ไม่ใช้
+`processing_records`, `generated_files` หรือ `print_jobs`.
+
+Privacy boundary คือ parser เก็บเฉพาะเลขคำสั่งซื้อ, วันสั่ง/กำหนดส่ง, ชื่อ/ตัวเลือก/จำนวน/ราคา
+สินค้า, ยอดเงิน, delivery method และ cancellation reason code ที่กำหนดไว้. ห้ามเก็บหรือคืน raw
+subject/body, buyer username, ชื่อผู้รับ, ที่อยู่ หรือเบอร์โทร. Event dedupe ด้วย unique
+`(mailbox_account, gmail_message_id)` เพราะ seller-return subject สามารถซ้ำกันได้. API ใหม่:
+
+- `GET /api/app/shopee/orders` — list + status filter + opaque DB cursor
+- `GET /api/app/shopee/orders/:orderNumber` — order + chronological events
+- `POST /api/app/shopee/orders/sync` — admin-only; Gmail cursor แยกจาก DB cursor
+
+Sync อ่านสูงสุด 25 ข้อความต่อคำขอ, full-message concurrency 5, timeout 10 วินาที, ปิด automatic
+retry, ข้ามเฉพาะ 404 และ re-check From header ก่อน parse. Frontend default role เป็น `user` และ
+ซ่อน sync controls จน `getSession()` ยืนยัน admin; backend ตรวจ admin ซ้ำ จึงไม่พึ่ง UI เป็น
+security boundary. สีสถานะใช้ palette เดียวกับ live inbox และรายละเอียดแบบ expandable แสดง
+items/amounts/timeline โดยไม่มีข้อมูลผู้ซื้อ.
+
+ผล local ก่อนส่ง review: backend targeted (Shopee + Gmail adapter) **77/77**, regression ไม่รวม
+integration **218 ผ่าน/5 skip**, full backend **263 ผ่าน/5 skip**, frontend **67/67** และ Vite
+production build ผ่าน; `git diff --check` ผ่าน มีเพียง CRLF warnings. ยังไม่ stage/commit/push,
+ยังไม่ apply migration และยังไม่ deploy. Base HEAD ก่อนงานนี้คือ backend `7b7e567` และ frontend
+`5af5393`; section 12 เป็น snapshot เก่ากว่าและต้องใช้ `git log`/addendum นี้เป็นหลัก.
+
+Deployment order: (1) ยืนยัน Gmail quota gate เดิม (2) รัน `npm run seamless:migrate` ที่ backend
+เพื่อ apply migration 008 (3) deploy backend (4) deploy frontend (5) login admin แล้ว sync latest
+หนึ่งหน้าและตรวจ sample 1–3 orders. ห้ามรวม dirty RX1011 ใน backend และห้ามรวม dirty
+`server/`, `print-agent/`, `docs/07`, `docs/17` ใน frontend. รายการไฟล์และผลทดสอบล่าสุดอยู่ที่
+Task 11 ใน `docs/20-frontend-work-review-ledger.md`.

@@ -807,6 +807,167 @@ button:disabled {
   --category-text: #155e75;
 }
 
+.shopee-order-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.shopee-order-heading .panel-copy {
+  margin-bottom: 0;
+}
+
+.shopee-order-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.shopee-order-sync-status {
+  margin-top: 16px;
+}
+
+.shopee-order-filters {
+  grid-template-columns: minmax(180px, 240px);
+}
+
+.shopee-order-table {
+  min-width: 1180px;
+}
+
+.shopee-order-col-number { width: 15%; }
+.shopee-order-col-status { width: 15%; }
+.shopee-order-col-item { width: 20%; }
+.shopee-order-col-quantity { width: 7%; }
+.shopee-order-col-total { width: 10%; }
+.shopee-order-col-deadline { width: 10%; }
+.shopee-order-col-updated { width: 14%; }
+.shopee-order-col-detail { width: 9%; }
+
+.shopee-order-detail-row > td {
+  padding: 0;
+  background: rgba(13, 122, 86, 0.035);
+}
+
+.shopee-order-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 20px;
+  padding: 20px;
+}
+
+.shopee-order-detail-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(31, 42, 40, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.shopee-order-detail-card h3 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
+.shopee-order-detail-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  color: var(--muted);
+}
+
+.shopee-order-items {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.shopee-order-items li {
+  padding-left: 4px;
+}
+
+.shopee-order-items span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.shopee-order-amounts {
+  display: grid;
+  gap: 7px;
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(31, 42, 40, 0.08);
+}
+
+.shopee-order-amounts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shopee-order-amounts dt,
+.shopee-order-amounts dd {
+  margin: 0;
+}
+
+.shopee-order-amounts dt {
+  color: var(--muted);
+}
+
+.shopee-order-amounts div:last-child {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.shopee-order-timeline {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shopee-order-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 18px;
+}
+
+.shopee-order-timeline li:not(:last-child)::before {
+  position: absolute;
+  top: 14px;
+  bottom: 0;
+  left: 6px;
+  width: 2px;
+  background: rgba(31, 42, 40, 0.14);
+  content: '';
+}
+
+.shopee-order-timeline-dot {
+  width: 14px;
+  height: 14px;
+  margin-top: 5px;
+  border: 3px solid var(--accent);
+  border-radius: 50%;
+  background: var(--panel);
+  z-index: 1;
+}
+
+.shopee-order-timeline p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .pharmcare-detail-row-tr > td {
   padding: 0;
 }
@@ -971,6 +1132,19 @@ button:disabled {
 
   .history-group-record {
     grid-template-columns: 1fr;
+  }
+
+  .shopee-order-heading,
+  .shopee-order-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .shopee-order-heading {
+    flex-direction: column;
+  }
+
+  .shopee-order-sync-actions {
+    justify-content: flex-start;
   }
 }
 
@@ -1455,6 +1629,23 @@ a.history-view-button.secondary:hover {
   --category-bg: rgba(6, 182, 212, 0.18);
   --category-border: rgba(34, 211, 238, 0.45);
   --category-text: #67e8f9;
+}
+
+[data-color-mode="dark"] .shopee-order-detail-row > td {
+  background: rgba(240, 104, 77, 0.055);
+}
+
+[data-color-mode="dark"] .shopee-order-detail-card {
+  background: rgba(0, 0, 0, 0.18);
+  border-color: rgba(231, 236, 233, 0.12);
+}
+
+[data-color-mode="dark"] .shopee-order-amounts {
+  border-top-color: rgba(231, 236, 233, 0.12);
+}
+
+[data-color-mode="dark"] .shopee-order-timeline li:not(:last-child)::before {
+  background: rgba(231, 236, 233, 0.2);
 }
 
 [data-color-mode="dark"] .history-view-button.secondary,
