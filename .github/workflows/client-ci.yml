@@ -1,0 +1,51 @@
+name: Client CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/client-ci.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/client-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: client-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    name: Test and build client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install client dependencies
+        run: npm ci --workspace client
+
+      - name: Run client tests
+        run: npm --prefix client test
+
+      - name: Build client
+        run: npm --prefix client run build
