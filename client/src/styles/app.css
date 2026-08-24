@@ -746,15 +746,65 @@ button:disabled {
 .shopee-email-col-state { width: 8%; }
 
 .shopee-email-category {
+  --category-bg: #f1f5f9;
+  --category-border: #cbd5e1;
+  --category-text: #475569;
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   border-radius: 999px;
   padding: 5px 9px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent-strong);
+  border: 1px solid var(--category-border);
+  background: var(--category-bg);
+  color: var(--category-text);
   font-size: 0.78rem;
   font-weight: 800;
   line-height: 1.25;
+}
+
+.shopee-email-category::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.shopee-email-category[data-category="order_confirmed"] {
+  --category-bg: #dcfce7;
+  --category-border: #86efac;
+  --category-text: #166534;
+}
+
+.shopee-email-category[data-category="shipment_due"] {
+  --category-bg: #dbeafe;
+  --category-border: #93c5fd;
+  --category-text: #1e40af;
+}
+
+.shopee-email-category[data-category="order_cancelled"] {
+  --category-bg: #fee2e2;
+  --category-border: #fca5a5;
+  --category-text: #b91c1c;
+}
+
+.shopee-email-category[data-category="out_of_stock"] {
+  --category-bg: #fef3c7;
+  --category-border: #fcd34d;
+  --category-text: #92400e;
+}
+
+.shopee-email-category[data-category="security_alert"] {
+  --category-bg: #f3e8ff;
+  --category-border: #d8b4fe;
+  --category-text: #7e22ce;
+}
+
+.shopee-email-category[data-category="seller_return_delivery"] {
+  --category-bg: #cffafe;
+  --category-border: #67e8f9;
+  --category-text: #155e75;
 }
 
 .pharmcare-detail-row-tr > td {
@@ -1363,6 +1413,48 @@ a.history-view-button.secondary:hover {
 [data-color-mode="dark"] .history-pill[data-printed="false"] {
   background: rgba(210, 154, 78, 0.18);
   color: var(--warning);
+}
+
+[data-color-mode="dark"] .shopee-email-category {
+  --category-bg: rgba(148, 163, 184, 0.16);
+  --category-border: rgba(148, 163, 184, 0.42);
+  --category-text: #cbd5e1;
+}
+
+[data-color-mode="dark"] .shopee-email-category[data-category="order_confirmed"] {
+  --category-bg: rgba(34, 197, 94, 0.18);
+  --category-border: rgba(74, 222, 128, 0.45);
+  --category-text: #86efac;
+}
+
+[data-color-mode="dark"] .shopee-email-category[data-category="shipment_due"] {
+  --category-bg: rgba(59, 130, 246, 0.18);
+  --category-border: rgba(96, 165, 250, 0.45);
+  --category-text: #93c5fd;
+}
+
+[data-color-mode="dark"] .shopee-email-category[data-category="order_cancelled"] {
+  --category-bg: rgba(239, 68, 68, 0.18);
+  --category-border: rgba(248, 113, 113, 0.45);
+  --category-text: #fca5a5;
+}
+
+[data-color-mode="dark"] .shopee-email-category[data-category="out_of_stock"] {
+  --category-bg: rgba(245, 158, 11, 0.18);
+  --category-border: rgba(251, 191, 36, 0.45);
+  --category-text: #fcd34d;
+}
+
+[data-color-mode="dark"] .shopee-email-category[data-category="security_alert"] {
+  --category-bg: rgba(168, 85, 247, 0.18);
+  --category-border: rgba(192, 132, 252, 0.45);
+  --category-text: #d8b4fe;
+}
+
+[data-color-mode="dark"] .shopee-email-category[data-category="seller_return_delivery"] {
+  --category-bg: rgba(6, 182, 212, 0.18);
+  --category-border: rgba(34, 211, 238, 0.45);
+  --category-text: #67e8f9;
 }
 
 [data-color-mode="dark"] .history-view-button.secondary,
