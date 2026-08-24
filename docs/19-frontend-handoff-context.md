@@ -81,11 +81,21 @@ tests/                        — node:test + vite ssrLoadModule (ดู pharmca
 | Seamless Upload | `/` | `POST /api/workbooks/process` |
 | Seamless History | `/history` | `GET/POST /api/app/processing-records*`, `/api/files/:id/*` |
 | Shopee Upload | `/shopee/upload` | เหมือน Seamless แต่ mode=shopee |
+| Shopee Email Inbox | `/shopee/inbox` | `GET /api/app/shopee/inbox` — อ่าน Gmail สดแบบ read-only,
+                                               filter เฉพาะ `info@mail.shopee.co.th` |
 | Shopee History | `/shopee/history` | เหมือนกัน filter เฉพาะ Shopee records |
 | PharmCare Inbox | `/pharmcare/upload` | `GET /api/app/pharmcare/inbox`, `/messages/:id`,
                                             `/attachments/:id/download` — **อ่านอย่างเดียว ไม่มีปุ่ม
                                             approve/print** |
 | PharmCare History | `/pharmcare/history` | ยัง placeholder (M3 ยังไม่เริ่ม) |
+
+Shopee Email Inbox เป็น live operational view ไม่ใช่ ingestion source of truth: backend ใช้
+`format=metadata` (เฉพาะ From/Subject + id/thread/internalDate/labels), timeout 10 วินาที,
+ไม่ retry ที่ application layer, cache ต่อ backend instance 15 วินาที และจำกัด 25 แถวต่อหน้า.
+Regular `user` จะได้ subject ที่ปกปิด username หลัง `จากผู้ซื้อ`, `ถูกยกเลิกโดย` และ
+`ถูกทำการยกเลิกโดย` ฝั่ง server; `admin` ได้ subject เต็ม. Date range เป็นวันปฏิทิน ICT และ
+post-filter `internalDate` แบบ
+`[receivedFrom, receivedTo)` หลัง Gmail query อีกชั้นหนึ่ง.
 
 ## เอกสารที่เกี่ยวข้อง (อ่านเพิ่มตามหัวข้อที่สนใจ)
 

@@ -169,3 +169,27 @@ work log + review ระดับ "task ละแถว"
   สั่งไว้ commit `88b2c56` push แล้วที่ `main` ไม่ปนไฟล์ Shopee เลย **GLM 5.2 อ่านต่อจากตรงนี้ได้
   เลยสำหรับ task ถัดไป** — ยังไม่มี task ใหม่ ณ ตอนนี้ (งานปุ่ม "ขอปริ้น" ตาม docs/22 ยังรอเจ้าของ
   repo ตัดสินใจว่าจะให้เริ่มเมื่อไหร่)
+
+- **2026-08-24 — Task 10: Shopee live email inbox (Codex implement/review)** — เพิ่ม route
+  `/shopee/inbox`, เมนู "รายงานอีเมล์จาก Shopee", live read-only inbox table, category/date
+  filters และ Gmail page-token pagination. Backend จริงเพิ่ม `GET /api/app/shopee/inbox` และ
+  reuse Gmail OAuth read-only ของ `admin@scgroup1989.com` โดยบังคับ query/default sender
+  `info@mail.shopee.co.th`; ไม่ใช้ DB/print pipeline และไม่แตะ `server/`/`print-agent/` dirty
+  ของ Shopee accounting workbook workstream เก่า. ตรวจด้วยข้อมูล Gmail จริง 98 ฉบับย้อนหลัง
+  30 วันเพื่อยืนยัน category patterns. **Review รอบ 2 request changes แล้วแก้ครบ:** (1) ข้ามเฉพาะ
+  Gmail 404; 401/429/5xx แบบ single/mixed ทำให้ทั้งหน้า error ไม่คืน partial เงียบ (2) exact ICT
+  date boundary post-filter ด้วย `internalDate` (3) frontend reducer ผูก rows/cursor กับ request
+  generation เดียวกันและ guard stale success/failure (4) metadata-only + partial fields,
+  timeout 10 วินาที/no application retry, cache ต่อ instance 15 วินาที, cap 25 แถว (5) role
+  `user` ถูกปกปิด buyer username ใน subject ที่ backend; admin เห็นเต็ม. **Review รอบ 3 privacy
+  fix:** regex ครอบคลุมทั้ง `จากผู้ซื้อ ...`, `ถูกยกเลิกโดย ...` และ
+  `ถูกทำการยกเลิกโดย ...` พร้อม route regression test. ผล local ล่าสุด: frontend **61/61 ผ่าน**
+  + Vite build ผ่าน; backend targeted **42/42 ผ่าน**; regression ไม่รวม integration
+  **199 ผ่าน/5 skip**; full backend **244 ผ่าน/5 skip**. Full run มี warning ว่า env
+  `SC_OFFICIAL_SUPABASE_DATABASE_URL` ขาดตอนโหลดบาง module แต่ test ยังผ่าน; และตัวเลข full suite
+  รวม `backend-integration.test.cjs` dirty ของ RX1011 จึงไม่ใช่ Shopee baseline โดยตรง. Gmail
+  quota ตามเอกสาร Google ปัจจุบันคือ `list=5`, `get=20`, 6,000 units/min/user สำหรับ project
+  ภายใต้ regime ใหม่ แต่ project ที่เคยใช้ช่วง พ.ย. 2025–เม.ย. 2026 อาจใช้ quota เดิม — ก่อน
+  deploy ต้องตรวจ Cloud Console ของ project จริงและเฝ้าดู quota หลังเปิดใช้. **Final review:
+  approve with non-blocking notes.** Code commit backend `8f45b9f` และ frontend `81b714d` push
+  ขึ้น `main` แล้วโดย stage เฉพาะไฟล์งานนี้; **ยังไม่ deploy** ตาม quota gate.

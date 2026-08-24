@@ -434,3 +434,49 @@ aa9b864  docs: add PharmCare print integration spec (backend half, done)
 
 ถ้า `git log -1` ของทั้งสอง repo ไม่ตรงกับบรรทัดบนสุดข้างต้น แปลว่ามีงานใหม่เกิดขึ้นหลังจาก
 เขียน handoff นี้แล้ว — ไปอ่าน `docs/20` เพิ่มเติมเพื่อดูว่า task ไหนถูกเพิ่มมาใหม่
+
+---
+
+## Addendum 2026-08-24 — Shopee live email inbox (local, ยังไม่ deploy)
+
+เจ้าของ repo สั่งเพิ่ม "รายงานอีเมล์จาก Shopee" โดยอ่านเมลจาก
+`info@mail.shopee.co.th`. เลือกทำเป็น **live read-only Gmail inbox** ที่
+`/shopee/inbox` แทนการสร้าง ingestion tables ใหม่: endpoint
+`GET /api/app/shopee/inbox` ใช้ Gmail OAuth read-only ชุดเดิมของ mailbox
+`admin@scgroup1989.com`, query แยก `SEAMLESS_SHOPEE_GMAIL_QUERY` (default sender ข้างต้น),
+รองรับ category/date filters และ Gmail page-token pagination. Backend ตรวจ From header ซ้ำก่อน
+คืนผล จึงไม่กลายเป็น general mailbox browser. ไม่มีการเก็บ body/snippet และไม่มี write action
+ต่อ Gmail. Shopee path ใช้ `messages.get format=metadata` + partial fields เฉพาะ envelope ที่จำเป็น
+(ไม่โหลด body), timeout 10 วินาที, ไม่ retry ที่ application layer, cache ต่อ instance 15 วินาที
+และจำกัดไม่เกิน 25 แถวต่อหน้า. 404 ระหว่าง list/get ข้ามได้เพราะข้อความอาจหายไปแล้ว แต่
+401/429/5xx ทั้ง single และ mixed จะ fail ทั้งหน้าเพื่อไม่คืนข้อมูล partial เงียบ.
+
+ช่วงวันที่ใช้ Gmail query ที่กว้างกว่าขอบล่างหนึ่งวินาที แล้ว post-filter `internalDate` แบบ exact
+`[receivedFrom, receivedTo)` จึงไม่รั่ว 23:59:59 ของวัน ICT ก่อนหน้า. Frontend ใช้ request
+generation: เมื่อเปลี่ยน filter จะล้าง rows/cursor เก่าทันที และ stale load-more ทั้ง success/error
+เขียนทับ state ใหม่ไม่ได้. ด้าน privacy, role `user` ได้ subject ที่ปกปิด buyer username ฝั่ง
+backend ทั้งรูปแบบ `จากผู้ซื้อ ...`, `ถูกยกเลิกโดย ...` และ `ถูกทำการยกเลิกโดย ...` ส่วน
+`admin` เห็น subject เต็ม.
+
+งานนี้ไม่แตะ DB migration, `processing_records`, print pipeline, `server/` หรือ `print-agent/`
+จึงไม่ชน Shopee accounting workbook dirty workstream เดิม. Category 6 แบบได้จากตัวอย่าง Gmail
+จริง 98 ฉบับย้อนหลัง 30 วัน (COD confirmed/shipment due/cancelled/out of stock/security/
+seller return). ผล local ล่าสุดหลัง review fixes: frontend 61/61 + build ผ่าน, backend targeted
+42/42, regression ไม่รวม integration 199 ผ่าน/5 skip, full backend 244 ผ่าน/5 skip. Full suite
+มี warning เรื่อง local env ขาด `SC_OFFICIAL_SUPABASE_DATABASE_URL` แต่ไม่ fail; ตัวเลข full ยัง
+รวม `backend-integration.test.cjs` dirty ของ RX1011 จึงไม่ใช่ baseline ของ Shopee โดยตรง.
+
+Deployment gate ที่ยังต้องทำ: เปิด Google Cloud Console ตรวจ quota regime ของ OAuth project จริง
+(Google อัปเดต 1 พ.ค. 2026: project ใหม่ 6,000 units/min/user; project ที่เคยใช้ช่วง พ.ย.
+2025–เม.ย. 2026 อาจยังอยู่ quota เดิม; `messages.list=5`, `messages.get=20`) และ monitor quota
+หลังเปิด staff. หน้า 25 แถวมีต้นทุนสูงสุด 505 units เมื่อ cache miss; cache ช่วยเฉพาะ request
+filter/cursor เดียวกันบน backend instance เดียว. อ้างอิง:
+https://developers.google.com/workspace/gmail/api/reference/quota
+
+Final review ไม่พบ defect เพิ่มและ approve แล้ว. Code commits ที่ push ขึ้น `main`:
+
+- `currentSC-official-website-project`: `8f45b9f` — `seamless: add read-only Shopee email inbox API`
+- `ClaspSCxSeamless`: `81b714d` — `Shopee: add live read-only email inbox`
+
+Stage แบบ explicit เฉพาะไฟล์ Shopee; dirty RX1011, `server/`, `print-agent/`, `docs/07` และ
+`docs/17` ไม่ติด commit. **ยังไม่ deploy จนกว่าจะยืนยัน Gmail quota regime ของ Cloud project**.

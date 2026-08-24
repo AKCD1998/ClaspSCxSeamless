@@ -15,6 +15,34 @@ print-agent ครั้งแรก) — ไฟล์นี้คือภา�
 
 ## Workstream ที่ active อยู่ตอนนี้
 
+### อัปเดต 2026-08-24 — Shopee live email inbox
+
+- Scope ใหม่: เพิ่มเมนู `/shopee/inbox` ชื่อ **รายงานอีเมล์จาก Shopee** และ endpoint
+  `GET /api/app/shopee/inbox` ใน shared backend จริง เพื่ออ่านอีเมลจาก
+  `info@mail.shopee.co.th` แบบ read-only
+- สถาปัตยกรรม: อ่าน Gmail สดเมื่อเปิดหน้า ใช้ OAuth read-only ของ mailbox
+  `admin@scgroup1989.com` ชุดเดียวกับ PharmCare แต่ใช้ query แยก
+  (`SEAMLESS_SHOPEE_GMAIL_QUERY`, default ล็อกไว้ที่ sender ข้างต้น) ไม่มี migration/ตารางใหม่
+  และไม่แตะ `processing_records`, `print_jobs`, R2 หรือ print-agent
+- การจัดประเภทหัวข้อที่ยืนยันจากตัวอย่างจริง 98 ฉบับใน 30 วัน: ยืนยันคำสั่งซื้อ COD,
+  ถึงเวลาจัดส่ง, ยกเลิก, สินค้าหมด, ความปลอดภัยบัญชี, พัสดุส่งคืนผู้ขาย
+- ไฟล์ production ที่แตะ: `currentSC-official-website-project/backend/src/modules/seamless/`
+  (`config.js`, Gmail adapter, Shopee inbox service/controller/routes + tests) และ
+  `ClaspSCxSeamless/client/` เท่านั้น
+- **ไม่แตะไฟล์ dirty เดิมใน `server/`/`print-agent/` ด้านล่างเลย** — Shopee accounting
+  workbook workflow เก่ายังเป็น workstream คนละชุดและยังค้างเหมือนเดิม
+- ผล review รอบ 2 แก้แล้วใน local: ข้ามเฉพาะ `messages.get` 404 แต่ propagate
+  auth/quota/5xx ทุกกรณี, exact ICT boundary post-filter ด้วย `internalDate`, filter generation
+  ป้องกัน stale rows/cursor, Gmail metadata-only + timeout 10 วินาที/no application retry,
+  cache ต่อ instance 15 วินาที, cap หน้าไม่เกิน 25 และปกปิด buyer username ฝั่ง backend สำหรับ
+  role `user` ทั้ง `จากผู้ซื้อ ...`, `ถูกยกเลิกโดย ...`, `ถูกทำการยกเลิกโดย ...`
+  (admin เห็น subject เต็ม)
+- สถานะ ณ ตอนบันทึก: frontend 61/61 + build ผ่าน, backend targeted 42/42 ผ่าน;
+  regression ไม่รวม integration 199 ผ่าน/5 skip; full backend 244 ผ่าน/5 skip. ตัวเลข full suite
+  รวม `backend-integration.test.cjs` dirty ของ RX1011 จึงไม่ใช่ Shopee baseline โดยตรง;
+  reviewer รอบสุดท้าย approve แล้ว. Code commit backend `8f45b9f` และ frontend `81b714d`
+  push ขึ้น `main` แล้ว; **ยังไม่ deploy จนกว่าจะยืนยัน Gmail quota regime ของ Cloud project**
+
 ### 1. Shopee accounting workbook workflow
 
 - เอกสาร: `docs/15-shopee-document-mvp.md`, `docs/16-shopee-june-2026-agent-handoff.md`
