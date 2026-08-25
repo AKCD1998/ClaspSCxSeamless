@@ -140,13 +140,6 @@ a {
   grid-template-columns: 1fr;
 }
 
-/* History tables have twelve operational columns and a 1420px minimum width. Give only the
-   two history routes a wider desktop canvas so the table can use large/zoomed-out screens,
-   while the shared upload and report pages keep the more readable 1500px limit. */
-.shell-history {
-  width: min(2200px, 100%);
-}
-
 .shell-single-column .hero,
 .shell-single-column .panel {
   grid-column: auto;
@@ -176,6 +169,17 @@ a {
 
 .history-panel {
   grid-column: 1 / -1;
+}
+
+/* History tables have twelve operational columns and a 1420px minimum width. Let the panel
+   break out of the shared 1500px shell on desktop so zoomed-out and wide screens can use their
+   full canvas. Targeting the panel itself keeps both history routes working without a route-
+   specific class and preserves the normal shell width for every other page. */
+@media (min-width: 821px) {
+  .shell-single-column > .history-panel {
+    width: min(2200px, calc(100vw - 40px));
+    justify-self: center;
+  }
 }
 
 .api-status {
