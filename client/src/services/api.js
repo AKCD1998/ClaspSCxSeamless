@@ -200,6 +200,10 @@ export async function getShopeeOrder(orderNumber) {
   return requestJson(`/app/shopee/orders/${encodeURIComponent(orderNumber)}`);
 }
 
+export async function getShopeeAccountingCycleStatus() {
+  return requestJson('/app/shopee/accounting-cycle');
+}
+
 export async function syncShopeeOrders(options = {}) {
   return requestJson('/app/shopee/orders/sync', {
     method: 'POST',

@@ -395,3 +395,224 @@ work log + review ระดับ "task ละแถว"
   เพื่อให้ remote CI ทำงาน. ยังไม่พร้อม deploy จนยืนยัน Gmail quota regime และทำ deployment gate
   ตามลำดับเดิม (apply migration 008 ก่อน backend/frontend deploy). Coordinator รอบนี้ไม่ได้ stage,
   commit, push, apply production migration หรือ deploy.
+
+- **2026-08-25 — Task 12: Shopee rolling four-week accounting cycle + persisted next-cycle
+  notifier (`TASK12-SHOPEE-ACCOUNTING-CYCLE`) — Ready for senior review.** เจ้าของอนุมัติกติกา
+  รอบบัญชีต่อเนื่อง 4 สัปดาห์ (28 วัน) จันทร์–อาทิตย์ โดยยึด workbook เดือนมิถุนายน 2569 เป็น
+  anchor: `2026-06-01..2026-06-28`. ระบบสร้าง profile ของเดือนก่อน/ถัดไปอัตโนมัติเฉพาะวันที่เริ่ม
+  ที่ตรงกับลำดับ 28 วันจาก anchor และ fail closed หากชื่อไฟล์เริ่มผิด boundary หรือสิ้นสุดก่อนครบ
+  รอบ. Master sheet ใช้เดือนของวันสิ้นรอบ; ชีตรายสัปดาห์และสีทั้งสี่ชุดสร้างจาก profile เดิมโดย
+  ไม่ต้องให้บัญชีอนุมัติชื่อ/สีใหม่ทุกเดือน. รอบกรกฎาคมที่ยืนยันคือ `2026-06-29..2026-07-26`
+  พร้อมชีต `07`, `29.06-05.07`, `06-12.07`, `13-19.07`, `20-26.07`; รอบถัดไปคือ
+  `2026-07-27..2026-08-23` พร้อม master `08`.
+
+  เพิ่ม read-only endpoint `GET /api/app/shopee/accounting-cycle` ซึ่งคำนวณ checkpoint จาก
+  `transformSummary.periodEnd` ของ Shopee records ใน `processing_records` ที่มีอยู่แล้ว โดยเลือก
+  period end สูงสุด จึงไม่ถอยหลังเมื่อ re-upload ไฟล์เก่าและไม่ต้องเพิ่ม migration/table. หน้า
+  Shopee upload แสดงรอบล่าสุด, ช่วงดาวน์โหลดถัดไปแบบ inclusive `00:00..23:59` ICT, ชื่อชีตทั้ง
+  สี่ และ refresh checkpoint หลัง process สำเร็จ. หากยังไม่มี history จะแสดง anchor cycle ที่
+  ตรวจแล้ว; หาก endpoint ผิดพลาด upload เดิมยังใช้งานได้และ notifier มี retry-safe error state.
+
+  Date-basis decision: Order.all transformer จัดสัปดาห์ด้วย `เวลาที่ทำการสั่งซื้อสำเร็จ`
+  (`order_completed_at`) ตาม contract เดือนมิถุนายน. วันรายได้เข้า/วัน settlement ไม่รับประกันว่า
+  เป็นวันเดียวกันและไม่มี field ที่ยืนยันใน Order.all นี้ จึงไม่เดา/ไม่สร้าง automation เท็จ;
+  notifier บอกให้บัญชีกระทบยอดกับ income report ก่อนปิดรอบ. การอ่าน checkpoint จำกัด 250 records
+  และใช้ metadata เท่านั้น; หากในอนาคตมีมากกว่านี้โดยไม่มี record ใหม่กว่าภายในหน้าที่อ่าน ต้อง
+  เปลี่ยนเป็น repository query แบบ aggregate/indexed.
+
+  Workbook QA พบ typed date ในคอลัมน์ B แคบจน Excel/PDF แสดง `########`; แก้ให้ B กว้างเท่ากับ
+  M ซึ่งใช้ number format เดียวกัน และเพิ่ม regression guard. สร้าง synthetic July workbook ผ่าน
+  transformer จริง, เปิดด้วย Microsoft Excel และ export PDF เพื่อตรวจทุกหน้า: sheet order/date
+  ranges/fills ถูกต้อง, B/M แสดง datetime ครบ, สูตร L ทุก data row เป็น `H-I-J-K`, ไม่พบ PII หรือ
+  formula-error token. Frontend ตรวจ browser จริงทั้ง desktop, mobile light และ mobile dark;
+  notifier ไม่ overflow และ dark cards อ่านได้. Mobile navbar เดิมยังมี horizontal overflow ที่
+  390px ซึ่งเกิดก่อน Task 12 และไม่ได้แก้ใน task นี้. QA artifacts ชั่วคราวถูกลบแล้ว.
+
+  ผลตรวจ: backend targeted cycle/workbook **22/22 ผ่าน**; backend full **305 ผ่าน/5 skip**;
+  frontend **71/71 ผ่าน**; Vite production build ผ่าน (76 modules); `git diff --check` ทั้งสอง
+  repo ผ่านโดยมีเพียง CRLF warnings. Backend full suite มี baseline warning เรื่อง
+  `SC_OFFICIAL_SUPABASE_DATABASE_URL` แต่ไม่มี failure. ยังไม่ได้ stage, commit, push, deploy หรือ
+  apply migration/database write ใด ๆ.
+
+  **Explicit stage list — backend repo (Task 12 only):**
+  `backend/src/modules/seamless/controllers/shopeeAccountingCycleController.js`,
+  `backend/src/modules/seamless/routes/shopeeEmailRoutes.js`,
+  `backend/src/modules/seamless/services/shopeeAccountingCycleStatusService.js`,
+  `backend/src/modules/seamless/services/shopeeAccountingCycles.js`,
+  `backend/src/modules/seamless/services/shopeeWorkbookTransform.js`,
+  `backend/tests/seamless-shopee-workbook-transform.test.cjs`,
+  `backend/tests/shopee-accounting-cycle-status.test.cjs`,
+  `backend/tests/shopee-accounting-cycles.test.cjs`,
+  `backend/tests/shopee-order-routes.test.cjs`.
+
+  **Explicit stage list — frontend/docs repo (Task 12 only):**
+  `client/src/components/ShopeeAccountingCycleNotice.jsx`,
+  `client/src/pages/ShopeeUploadPage.jsx`, `client/src/services/api.js`,
+  `client/src/styles/app.css`, `client/tests/api-service.test.mjs`,
+  `client/tests/app-render.test.mjs`,
+  `client/tests/shopee-accounting-cycle-notice.test.mjs`,
+  `docs/20-frontend-work-review-ledger.md`.
+
+  Explicitly exclude backend RX1011/report/integration/env-audit incident files and frontend
+  `docs/07`, `docs/17`, `server/`, `print-agent/` dirty workstreams. ห้ามใช้ `git add -A`.
+
+- **2026-08-25 — Task 13 concept backlog: Shopee ↔ POS product reconciliation
+  (`TASK13-SHOPEE-POS-RECONCILIATION`) — Discovery only / intentionally deferred.** แนวคิดนี้
+  เกิดจาก independent document comparison ระหว่าง Shopee finished workbook
+  `ศิริชัย รายงานยอดขาย กรกฎาคม(1).xlsx` กับ POS sales PDF `_sc_frm_sql_smsalequatation.pdf`.
+  Reviewer รายงานว่า 46 included lines มีจำนวนรวมตรงทั้งหมด แต่ชื่อ/รสสินค้าผิด 3 lines ในรอบ
+  `29.06-05.07`: order `260626472PUVXU`, `260626463SWRQQ`, `26062645SKRA16` เป็น Vita-C
+  รสองุ่นใน Excel แต่ POS PDF lines 4, 6, 7 เป็นรสสับปะรด รายการละ 6 ซอง. ผลรวมจึงย้าย
+  องุ่น 18 ซองไปเป็นสับปะรด 18 ซองโดยยอดรวมไม่หาย. นี่เป็น evidence จาก reviewer ที่เจ้าของส่ง
+  ต่อมา; Codex session นี้ยังไม่ได้ independently re-open/re-verify เอกสารสองไฟล์ดังกล่าว.
+
+  เป้าหมายในอนาคตคือระบบ reconcile ที่เก็บ source truth สองฝั่งแยกกัน: “ลูกค้าสั่งอะไรใน
+  Shopee” เทียบกับ “บริษัทบันทึก/จ่ายสินค้าอะไรใน POS” แล้วแสดง mismatch ก่อนปิดรอบ. ระบบห้าม
+  silently rewrite เอกสารต้นทาง. ผู้มีสิทธิ์สามารถยืนยัน mismatch ที่ตั้งใจได้ แต่ต้องเลือก reason
+  code และใส่เหตุผล เช่นสินค้าหมดจึงตกลงส่งสินค้าที่ดีกว่าโดยไม่ยกเลิก Shopee order; reconciliation
+  ต้องเก็บทั้ง ordered product และ fulfilled/POS product ไว้ ไม่เปลี่ยน mismatch ให้ดูเหมือน match.
+
+  Candidate product master คือ SC Drug database/API ที่ใช้งานผ่าน workspace
+  `C:\Users\scgro\Desktop\FadaSoft-projects.code-workspace`. ก่อนออกแบบจริงต้อง inspect แบบ
+  read-only ว่า workspace ชี้ไป repo/service ใด, API contract/auth/availability/identifier ที่เสถียร
+  คืออะไร และมี SKU/หน่วย/pack-size/active-status/aliases ครบหรือไม่; ห้าม assume ว่าชื่อสินค้าเป็น
+  primary key หรือว่า production API พร้อมเป็น dependency ของ reconciliation.
+
+  **Proposed guardrails สำหรับ discovery/design:**
+
+  1. สร้าง canonical product identity จาก stable SC Drug product ID/SKU และตาราง aliases แยก
+     Shopee listing name/variant/SKU กับ POS item code/name; normalize Unicode, whitespace,
+     punctuation และหน่วย แต่ต้องรักษารส/ขนาด/pack/strength เป็น identity attributes ห้าม fuzzy
+     จน “องุ่น” กลายเป็น “สับปะรด”.
+  2. แปลงจำนวนเป็น base unit ด้วย versioned conversion rule เช่น `24+1 ซอง × 1 = 25 ซอง`,
+     `2 กระป๋อง × 2 = 4 กระป๋อง`, `3 bx × 1 = 3 กล่อง`; เก็บ raw value และ normalized value
+     พร้อม rule/version ที่ใช้ เพื่อ re-run และ audit ได้.
+  3. Matching ต้อง deterministic ก่อน: external order/reference ID (ถ้า POS มี), canonical product,
+     variant, normalized quantity และ accounting cycle. Fuzzy matching ใช้เสนอ candidate ให้คน
+     เลือกเท่านั้น ห้าม auto-approve. หาก POS ไม่มี Shopee order number ต้องลด confidence และ
+     แยกให้ชัดว่าเป็น aggregate reconciliation ไม่ใช่ per-order proof.
+  4. Result states ขั้นต่ำ: `matched`, `product_mismatch`, `quantity_mismatch`, `unmapped_product`,
+     `ambiguous`, `excluded_order_status`, `authorized_substitution`, `resolved_data_error`.
+  5. Override ต้องจำกัด role (admin/accounting ตาม policy ที่จะยืนยัน), require reason code + note,
+     เก็บ actor/time/source record IDs/source file hashes/before-after values/mapping version และ
+     append-only history. การ re-run ห้ามลบ override เดิม และต้อง flag เมื่อ source หรือ mapping
+     version เปลี่ยนจน decision เดิมอาจไม่ตรง.
+  6. Import/sync ต้อง idempotent และรักษา raw snapshot; ป้องกัน duplicate cycle/file, partial parse,
+     stale mapping, concurrent reconciliation และการนำ cancelled/unpaid/in-transit line มารวมผิด.
+     Buyer/recipient PII ไม่จำเป็นต่อ product reconciliation และต้องไม่ถูก copy เข้า API/UI/audit.
+  7. UI ควรสรุป matched/mismatch/unmapped totals, drill down ถึงหลักฐานสองฝั่ง, แสดง confidence/
+     pack conversion และมี explicit “ยืนยันดำเนินการพร้อมเหตุผล”; ห้ามใช้สีอย่างเดียวสื่อสถานะ.
+  8. ก่อน implementation ต้องตอบ open questions: POS มี Shopee order ID หรือ key เชื่อมระดับบิล
+     หรือไม่, PDF เป็น source หลักหรือมี structured API/export, SC Drug ID เชื่อม POS code ได้ตรง
+     หรือไม่, ใครมีสิทธิ์ approve, reason taxonomy/หลักฐานขั้นต่ำ/รอบแก้ไขย้อนหลังคืออะไร และ
+     accounting ต้องการ reconcile ต่อ order, ต่อ line หรือยอดรวมต่อรอบ.
+
+  **Recommended phased delivery หลังระบบพื้นฐานเสร็จ:** Phase 0 read-only discovery + data
+  contract + manually verified fixture; Phase 1 offline deterministic reconciliation report ไม่มี
+  override; Phase 2 persisted results/product mappings + audited override workflow; Phase 3 optional
+  SC Drug live lookup/cache และ operational monitoring. ทุก phase ต้องมี golden fixtures ที่รวม
+  mismatch สาม order ข้างต้น, pack conversion, legitimate substitution, duplicate/re-upload,
+  excluded statuses และ adversarial near-name products.
+
+  สถานะปัจจุบัน: **idea recorded only**. ยังไม่อนุมัติ implementation, database migration,
+  SC Drug API call, การแก้ POS/Shopee data, stage, commit, push หรือ deploy. Senior Dev ถูกขอให้
+  review จุดบอด/architecture ก่อน แล้วส่ง findings และคำถามที่ต้องให้เจ้าของหรือบัญชียืนยัน.
+
+- **2026-08-25 — Task 12 senior review round 1: Request changes.** Reviewer independently
+  reproduced 2 blocking defects แม้ suite เดิมผ่าน: **High** — transformer ใช้ `orderDate` ตัด
+  cycle membership แล้วค่อยใช้ `completedAt` แบ่งสัปดาห์ ทำให้ออเดอร์ที่สร้างก่อนรอบแต่สำเร็จใน
+  รอบตกหล่น และออเดอร์ที่สร้างในรอบแต่สำเร็จรอบถัดไปทำให้ allocation fail. Repro คือ order
+  `2026-06-28 23:50` / completed `2026-06-29 00:05` ถูกตัดออก และ order
+  `2026-07-26 23:50` / completed `2026-07-27 00:05` ทำให้ทั้งไฟล์ fail. Reviewer ยังชี้ว่า UI
+  ที่บอกให้ดาวน์โหลด exact cycle อาจทำรายการค้างหลุดถ้า Shopee filter ใช้ order-created date.
+  **Medium** — status service เลือก max `periodEnd` จึงข้าม gap ได้ เช่น June + August แต่ขาด
+  July แล้วแนะนำ September. Residual notes: zero-row success ปิดรอบเท็จได้, query จำกัด 250
+  records และ refresh failure ยังแสดง payload เก่า. Verdict: ห้าม stage/commit/deploy จนแก้.
+
+  Reviewer run: backend targeted **35/35**, regression ไม่แตะ dirty integration **260 ผ่าน/5
+  skip**, frontend **71/71**, Vite build 76 modules และ browser QA ผ่าน; ไม่ได้แก้หรือเรียก
+  production. ตัวเลขนี้เป็นผลที่ reviewer รายงาน ไม่ใช่ผล run ของ coordinator.
+
+  **Coordinator remediation round 1 — Ready for senior review round 2.** Cycle membership และ
+  weekly allocation ใช้ parsed `completedAt` ตัวเดียวกันแล้ว; `orderDate` เหลือเป็น typed output
+  field เท่านั้น. Completed ก่อนรอบ/หลังรอบถูก exclude เป็น
+  `completedBeforeCycleExcluded`/`completedAfterCycleExcluded` โดยหลังรอบคง alias
+  `carryoverExcluded` และไม่ทำให้ allocation fail. Boundary repro สองกรณีถูกตรึงด้วย regression
+  tests; zero-row output ยังสร้าง workbook ได้แต่ metadata เป็น
+  `cycleClosureStatus: review_required_empty` และ `checkpointEligible: false` จึงไม่ปิดรอบจนกว่า
+  จะมีไฟล์ valid ที่มีรายการ. Valid re-upload ของ cycle เดียวกันล้าง empty warning ได้.
+
+  เพื่อรองรับ order-date overlap, cycle ไม่ได้ derive จาก filename start อีกต่อไป แต่เลือก cycle
+  ล่าสุดที่ filename end ครอบคลุมครบ แล้ว require ว่า source start ต้องไม่ช้ากว่า cycle start.
+  ดังนั้น export ที่เริ่มย้อนหลังยังเลือก cycle ได้ deterministic. Public API แยก accounting
+  completion window ออกจาก download guidance: preferred filter คือ `order_completed_at` ช่วง
+  exact cycle; fallback เมื่อ Shopee ให้กรองเฉพาะ `order_created_at` คือย้อนหลังขั้นต่ำ 28 วัน
+  และ UI เตือนชัดว่าไม่ guaranteed — ต้องรวม pending orders ที่เก่ากว่านั้นด้วยถ้ามี. ไม่ได้ claim
+  ว่ายืนยัน Shopee filter field จริงแล้ว.
+
+  Checkpoint เปลี่ยนเป็น highest cycle ที่ **ต่อเนื่องจาก anchor**. API คืน `hasGaps`,
+  `missingCycles`, `futureCompletedCycles` และ `unconfirmedEmptyCycles`; June + August จะค้างที่
+  June, `nextCycle` เป็น July และแสดง August ว่าเป็น future file ที่ยังไม่เลื่อน checkpoint.
+  เพิ่ม DB query `SELECT DISTINCT` เฉพาะ transform-summary fields โดยไม่มี history-page limit
+  จึงเอาข้อจำกัด 250 records ออกโดยไม่เพิ่ม migration. Frontend แสดง gap/empty warning,
+  เปลี่ยน label จาก “ช่วงที่ต้องดาวน์โหลด” เป็น accounting cycle + download strategy และล้าง/
+  ซ่อน stale payload เมื่อ refresh error. Date-color key เปลี่ยนมาอ่าน UTC fields ให้ตรงกับ
+  wall-clock serialization และไม่เปลี่ยนวันตาม timezone ของ runner.
+
+  ผลตรวจ coordinator หลัง remediation: backend targeted cycle/routes/workbook/query **43/43
+  ผ่าน**; backend full **314 ผ่าน/5 skip**; frontend **74/74 ผ่าน**; Vite production build ผ่าน
+  (76 modules). Browser QA ด้วย mocked read-only session/bootstrap/status ผ่านที่ desktop 1440px,
+  mobile 390px light และ mobile 390px dark: gap, overlap guidance และ four-week cards อ่านครบ,
+  panel ไม่ overflow; navbar mobile overflow เดิมยังอยู่นอก scope. Browser artifacts ถูกลบแล้ว.
+  Backend full ยังมี baseline warning เรื่อง `SC_OFFICIAL_SUPABASE_DATABASE_URL` และ mocked
+  webhook/operation logs แต่ไม่มี failure. ไม่มี production DB/API call และไม่มี migration.
+
+  **Revised explicit stage list — backend Task 12 only:**
+  `backend/src/modules/seamless/controllers/shopeeAccountingCycleController.js`,
+  `backend/src/modules/seamless/processingRecords.js`,
+  `backend/src/modules/seamless/routes/shopeeEmailRoutes.js`,
+  `backend/src/modules/seamless/services/shopeeAccountingCycleStatusService.js`,
+  `backend/src/modules/seamless/services/shopeeAccountingCycles.js`,
+  `backend/src/modules/seamless/services/shopeeWorkbookTransform.js`,
+  `backend/tests/processing-records-cycle-summaries.test.cjs`,
+  `backend/tests/seamless-shopee-workbook-transform.test.cjs`,
+  `backend/tests/shopee-accounting-cycle-status.test.cjs`,
+  `backend/tests/shopee-accounting-cycles.test.cjs`,
+  `backend/tests/shopee-order-routes.test.cjs`.
+
+  **Revised explicit stage list — frontend/docs Task 12 only:**
+  `client/src/components/ShopeeAccountingCycleNotice.jsx`,
+  `client/src/pages/ShopeeUploadPage.jsx`, `client/src/services/api.js`,
+  `client/src/styles/app.css`, `client/tests/api-service.test.mjs`,
+  `client/tests/app-render.test.mjs`,
+  `client/tests/shopee-accounting-cycle-notice.test.mjs`,
+  `docs/20-frontend-work-review-ledger.md`.
+
+  Explicitly exclude backend RX1011/report/integration/env-audit incident files and frontend
+  `docs/07`, `docs/17`, `server/`, `print-agent/`. ยังไม่ได้ stage, commit, push หรือ deploy;
+  ห้ามใช้ `git add -A`. Remaining business gate: เจ้าของ/บัญชียังต้องยืนยันว่า Shopee export UI
+  กรองด้วย completion date ได้หรือใช้ order-created date เท่านั้น; จนยืนยัน ให้ทำตาม fallback
+  overlap และตรวจ pending orders เก่ากว่า 28 วันทุกครั้ง.
+
+- **2026-08-25 — Task 12 senior review round 2: Approve with non-blocking notes.** Reviewer
+  ยืนยันว่า blocking defects ทั้งสองข้อแก้ครบและไม่พบ confirmed defect ใหม่; อนุมัติ explicit
+  stage/commit/push และ remote CI แต่ยังไม่อนุมัติ production deploy จนกว่าจะยืนยัน business gate
+  ว่า Shopee export กรองด้วย completion date ได้หรือไม่. หากกรองได้เฉพาะ order-created date ต้อง
+  ใช้ lookback และรวม pending orders ที่เก่ากว่า 28 วันตามคำเตือนใน UI. Reviewer แนะนำเพิ่ม smoke
+  ของ distinct-summary query ด้วย PostgreSQL จริงเป็น non-blocking hardening.
+
+  Coordinator ปิด non-blocking SQL note โดยเพิ่ม
+  `backend/tests/shopee-accounting-cycle-postgres.integration.test.cjs` เข้า Jest suite ที่ workflow
+  `backend-ci.yml` รันอยู่แล้ว; ไม่สร้างหรือแก้ workflow เพิ่ม. Test มี fail-safe gate บังคับ
+  `SEAMLESS_MIGRATION_SMOKE=1`, schema ลงท้าย `_ci` และ database host เป็น local เท่านั้น จากนั้น
+  truncate เฉพาะ ephemeral transaction, insert duplicate/empty/excluded fixtures, เรียก repository
+  query จริงและ rollback. Local CI simulation ใช้ PostgreSQL 18 ชั่วคราว, apply migrations ทั้ง 9
+  ไฟล์ และ integration test **1/1 ผ่าน**; server ถูกหยุดและ data directory ถูกลบแล้ว. Backend full
+  แบบไม่มี smoke env **314 ผ่าน/6 skip** (เพิ่ม 1 intentional skip สำหรับ real-PostgreSQL test),
+  frontend **74/74 ผ่าน** และ Vite production build ผ่าน 76 modules.
+
+  **Final backend stage list เพิ่มจากรอบอนุมัติเพียงไฟล์ hardening นี้:**
+  `backend/tests/shopee-accounting-cycle-postgres.integration.test.cjs`. ไฟล์ Task 12 อื่นใช้ revised
+  explicit stage list ข้างต้นเหมือนเดิม. Feature branch ทั้งสอง repo คือ
+  `feat/shopee-accounting-cycles`; production deploy ยังคง blocked ที่ Shopee export-filter business
+  gate และยังไม่มี production DB/API call.

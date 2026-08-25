@@ -238,6 +238,25 @@ test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () =
   assert.equal(calls[2].options.credentials, 'include');
 });
 
+test('getShopeeAccountingCycleStatus fetches the persisted four-week checkpoint', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      hasHistory: true,
+      lastCompletedCycle: { periodEnd: '2026-07-26' },
+      nextCycle: { periodStart: '2026-07-27', periodEnd: '2026-08-23', weeks: [] },
+    }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const payload = await api.getShopeeAccountingCycleStatus();
+
+  assert.equal(calls[0].url, 'http://api.test.local/api/app/shopee/accounting-cycle');
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(payload.nextCycle.periodStart, '2026-07-27');
+});
+
 test('getPharmcareInbox omits the query string when no filters are set', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
