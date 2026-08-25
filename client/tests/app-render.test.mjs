@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -77,6 +78,13 @@ test('Shopee history route is locked to Shopee records and exposes admin print c
   assert.match(html, /ประวัติเอกสาร Shopee และคิวปริ้นท์/);
   assert.match(html, /รายงานคำสั่งซื้อ Shopee/);
   assert.match(html, /กดสั่งพิมพ์/);
+});
+
+test('history width is applied to the containing shell instead of overflowing the grid child', async () => {
+  const css = await readFile(path.join(clientRoot, 'src/styles/app.css'), 'utf8');
+
+  assert.match(css, /\.shell-single-column:has\(> \.history-panel\)\s*{[^}]*width:\s*min\(2200px, 100%\)/s);
+  assert.doesNotMatch(css, /\.shell-single-column\s*>\s*\.history-panel\s*{[^}]*width:/s);
 });
 
 test('Shopee reports route renders the read-only Gmail inbox', async () => {
