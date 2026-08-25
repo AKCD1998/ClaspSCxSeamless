@@ -616,3 +616,48 @@ work log + review ระดับ "task ละแถว"
   explicit stage list ข้างต้นเหมือนเดิม. Feature branch ทั้งสอง repo คือ
   `feat/shopee-accounting-cycles`; production deploy ยังคง blocked ที่ Shopee export-filter business
   gate และยังไม่มี production DB/API call.
+
+- **2026-08-25 — Task 12 production workbook discovery: Order.all picker uses order-created date.**
+  เจ้าของยืนยันว่าหน้า export ของ Shopee มี date picker เดียวและไม่ได้ให้เลือก field; ไฟล์จริง
+  `Order.all.20260727_20260823.xlsx` ยืนยันพฤติกรรมด้วย 50 แถวที่ยังไม่มี completed time และ 29
+  แถวที่ completed หลังวันสิ้นสุดในชื่อไฟล์. จึงปิด business gate เดิมโดยถือว่า picker กรอง
+  `order_created_at` เป็น contract หลัก ไม่ใช่ fallback.
+
+  Coordinator ปรับ backend ให้ไฟล์หลัง June anchor ต้องครอบคลุม order-created lookback 28 วัน
+  **ทุกครั้ง** แม้ในไฟล์จะไม่มี pending/after-end row เป็นหลักฐาน เพื่อกันออเดอร์ที่สั่งก่อนรอบแต่
+  สำเร็จในรอบตกหล่น. June anchor เดิมยังคงยกเว้นเพราะตรวจเอกสารจริงแล้ว. Row-level evidence ยังเก็บ
+  ใน metadata เพื่อ audit; การแบ่งรอบ/ชีตยังใช้ `order_completed_at` ตามกติกาบัญชีเดิม และไม่ได้
+  เปลี่ยนเป็น order date. Public guidance เปลี่ยน preferred export field เป็น `order_created_at`
+  พร้อม required lookback; frontend เลิกข้อความแบบมีเงื่อนไขและแสดงช่วงวันที่สั่งซื้อที่ต้องเลือก
+  โดยตรง.
+
+  เพิ่ม regression ที่ยืนยันว่า post-anchor exact-cycle export ถูกปฏิเสธแม้ไม่มี row-level evidence.
+  ผลตรวจ coordinator: backend targeted **37/37**, backend full **318 ผ่าน/6 skip**, frontend
+  **74/74**, Vite production build ผ่าน 76 modules และ reproduce กับไฟล์จริงได้ error code
+  `SHOPEE_ORDER_DATE_LOOKBACK_REQUIRED` พร้อมช่วงที่ต้องใช้ `2026-06-29..2026-08-23`.
+  ไม่ได้แก้/อัปโหลด workbook จริง ไม่ได้ stage, commit, push หรือ deploy การเปลี่ยนรอบนี้ และยังคง
+  exclude dirty workstreams เดิมตาม explicit stage lists.
+
+- **2026-08-25 — Task 12 accounting rule correction: filter and weekly sheets use order date.**
+  เจ้าของอนุมัติให้ยึดคอลัมน์ Shopee `วันที่ทำการสั่งซื้อ` (`order_created_at`) เป็นเกณฑ์เดียวสำหรับ
+  cycle membership และการแบ่ง 4 weekly sheets เพื่อให้ตรงกับ date picker ของ Order.all. Decision
+  นี้ **แทนที่** ข้อสรุปใน entry ก่อนหน้าที่ให้ใช้ completed time ร่วมกับ lookback 28 วัน: รอบ
+  `27 ก.ค.–23 ส.ค. 2569` ดาวน์โหลดและประมวลผลช่วงเดียวกันตรง ๆ ไม่ต้องรวม `29 มิ.ย.–26 ก.ค.`
+
+  `เวลาที่ทำการสั่งซื้อสำเร็จ` ยังคงเป็นข้อมูล output/audit ในคอลัมน์ M และใช้เรียงแถวภายในชีต
+  แต่ไม่กำหนด membership อีกต่อไป. รายการยกเลิกและรายการที่ยังไม่มี completed time ไม่ถูกใส่ใน
+  finished workbook; ถ้ามี pending ระบบสร้างเอกสารจากรายการที่เสร็จแล้วได้ แต่ metadata เป็น
+  `cycleClosureStatus: review_required_pending` และ `checkpointEligible: false` พร้อมแจ้งให้ export
+  **ช่วง order-date เดิม** ซ้ำหลังรายการค้างเสร็จ จึงไม่เลื่อน checkpoint หรือทำรอบถัดไปหาย.
+
+  Reproduce แบบ read-only กับไฟล์จริง `Order.all.20260727_20260823.xlsx` ผ่าน: final 169 rows,
+  cancelled 29 rows, pending 50 rows/42 orders, completed หลัง 23 ส.ค. 29 rows (ยังรวมเพราะวันที่
+  สั่งซื้ออยู่ในรอบ), แบ่ง weekly counts `12 / 9 / 56 / 92`, สร้างและ serialize workbook 5 sheets
+  แล้ว load กลับด้วย ExcelJS ได้. Targeted backend **37/37**, backend full **318 ผ่าน/6 skip**,
+  frontend **74/74** และ Vite production build ผ่าน 76 modules. Full backend มี baseline warnings
+  เรื่อง DB env/mocked webhook ตามเดิมแต่ไม่มี failure.
+
+  Source changes รอบนี้อยู่ใน backend services/tests ของ Task 12 และ frontend cycle notice/test
+  ตาม explicit stage lists เดิม; ledger นี้เป็น docs file เดียวที่เพิ่ม. ไม่ได้แก้ workbook ต้นฉบับ,
+  ไม่ได้ stage, commit, push, deploy หรือเรียก production และยัง exclude RX1011, `docs/07`,
+  `docs/17`, `server/`, `print-agent/` ตามเดิม.

@@ -36,11 +36,13 @@ export default function ShopeeAccountingCycleNotice({ payload, status }) {
   const missingCycles = payload?.missingCycles || [];
   const futureCompletedCycles = payload?.futureCompletedCycles || [];
   const unconfirmedEmptyCycles = payload?.unconfirmedEmptyCycles || [];
-  const orderDateFallback = nextCycle?.downloadGuidance?.orderDateFallback;
-  const fallbackRange = orderDateFallback
+  const downloadGuidance = nextCycle?.downloadGuidance;
+  const orderDateRange = nextCycle
     ? {
-        periodStart: isoDayFromIct(orderDateFallback.fromIct),
-        periodEnd: isoDayFromIct(orderDateFallback.toIct),
+        periodStart:
+          isoDayFromIct(downloadGuidance?.preferredFromIct) || nextCycle.periodStart,
+        periodEnd:
+          isoDayFromIct(downloadGuidance?.preferredToIct) || nextCycle.periodEnd,
       }
     : null;
   const showCycleDetails = nextCycle && status.state !== 'error';
@@ -93,22 +95,23 @@ export default function ShopeeAccountingCycleNotice({ payload, status }) {
             <div className="shopee-cycle-card" data-kind="next">
               <span>{payload?.hasGaps ? 'รอบที่ต้องทำให้ครบก่อน' : 'รอบบัญชีถัดไป'}</span>
               <strong>{formatThaiAccountingRange(nextCycle)}</strong>
-              <small>ระบบเลือกข้อมูลด้วยเวลาที่คำสั่งซื้อสำเร็จ 00:00–23:59 (เวลาไทย)</small>
+              <small>ระบบเลือกข้อมูลด้วยวันที่ทำการสั่งซื้อ 00:00–23:59 (เวลาไทย)</small>
             </div>
           </div>
 
           <div className="shopee-cycle-download">
-            <strong>ช่วงดาวน์โหลด Order.all</strong>
+            <strong>ช่วงวันที่สั่งซื้อที่ต้องเลือกใน Shopee</strong>
             <p>
-              ถ้า Shopee เลือกกรองด้วย “เวลาที่คำสั่งซื้อสำเร็จ” ได้ ให้ใช้ช่วงรอบบัญชีด้านบนตรง ๆ
+              ตัวกรอง Order.all และเว็บใช้คอลัมน์ “วันที่ทำการสั่งซื้อ” เป็นเกณฑ์เดียวกัน เลือกช่วงรอบบัญชีนี้ตรง ๆ
             </p>
-            {fallbackRange?.periodStart && fallbackRange?.periodEnd && (
+            {orderDateRange?.periodStart && orderDateRange?.periodEnd && (
               <p>
-                {`ถ้ากรองได้เฉพาะ “วันที่สั่งซื้อ” ให้ดาวน์โหลดย้อนหลังขั้นต่ำ ${orderDateFallback.minimumLookbackDays} วัน: `}
-                <strong>{formatThaiAccountingRange(fallbackRange)}</strong>
-                {' '}และต้องรวมออเดอร์ค้างที่เก่ากว่านี้ด้วยถ้ามี
+                <strong>{formatThaiAccountingRange(orderDateRange)}</strong>
               </p>
             )}
+            <p>
+              รายการยกเลิกหรือรายการที่ยังไม่มีเวลาสั่งซื้อสำเร็จจะไม่อยู่ในเอกสาร และรอบจะยังไม่ปิดจนกว่าจะ export ช่วงวันที่เดิมซ้ำหลังรายการค้างเสร็จ
+            </p>
           </div>
 
           <div className="shopee-cycle-weeks">
@@ -125,7 +128,7 @@ export default function ShopeeAccountingCycleNotice({ payload, status }) {
 
           <p className="shopee-cycle-guidance">
             {payload?.dateFieldGuidance?.message ||
-              'ตัวแปลง Order.all จัดชีตด้วยเวลาที่คำสั่งซื้อสำเร็จ; วันที่รายได้เข้าอาจไม่ตรงกัน จึงควรเทียบรายงานรายได้ก่อนปิดบัญชี'}
+              'ตัวแปลง Order.all ใช้วันที่ทำการสั่งซื้อเป็นเกณฑ์ทั้งรอบและชีต; วันที่รายได้เข้าอาจไม่ตรงกัน จึงควรเทียบรายงานรายได้ก่อนปิดบัญชี'}
           </p>
         </>
       )}
