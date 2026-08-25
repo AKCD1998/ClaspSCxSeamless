@@ -59,6 +59,8 @@ test('Shopee upload route renders the live workbook upload workflow', async () =
   const html = await renderPage('/src/pages/ShopeeUploadPage.jsx', '/shopee/upload');
 
   assert.match(html, /อัปโหลดยอดขาย Shopee/);
+  assert.match(html, /รอบบัญชี Shopee ถัดไป/);
+  assert.match(html, /กำลังตรวจสอบรอบล่าสุด/);
   assert.match(html, /อัปโหลดรายงานคำสั่งซื้อ Shopee/);
   assert.doesNotMatch(html, /กำลังพัฒนา/);
 });
