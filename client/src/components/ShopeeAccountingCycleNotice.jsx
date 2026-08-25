@@ -35,7 +35,6 @@ export default function ShopeeAccountingCycleNotice({ payload, status }) {
   const lastCycle = payload?.lastCompletedCycle;
   const missingCycles = payload?.missingCycles || [];
   const futureCompletedCycles = payload?.futureCompletedCycles || [];
-  const unconfirmedEmptyCycles = payload?.unconfirmedEmptyCycles || [];
   const downloadGuidance = nextCycle?.downloadGuidance;
   const orderDateRange = nextCycle
     ? {
@@ -73,17 +72,6 @@ export default function ShopeeAccountingCycleNotice({ payload, status }) {
                   {`มีไฟล์รอบถัดไปแล้ว ${futureCompletedCycles.length} รอบ แต่ checkpoint จะรอให้รอบที่ขาดครบก่อน`}
                 </p>
               )}
-            </div>
-          )}
-
-          {unconfirmedEmptyCycles.length > 0 && (
-            <div className="shopee-cycle-alert" data-kind="empty" role="alert">
-              <strong>มีไฟล์ที่ไม่พบรายการสำเร็จในรอบ จึงยังไม่นับว่าปิดรอบ</strong>
-              <ul>
-                {unconfirmedEmptyCycles.map((cycle) => (
-                  <li key={cycle.cycleKey}>{formatThaiAccountingRange(cycle)}</li>
-                ))}
-              </ul>
             </div>
           )}
 
