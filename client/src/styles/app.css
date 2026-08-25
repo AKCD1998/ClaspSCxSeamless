@@ -372,8 +372,7 @@ button:disabled {
   margin-top: 16px;
 }
 
-.shopee-cycle-alert,
-.shopee-cycle-download {
+.shopee-cycle-alert {
   margin-top: 16px;
   padding: 14px 16px;
   border: 1px solid rgba(210, 154, 78, 0.35);
@@ -382,8 +381,7 @@ button:disabled {
   line-height: 1.55;
 }
 
-.shopee-cycle-alert strong,
-.shopee-cycle-download > strong {
+.shopee-cycle-alert strong {
   color: var(--ink);
 }
 
@@ -392,8 +390,7 @@ button:disabled {
   padding-left: 20px;
 }
 
-.shopee-cycle-alert p,
-.shopee-cycle-download p {
+.shopee-cycle-alert p {
   margin: 7px 0 0;
   color: var(--muted);
 }
@@ -405,7 +402,7 @@ button:disabled {
 
 .shopee-cycle-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   margin-top: 18px;
 }
@@ -424,8 +421,7 @@ button:disabled {
   background: rgba(13, 122, 86, 0.08);
 }
 
-.shopee-cycle-card span,
-.shopee-cycle-weeks > span {
+.shopee-cycle-card span {
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -440,34 +436,6 @@ button:disabled {
   line-height: 1.45;
 }
 
-.shopee-cycle-weeks {
-  margin-top: 18px;
-}
-
-.shopee-cycle-weeks ol {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.shopee-cycle-weeks li {
-  display: grid;
-  gap: 5px;
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(31, 42, 40, 0.045);
-}
-
-.shopee-cycle-weeks code {
-  color: var(--accent-strong);
-  font: inherit;
-  font-weight: 800;
-}
-
-.shopee-cycle-weeks li span,
 .shopee-cycle-guidance {
   color: var(--muted);
   font-size: 0.88rem;
@@ -481,8 +449,6 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
-  .shopee-cycle-summary,
-  .shopee-cycle-weeks ol,
   .shopee-shop-upload-grid {
     grid-template-columns: 1fr;
   }
@@ -1744,9 +1710,7 @@ a.history-view-button.secondary:hover {
 }
 
 [data-color-mode="dark"] .shopee-cycle-card,
-[data-color-mode="dark"] .shopee-cycle-weeks li,
-[data-color-mode="dark"] .shopee-cycle-alert,
-[data-color-mode="dark"] .shopee-cycle-download {
+[data-color-mode="dark"] .shopee-cycle-alert {
   background: rgba(231, 236, 233, 0.07);
   border-color: rgba(231, 236, 233, 0.12);
 }
