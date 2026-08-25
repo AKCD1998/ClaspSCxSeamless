@@ -41,11 +41,8 @@ test('renders the persisted July checkpoint and all four weeks of the next cycle
           { name: '17-23.08', start: '2026-08-17', end: '2026-08-23' },
         ],
         downloadGuidance: {
-          orderDateFallback: {
-            minimumLookbackDays: 28,
-            fromIct: '2026-06-29T00:00:00+07:00',
-            toIct: '2026-08-23T23:59:59+07:00',
-          },
+          preferredFromIct: '2026-07-27T00:00:00+07:00',
+          preferredToIct: '2026-08-23T23:59:59+07:00',
         },
       },
       dateFieldGuidance: { message: 'ใช้วันที่รายได้เข้าเมื่อมีข้อมูลนี้' },
@@ -62,8 +59,10 @@ test('renders the persisted July checkpoint and all four weeks of the next cycle
   assert.match(html, /10-16\.08/);
   assert.match(html, /17-23\.08/);
   assert.match(html, /00:00–23:59/);
-  assert.match(html, /ดาวน์โหลดย้อนหลังขั้นต่ำ 28 วัน/);
-  assert.match(html, /29 มิ\.ย\. 2569 – 23 ส\.ค\. 2569/);
+  assert.match(html, /คอลัมน์ “วันที่ทำการสั่งซื้อ” เป็นเกณฑ์เดียวกัน/);
+  assert.match(html, /27 ก\.ค\. 2569 – 23 ส\.ค\. 2569/);
+  assert.match(html, /export ช่วงวันที่เดิมซ้ำ/);
+  assert.doesNotMatch(html, /ย้อนหลังอย่างน้อย 28 วัน/);
   assert.match(html, /ใช้วันที่รายได้เข้า/);
 });
 
