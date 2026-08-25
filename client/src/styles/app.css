@@ -171,14 +171,14 @@ a {
   grid-column: 1 / -1;
 }
 
-/* History tables have twelve operational columns and a 1420px minimum width. Let the panel
-   break out of the shared 1500px shell on desktop so zoomed-out and wide screens can use their
-   full canvas. Targeting the panel itself keeps both history routes working without a route-
-   specific class and preserves the normal shell width for every other page. */
+/* History tables have twelve operational columns and a 1420px minimum width. Widen the whole
+   one-column history shell on desktop so its grid track, hero, and panel stay aligned. Expanding
+   only the panel lets its explicit width enlarge the grid track beyond the shell and creates
+   page-level horizontal overflow. :has() keeps this scoped to both history routes without a
+   route-specific class; narrow screens retain the table's own horizontal scroller. */
 @media (min-width: 821px) {
-  .shell-single-column > .history-panel {
-    width: min(2200px, calc(100vw - 40px));
-    justify-self: center;
+  .shell-single-column:has(> .history-panel) {
+    width: min(2200px, 100%);
   }
 }
 
