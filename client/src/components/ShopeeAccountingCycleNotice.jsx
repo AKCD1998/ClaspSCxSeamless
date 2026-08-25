@@ -25,25 +25,10 @@ export function formatThaiAccountingRange(cycle) {
   return `${formatThaiAccountingDate(cycle.periodStart)} – ${formatThaiAccountingDate(cycle.periodEnd)}`;
 }
 
-function isoDayFromIct(value) {
-  const match = /^(\d{4}-\d{2}-\d{2})T/.exec(String(value || ''));
-  return match ? match[1] : '';
-}
-
 export default function ShopeeAccountingCycleNotice({ payload, status }) {
   const nextCycle = payload?.nextCycle;
-  const lastCycle = payload?.lastCompletedCycle;
   const missingCycles = payload?.missingCycles || [];
   const futureCompletedCycles = payload?.futureCompletedCycles || [];
-  const downloadGuidance = nextCycle?.downloadGuidance;
-  const orderDateRange = nextCycle
-    ? {
-        periodStart:
-          isoDayFromIct(downloadGuidance?.preferredFromIct) || nextCycle.periodStart,
-        periodEnd:
-          isoDayFromIct(downloadGuidance?.preferredToIct) || nextCycle.periodEnd,
-      }
-    : null;
   const showCycleDetails = nextCycle && status.state !== 'error';
 
   return (
@@ -76,42 +61,11 @@ export default function ShopeeAccountingCycleNotice({ payload, status }) {
           )}
 
           <div className="shopee-cycle-summary">
-            <div className="shopee-cycle-card">
-              <span>รอบล่าสุดที่ปิดต่อเนื่องแล้ว</span>
-              <strong>{lastCycle ? formatThaiAccountingRange(lastCycle) : 'ยังไม่มีประวัติ'}</strong>
-            </div>
             <div className="shopee-cycle-card" data-kind="next">
               <span>{payload?.hasGaps ? 'รอบที่ต้องทำให้ครบก่อน' : 'รอบบัญชีถัดไป'}</span>
               <strong>{formatThaiAccountingRange(nextCycle)}</strong>
               <small>ระบบเลือกข้อมูลด้วยวันที่ทำการสั่งซื้อ 00:00–23:59 (เวลาไทย)</small>
             </div>
-          </div>
-
-          <div className="shopee-cycle-download">
-            <strong>ช่วงวันที่สั่งซื้อที่ต้องเลือกใน Shopee</strong>
-            <p>
-              ตัวกรอง Order.all และเว็บใช้คอลัมน์ “วันที่ทำการสั่งซื้อ” เป็นเกณฑ์เดียวกัน เลือกช่วงรอบบัญชีนี้ตรง ๆ
-            </p>
-            {orderDateRange?.periodStart && orderDateRange?.periodEnd && (
-              <p>
-                <strong>{formatThaiAccountingRange(orderDateRange)}</strong>
-              </p>
-            )}
-            <p>
-              รายการยกเลิกหรือรายการที่ยังไม่มีเวลาสั่งซื้อสำเร็จจะไม่อยู่ในเอกสาร และรอบจะยังไม่ปิดจนกว่าจะ export ช่วงวันที่เดิมซ้ำหลังรายการค้างเสร็จ
-            </p>
-          </div>
-
-          <div className="shopee-cycle-weeks">
-            <span>ชีตที่จะสร้าง 4 สัปดาห์</span>
-            <ol>
-              {(nextCycle.weeks || []).map((week) => (
-                <li key={week.name}>
-                  <code>{week.name}</code>
-                  <span>{formatThaiAccountingRange({ periodStart: week.start, periodEnd: week.end })}</span>
-                </li>
-              ))}
-            </ol>
           </div>
 
           <p className="shopee-cycle-guidance">

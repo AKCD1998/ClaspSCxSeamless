@@ -23,7 +23,7 @@ test.after(async () => {
   if (vite) await vite.close();
 });
 
-test('renders the persisted July checkpoint and all four weeks of the next cycle', async () => {
+test('renders only the next-cycle card and keeps internal cycle details hidden from staff', async () => {
   const { default: Notice } = await vite.ssrLoadModule(
     '/src/components/ShopeeAccountingCycleNotice.jsx',
   );
@@ -50,20 +50,14 @@ test('renders the persisted July checkpoint and all four weeks of the next cycle
     status: { message: 'คำนวณรอบถัดไปจากประวัติที่บันทึกแล้ว', state: 'success' },
   }));
 
-  assert.match(html, /29 มิ\.ย\. 2569/);
-  assert.match(html, /26 ก\.ค\. 2569/);
   assert.match(html, /27 ก\.ค\. 2569/);
   assert.match(html, /23 ส\.ค\. 2569/);
-  assert.match(html, /27\.07-02\.08/);
-  assert.match(html, /03-09\.08/);
-  assert.match(html, /10-16\.08/);
-  assert.match(html, /17-23\.08/);
   assert.match(html, /00:00–23:59/);
-  assert.match(html, /คอลัมน์ “วันที่ทำการสั่งซื้อ” เป็นเกณฑ์เดียวกัน/);
-  assert.match(html, /27 ก\.ค\. 2569 – 23 ส\.ค\. 2569/);
-  assert.match(html, /export ช่วงวันที่เดิมซ้ำ/);
-  assert.doesNotMatch(html, /ย้อนหลังอย่างน้อย 28 วัน/);
   assert.match(html, /ใช้วันที่รายได้เข้า/);
+  assert.doesNotMatch(html, /รอบล่าสุดที่ปิดต่อเนื่องแล้ว/);
+  assert.doesNotMatch(html, /ช่วงวันที่สั่งซื้อที่ต้องเลือกใน Shopee/);
+  assert.doesNotMatch(html, /ชีตที่จะสร้าง 4 สัปดาห์/);
+  assert.doesNotMatch(html, /27\.07-02\.08/);
 });
 
 test('renders a safe reference-cycle state when no persisted history exists', async () => {
@@ -83,10 +77,13 @@ test('renders a safe reference-cycle state when no persisted history exists', as
     status: { message: 'ยังไม่พบประวัติ ระบบแสดงรอบอ้างอิงเริ่มต้น', state: 'warning' },
   }));
 
-  assert.match(html, /ยังไม่มีประวัติ/);
+  assert.match(html, /ยังไม่พบประวัติ/);
   assert.match(html, /1 มิ\.ย\. 2569/);
   assert.match(html, /28 มิ\.ย\. 2569/);
   assert.match(html, /data-state="warning"/);
+  assert.doesNotMatch(html, /รอบล่าสุดที่ปิดต่อเนื่องแล้ว/);
+  assert.doesNotMatch(html, /ช่วงวันที่สั่งซื้อที่ต้องเลือกใน Shopee/);
+  assert.doesNotMatch(html, /ชีตที่จะสร้าง 4 สัปดาห์/);
 });
 
 test('renders missing-cycle guidance without exposing the internal empty-cycle warning', async () => {
@@ -118,9 +115,9 @@ test('renders missing-cycle guidance without exposing the internal empty-cycle w
   assert.doesNotMatch(html, /ไม่พบรายการสำเร็จในรอบ/);
   assert.doesNotMatch(html, /data-kind="empty"/);
   assert.match(html, /รอบที่ต้องทำให้ครบก่อน/);
-  assert.match(html, /รอบล่าสุดที่ปิดต่อเนื่องแล้ว/);
-  assert.match(html, /ช่วงวันที่สั่งซื้อที่ต้องเลือกใน Shopee/);
-  assert.match(html, /ชีตที่จะสร้าง 4 สัปดาห์/);
+  assert.doesNotMatch(html, /รอบล่าสุดที่ปิดต่อเนื่องแล้ว/);
+  assert.doesNotMatch(html, /ช่วงวันที่สั่งซื้อที่ต้องเลือกใน Shopee/);
+  assert.doesNotMatch(html, /ชีตที่จะสร้าง 4 สัปดาห์/);
 });
 
 test('does not render stale cycle details while the refreshed status is an error', async () => {
