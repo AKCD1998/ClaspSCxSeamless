@@ -89,7 +89,7 @@ test('renders a safe reference-cycle state when no persisted history exists', as
   assert.match(html, /data-state="warning"/);
 });
 
-test('renders missing-cycle and unconfirmed-empty warnings without advancing the checkpoint', async () => {
+test('renders missing-cycle guidance without exposing the internal empty-cycle warning', async () => {
   const { default: Notice } = await vite.ssrLoadModule(
     '/src/components/ShopeeAccountingCycleNotice.jsx',
   );
@@ -115,8 +115,12 @@ test('renders missing-cycle and unconfirmed-empty warnings without advancing the
   assert.match(html, /พบ 1 รอบที่ยังขาด/);
   assert.match(html, /ระบบจะไม่ข้ามรอบ/);
   assert.match(html, /มีไฟล์รอบถัดไปแล้ว 1 รอบ/);
-  assert.match(html, /ไม่พบรายการสำเร็จในรอบ/);
+  assert.doesNotMatch(html, /ไม่พบรายการสำเร็จในรอบ/);
+  assert.doesNotMatch(html, /data-kind="empty"/);
   assert.match(html, /รอบที่ต้องทำให้ครบก่อน/);
+  assert.match(html, /รอบล่าสุดที่ปิดต่อเนื่องแล้ว/);
+  assert.match(html, /ช่วงวันที่สั่งซื้อที่ต้องเลือกใน Shopee/);
+  assert.match(html, /ชีตที่จะสร้าง 4 สัปดาห์/);
 });
 
 test('does not render stale cycle details while the refreshed status is an error', async () => {
@@ -135,7 +139,7 @@ test('does not render stale cycle details while the refreshed status is an error
   assert.doesNotMatch(html, /รอบบัญชีถัดไป/);
 });
 
-test('cycle status helper treats gaps and empty outputs as warnings', async () => {
+test('cycle status helper warns for gaps without surfacing empty-file internals', async () => {
   const { cycleErrorState, cycleStatusFromPayload } = await vite.ssrLoadModule(
     '/src/pages/ShopeeUploadPage.jsx',
   );
@@ -144,9 +148,9 @@ test('cycle status helper treats gaps and empty outputs as warnings', async () =
     message: 'พบ 1 รอบที่ขาด ระบบจะไม่เลื่อน checkpoint ข้ามรอบ',
     state: 'warning',
   });
-  assert.equal(
-    cycleStatusFromPayload({ unconfirmedEmptyCycles: [{}] }).state,
-    'warning',
+  assert.deepEqual(
+    cycleStatusFromPayload({ hasHistory: true, unconfirmedEmptyCycles: [{}] }),
+    { message: 'คำนวณรอบถัดไปจากประวัติที่ต่อเนื่องแล้ว', state: 'success' },
   );
   assert.equal(cycleStatusFromPayload({ hasHistory: true }).state, 'success');
   assert.deepEqual(cycleErrorState(new Error('refresh failed')), {

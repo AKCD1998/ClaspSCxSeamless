@@ -13,17 +13,10 @@ const DEFAULT_BOOTSTRAP = {
 
 export function cycleStatusFromPayload(payload) {
   const missingCount = payload?.missingCycles?.length || 0;
-  const emptyCount = payload?.unconfirmedEmptyCycles?.length || 0;
 
   if (missingCount) {
     return {
       message: `พบ ${missingCount} รอบที่ขาด ระบบจะไม่เลื่อน checkpoint ข้ามรอบ`,
-      state: 'warning',
-    };
-  }
-  if (emptyCount) {
-    return {
-      message: `มี ${emptyCount} รอบที่ไม่พบรายการสำเร็จและต้องตรวจสอบก่อนปิดรอบ`,
       state: 'warning',
     };
   }
