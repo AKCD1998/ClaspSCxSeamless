@@ -61,7 +61,13 @@ test('Shopee upload route renders the live workbook upload workflow', async () =
   assert.match(html, /อัปโหลดยอดขาย Shopee/);
   assert.match(html, /รอบบัญชี Shopee ถัดไป/);
   assert.match(html, /กำลังตรวจสอบรอบล่าสุด/);
-  assert.match(html, /อัปโหลดรายงานคำสั่งซื้อ Shopee/);
+  assert.match(html, /อัปโหลด Order\.all — SC Drug Store/);
+  assert.match(html, /อัปโหลด Order\.all — DR\.Morepen/);
+  assert.match(html, /data-shop="sc-drug-store"/);
+  assert.match(html, /data-shop="dr-morepen"/);
+  assert.match(html, /sc-drug-store\.jpg/);
+  assert.match(html, /dr-morepen\.jpg/);
+  assert.equal((html.match(/type="file"/g) || []).length, 2);
   assert.doesNotMatch(html, /กำลังพัฒนา/);
 });
 
