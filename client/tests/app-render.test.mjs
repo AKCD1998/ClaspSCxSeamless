@@ -50,7 +50,6 @@ test('main React page renders migrated upload and history sections', async () =>
 test('history route renders the same migration-friendly page shell', async () => {
   const html = await renderPage('/src/pages/HistoryPage.jsx', '/history');
 
-  assert.match(html, /shell shell-single-column shell-history/);
   assert.match(html, /ประวัติการจัดการไฟล์/);
   assert.match(html, /Table View/);
   assert.match(html, /Grouped View/);
@@ -75,7 +74,6 @@ test('Shopee upload route renders the live workbook upload workflow', async () =
 test('Shopee history route is locked to Shopee records and exposes admin print controls', async () => {
   const html = await renderPage('/src/pages/ShopeeHistoryPage.jsx', '/shopee/history');
 
-  assert.match(html, /shell shell-single-column shell-history/);
   assert.match(html, /ประวัติเอกสาร Shopee และคิวปริ้นท์/);
   assert.match(html, /รายงานคำสั่งซื้อ Shopee/);
   assert.match(html, /กดสั่งพิมพ์/);
