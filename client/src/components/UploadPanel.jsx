@@ -73,10 +73,15 @@ function getBatchState(successes, failures, warningCount) {
 
 export default function UploadPanel({
   bootstrap,
+  className = '',
   copy,
   eyebrow,
   formatterMode,
+  logoAlt = '',
+  logoSrc = '',
   onProcessingComplete,
+  shopCode = '',
+  shopName = '',
 }) {
   const inputId = useId();
   const fileInputRef = useRef(null);
@@ -119,6 +124,7 @@ export default function UploadPanel({
         const payload = await processWorkbookPayload({
           file,
           formatterMode,
+          shopCode,
           previewSpreadsheetId: previewState.spreadsheetId || '',
           batchId: previewState.batchId || '',
           batchFileCount: selectedFiles.length,
@@ -176,7 +182,7 @@ export default function UploadPanel({
         message: buildBatchStatus(batchResult.successes, batchResult.failures, warningItems.length),
         state: getBatchState(batchResult.successes, batchResult.failures, warningItems.length),
       });
-      onProcessingComplete?.();
+      onProcessingComplete?.(shopCode);
     } catch (error) {
       setStatus({ message: error?.message || 'ประมวลผลไฟล์ไม่สำเร็จ', state: 'error' });
     } finally {
@@ -185,12 +191,24 @@ export default function UploadPanel({
   }
 
   return (
-    <section className="panel">
+    <section
+      className={['panel', className].filter(Boolean).join(' ')}
+      data-shop={shopCode || undefined}
+    >
+      {logoSrc && (
+        <div className="shop-upload-brand">
+          <div className="shop-upload-logo-frame">
+            <img alt={logoAlt || shopName} className="shop-upload-logo" src={logoSrc} />
+          </div>
+          {shopName && <span className="shop-upload-label">ไฟล์จากร้าน {shopName}</span>}
+        </div>
+      )}
       <p className="panel-eyebrow">{eyebrow}</p>
       <p className="panel-copy">{copy}</p>
 
       <form className="upload-form" onSubmit={handleSubmit}>
         <input name="formatterMode" type="hidden" value={formatterMode} />
+        {shopCode && <input name="shopCode" type="hidden" value={shopCode} />}
 
         <label className="field" htmlFor={inputId}>
           <span>Workbook files (.xlsx)</span>
@@ -199,7 +217,7 @@ export default function UploadPanel({
             disabled={isBusy}
             id={inputId}
             multiple
-            name={`workbook-${formatterMode}`}
+            name={`workbook-${formatterMode}${shopCode ? `-${shopCode}` : ''}`}
             onChange={handleFileChange}
             ref={fileInputRef}
             required

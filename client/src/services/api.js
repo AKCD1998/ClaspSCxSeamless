@@ -100,6 +100,7 @@ export async function processWorkbookPayload(payload) {
   const formData = new FormData();
   formData.append('file', file, file.name);
   appendOptional(formData, 'formatterMode', payload.formatterMode);
+  appendOptional(formData, 'shopCode', payload.shopCode);
   appendOptional(formData, 'previewWorkbookId', payload.previewSpreadsheetId || payload.previewWorkbookId);
   appendOptional(formData, 'batchId', payload.batchId);
   appendOptional(formData, 'batchFileCount', payload.batchFileCount);

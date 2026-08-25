@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import drMorepenLogo from '../assets/shopee-shops/dr-morepen.jpg';
+import scDrugStoreLogo from '../assets/shopee-shops/sc-drug-store.jpg';
 import Hero from '../components/Hero.jsx';
 import ShopeeAccountingCycleNotice from '../components/ShopeeAccountingCycleNotice.jsx';
 import UploadPanel from '../components/UploadPanel.jsx';
@@ -118,13 +120,32 @@ export default function ShopeeUploadPage() {
         </p>
       </Hero>
       <ShopeeAccountingCycleNotice payload={cyclePayload} status={cycleStatus} />
-      <UploadPanel
-        bootstrap={bootstrap}
-        copy="รองรับไฟล์ .xlsx ที่ดาวน์โหลดจากเมนูคำสั่งซื้อ Shopee ระบบจะเก็บไฟล์ต้นฉบับเพื่อ audit แต่ไฟล์ผลลัพธ์จะมีเฉพาะข้อมูลที่บัญชีต้องใช้ งานนี้จะยังไม่พิมพ์จนกว่า admin กดสั่งพิมพ์จากหน้าประวัติ"
-        eyebrow="อัปโหลดรายงานคำสั่งซื้อ Shopee"
-        formatterMode="shopee"
-        onProcessingComplete={refreshAccountingCycle}
-      />
+      <section aria-label="เลือกร้าน Shopee สำหรับอัปโหลด" className="shopee-shop-upload-grid">
+        <UploadPanel
+          bootstrap={bootstrap}
+          className="shop-upload-card"
+          copy="ใช้ช่องนี้เฉพาะไฟล์ .xlsx ที่ดาวน์โหลดจากบัญชีร้าน SC Drug Store ระบบจะติดชื่อร้านในไฟล์ผลลัพธ์และ metadata สำหรับ audit โดยอัตโนมัติ"
+          eyebrow="อัปโหลด Order.all — SC Drug Store"
+          formatterMode="shopee"
+          logoAlt="โลโก้ร้านศิริชัยเภสัช SC Drug Store"
+          logoSrc={scDrugStoreLogo}
+          onProcessingComplete={refreshAccountingCycle}
+          shopCode="sc-drug-store"
+          shopName="SC Drug Store"
+        />
+        <UploadPanel
+          bootstrap={bootstrap}
+          className="shop-upload-card"
+          copy="ใช้ช่องนี้เฉพาะไฟล์ .xlsx ที่ดาวน์โหลดจากบัญชีร้าน DR.Morepen ระบบจะติดชื่อร้านในไฟล์ผลลัพธ์และ metadata สำหรับ audit โดยอัตโนมัติ"
+          eyebrow="อัปโหลด Order.all — DR.Morepen"
+          formatterMode="shopee"
+          logoAlt="โลโก้ร้าน Dr. Morepen HomeHealth"
+          logoSrc={drMorepenLogo}
+          onProcessingComplete={refreshAccountingCycle}
+          shopCode="dr-morepen"
+          shopName="DR.Morepen"
+        />
+      </section>
     </main>
   );
 }

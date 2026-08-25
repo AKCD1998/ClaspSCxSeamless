@@ -98,13 +98,16 @@ test('processWorkbookPayload sends multipart form data and unwraps first success
   const api = await vite.ssrLoadModule('/src/services/api.js');
   const result = await api.processWorkbookPayload({
     file: new File(['xlsx'], 'source.xlsx'),
-    formatterMode: 'individual',
+    formatterMode: 'shopee',
+    shopCode: 'sc-drug-store',
     batchFileCount: 1,
   });
 
   assert.equal(calls[0].url, 'http://api.test.local/api/workbooks/process');
   assert.equal(calls[0].options.method, 'POST');
   assert.ok(calls[0].options.body instanceof FormData);
+  assert.equal(calls[0].options.body.get('formatterMode'), 'shopee');
+  assert.equal(calls[0].options.body.get('shopCode'), 'sc-drug-store');
   assert.equal(result.previewSpreadsheetId, 'preview-id');
 });
 

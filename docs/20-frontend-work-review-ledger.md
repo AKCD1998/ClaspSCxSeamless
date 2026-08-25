@@ -661,3 +661,55 @@ work log + review ระดับ "task ละแถว"
   ตาม explicit stage lists เดิม; ledger นี้เป็น docs file เดียวที่เพิ่ม. ไม่ได้แก้ workbook ต้นฉบับ,
   ไม่ได้ stage, commit, push, deploy หรือเรียก production และยัง exclude RX1011, `docs/07`,
   `docs/17`, `server/`, `print-agent/` ตามเดิม.
+
+- **2026-08-25 — Task 13 implementation handoff: shop-specific Shopee upload cards and output
+  identity.** เจ้าของอนุมัติให้หน้า `/shopee/upload` แยกจุดอัปโหลดเป็น 2 card แบบ desktop 1 แถว
+  2 คอลัมน์: **SC Drug Store อยู่ซ้าย** และ **DR.Morepen อยู่ขวา** พร้อมโลโก้ที่เจ้าของให้มาใน
+  กรอบขนาดเท่ากัน. ที่ mobile <= 760px การ์ดเรียงเป็นคอลัมน์เดียวโดยรักษาลำดับ SC ก่อน DR.
+
+  เนื่องจากไฟล์ Order.all จริงไม่มี seller/shop identity ที่เชื่อถือได้ใน header จึงไม่เดาชื่อร้าน
+  จาก filename หรือเนื้อหา. แต่ละ card ส่ง whitelist `shopCode` (`sc-drug-store` หรือ
+  `dr-morepen`) ไป backend; backend fail closed หาก Shopee request ขาดหรือส่งค่าที่ไม่รองรับ และ
+  นำ identity นี้ไปใช้กับชื่อไฟล์, preview name, generated-file metadata, transform summary,
+  operation log และ API response. ชื่อผลลัพธ์เป็น
+  `<periodStart>_to_<periodEnd>-<shopCode>-accounting.xlsx`; จึงได้ทั้ง
+  `...-sc-drug-store-accounting.xlsx` และ `...-dr-morepen-accounting.xlsx` โดยไม่ hardcode ร้านเดียว.
+
+  Duplicate detection ของ Shopee ถูก scope ด้วย checksum + shop เพื่อให้ไฟล์เดียวกันที่เคยกดผิด
+  card สามารถประมวลผลใหม่ภายใต้ร้านที่ถูกต้องได้. Historical source upload ที่สร้างก่อนมี
+  `shopCode` ถูกตีความเป็น `dr-morepen` เท่านั้น เพราะ production naming เดิม hardcode DR.Morepen;
+  non-Shopee duplicate behavior ไม่เปลี่ยน. Preview workbook ป้องกันการรวมไฟล์คนละร้าน และไม่มี
+  database migration เพราะใช้ JSON metadata เดิม. Logo assets ที่ copy จากไฟล์เจ้าของคือ
+  `client/src/assets/shopee-shops/sc-drug-store.jpg` และ
+  `client/src/assets/shopee-shops/dr-morepen.jpg`.
+
+  ผลตรวจ coordinator: backend targeted shop/transform/auth **42/42**, backend full **321 ผ่าน/6
+  skip**; frontend **74/74**; Vite production build ผ่าน 78 modules และ bundle มี logo ทั้งสองไฟล์.
+  Browser QA แบบ local mocked read-only API ผ่านที่ desktop 1440px light และ mobile 390px light/
+  dark: โลโก้ชัด, frame เท่ากัน, การ์ดเรียงถูก, card grid ไม่ overflow และ console ไม่มี error.
+  Navbar mobile overflow เดิมยังอยู่นอก scope. Browser artifacts ถูกลบหลังตรวจ. Backend full มี
+  baseline DB-env/mocked-webhook warnings เดิมแต่ไม่มี failure.
+
+  **Explicit backend stage list — Task 13 only:**
+  `backend/src/modules/seamless/controllers/workbookController.js`,
+  `backend/src/modules/seamless/db/generatedFileRepository.js`,
+  `backend/src/modules/seamless/services/shopeeShops.js`,
+  `backend/src/modules/seamless/services/workbookRules.js`,
+  `backend/src/modules/seamless/services/workbookService.js`,
+  `backend/tests/seamless-shopee-shops.test.cjs`,
+  `backend/tests/seamless-shopee-workbook-transform.test.cjs`.
+
+  **Explicit frontend/docs stage list — Task 13 only:**
+  `client/src/assets/shopee-shops/sc-drug-store.jpg`,
+  `client/src/assets/shopee-shops/dr-morepen.jpg`,
+  `client/src/components/UploadPanel.jsx`, `client/src/pages/ShopeeUploadPage.jsx`,
+  `client/src/services/api.js`, `client/src/styles/app.css`,
+  `client/tests/api-service.test.mjs`, `client/tests/app-render.test.mjs`,
+  `docs/20-frontend-work-review-ledger.md`.
+
+  **Residual design note for senior review:** accounting-cycle checkpoint/status ยัง aggregate
+  Shopee ทั้งสองร้านร่วมกัน ไม่ได้แยก checkpoint ต่อ shop. งานนี้ยังอัปโหลด/ตั้งชื่อ/เก็บ audit
+  identity แยกร้านได้ แต่ก่อนใช้แนวคิด “ปิดรอบครบทั้งสองร้าน” ควรยืนยัน business rule แล้วออกแบบ
+  per-shop checkpoint หรือ combined close gate แยกต่างหาก. ยังไม่ได้ stage, commit, push, deploy
+  หรือเรียก production และยัง exclude dirty RX1011/env/report files กับ frontend `docs/07`,
+  `docs/17`, `server/`, `print-agent/`; ห้ามใช้ `git add -A`.
