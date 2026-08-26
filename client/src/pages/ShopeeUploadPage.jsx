@@ -21,9 +21,9 @@ export function cycleStatusFromPayload(payload) {
     };
   }
   if (payload?.hasHistory) {
-    return { message: 'คำนวณรอบถัดไปจากประวัติที่ต่อเนื่องแล้ว', state: 'success' };
+    return { message: 'คำนวณรอบถัดไปจากประวัติล่าสุดแล้ว', state: 'success' };
   }
-  return { message: 'ยังไม่พบประวัติ ระบบแสดงรอบอ้างอิงเริ่มต้น', state: 'warning' };
+  return { message: 'ระบบแสดงรอบบัญชีที่กำหนดไว้ล่าสุด', state: 'success' };
 }
 
 export function cycleErrorState(error) {

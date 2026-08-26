@@ -241,14 +241,14 @@ test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () =
   assert.equal(calls[2].options.credentials, 'include');
 });
 
-test('getShopeeAccountingCycleStatus fetches the persisted four-week checkpoint', async () => {
+test('getShopeeAccountingCycleStatus fetches the configured accounting checkpoint', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
     calls.push({ url, options });
     return new Response(JSON.stringify({
       hasHistory: true,
-      lastCompletedCycle: { periodEnd: '2026-07-26' },
-      nextCycle: { periodStart: '2026-07-27', periodEnd: '2026-08-23', weeks: [] },
+      lastCompletedCycle: { periodEnd: '2026-08-23' },
+      nextCycle: { periodStart: '2026-08-24', periodEnd: '2026-09-13', weeks: [] },
     }), { status: 200 });
   };
 
@@ -257,7 +257,7 @@ test('getShopeeAccountingCycleStatus fetches the persisted four-week checkpoint'
 
   assert.equal(calls[0].url, 'http://api.test.local/api/app/shopee/accounting-cycle');
   assert.equal(calls[0].options.credentials, 'include');
-  assert.equal(payload.nextCycle.periodStart, '2026-07-27');
+  assert.equal(payload.nextCycle.periodStart, '2026-08-24');
 });
 
 test('getPharmcareInbox omits the query string when no filters are set', async () => {

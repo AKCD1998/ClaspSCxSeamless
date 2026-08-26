@@ -60,7 +60,7 @@ test('renders only the next-cycle card and keeps internal cycle details hidden f
   assert.doesNotMatch(html, /27\.07-02\.08/);
 });
 
-test('renders a safe reference-cycle state when no persisted history exists', async () => {
+test('renders the configured active cycle when no persisted history exists', async () => {
   const { default: Notice } = await vite.ssrLoadModule(
     '/src/components/ShopeeAccountingCycleNotice.jsx',
   );
@@ -69,18 +69,19 @@ test('renders a safe reference-cycle state when no persisted history exists', as
       hasHistory: false,
       lastCompletedCycle: null,
       nextCycle: {
-        periodStart: '2026-06-01',
-        periodEnd: '2026-06-28',
+        periodStart: '2026-08-24',
+        periodEnd: '2026-09-13',
         weeks: [],
       },
     },
-    status: { message: 'ยังไม่พบประวัติ ระบบแสดงรอบอ้างอิงเริ่มต้น', state: 'warning' },
+    status: { message: 'ระบบแสดงรอบบัญชีที่กำหนดไว้ล่าสุด', state: 'success' },
   }));
 
-  assert.match(html, /ยังไม่พบประวัติ/);
-  assert.match(html, /1 มิ\.ย\. 2569/);
-  assert.match(html, /28 มิ\.ย\. 2569/);
-  assert.match(html, /data-state="warning"/);
+  assert.match(html, /รอบบัญชีที่กำหนดไว้ล่าสุด/);
+  assert.match(html, /24 ส\.ค\. 2569/);
+  assert.match(html, /13 ก\.ย\. 2569/);
+  assert.match(html, /data-state="success"/);
+  assert.match(html, /ไม่บังคับย้อนทำรอบเก่า/);
   assert.doesNotMatch(html, /รอบล่าสุดที่ปิดต่อเนื่องแล้ว/);
   assert.doesNotMatch(html, /ช่วงวันที่สั่งซื้อที่ต้องเลือกใน Shopee/);
   assert.doesNotMatch(html, /ชีตที่จะสร้าง 4 สัปดาห์/);
@@ -147,9 +148,13 @@ test('cycle status helper warns for gaps without surfacing empty-file internals'
   });
   assert.deepEqual(
     cycleStatusFromPayload({ hasHistory: true, unconfirmedEmptyCycles: [{}] }),
-    { message: 'คำนวณรอบถัดไปจากประวัติที่ต่อเนื่องแล้ว', state: 'success' },
+    { message: 'คำนวณรอบถัดไปจากประวัติล่าสุดแล้ว', state: 'success' },
   );
   assert.equal(cycleStatusFromPayload({ hasHistory: true }).state, 'success');
+  assert.deepEqual(cycleStatusFromPayload({ hasHistory: false }), {
+    message: 'ระบบแสดงรอบบัญชีที่กำหนดไว้ล่าสุด',
+    state: 'success',
+  });
   assert.deepEqual(cycleErrorState(new Error('refresh failed')), {
     payload: null,
     status: { message: 'refresh failed', state: 'error' },
