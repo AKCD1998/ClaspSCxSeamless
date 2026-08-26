@@ -35,7 +35,7 @@ export default function ShopeeAccountingCycleNotice({ payload, status }) {
     <section className="panel shopee-cycle-panel" aria-labelledby="shopee-cycle-title">
       <p className="panel-eyebrow" id="shopee-cycle-title">รอบบัญชี Shopee ถัดไป</p>
       <p className="panel-copy">
-        ระบบต่อรอบจากประวัติที่ประมวลผลสำเร็จครั้งละ 4 สัปดาห์ และสร้างชื่อชีตกับสีตามแบบเดือนมิถุนายนให้อัตโนมัติ
+        ระบบใช้รอบที่กำหนดล่าสุดหรือต่อจากประวัติที่ประมวลผลสำเร็จ โดยไม่บังคับย้อนทำรอบเก่า และสร้างชื่อชีตกับสีให้อัตโนมัติ
       </p>
 
       <p className="status shopee-cycle-status" data-state={status.state} aria-live="polite">
