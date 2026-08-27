@@ -41,7 +41,7 @@ async function renderView(overrides = {}) {
   return renderToString(React.createElement(View, {
     appRole: 'user',
     detailStatus: { message: '', state: 'idle' },
-    filters: { status: '' },
+    filters: { shopCode: '', status: '' },
     isLoading: false,
     isLoadingMore: false,
     isSyncing: false,
@@ -72,6 +72,9 @@ test('renders an order summary with distinct status color hooks and no admin syn
   assert.match(html, /ดู 3/);
   assert.doesNotMatch(html, /ซิงก์อีเมลล่าสุด/);
   assert.doesNotMatch(html, /buyer|username|subject|bodyText/iu);
+  assert.match(html, /name="shopCode"/u);
+  assert.match(html, /SC Drug Store/u);
+  assert.match(html, /DR.Morepen/u);
 });
 
 test('renders chronological event detail and bounded cancellation evidence', async () => {
@@ -98,6 +101,7 @@ test('renders chronological event detail and bounded cancellation evidence', asy
 test('shows both bounded Gmail sync actions only to admins', async () => {
   const html = await renderView({
     appRole: 'admin',
+    filters: { shopCode: 'sc-drug-store', status: '' },
     syncCursor: 'opaque-gmail-cursor',
     syncStatus: { message: 'บันทึกเหตุการณ์ใหม่ 1 รายการ', state: 'success' },
   });
@@ -132,9 +136,14 @@ test('an in-flight sync refreshes the newest filter after the user changes it', 
     '/src/components/ShopeeOrderTimelinePanel.jsx',
   );
   let completeSync;
-  const syncRequest = () => new Promise((resolve) => { completeSync = resolve; });
-  const filtersRef = { current: { status: 'shipment_due' } };
+  let syncOptions;
+  const syncRequest = (options) => {
+    syncOptions = options;
+    return new Promise((resolve) => { completeSync = resolve; });
+  };
+  const filtersRef = { current: { shopCode: 'sc-drug-store', status: 'shipment_due' } };
   const loadedFilters = [];
+  const syncedResults = [];
   let renderedRows = [];
   const loadOrders = async (activeFilters) => {
     loadedFilters.push({ ...activeFilters });
@@ -145,12 +154,71 @@ test('an in-flight sync refreshes the newest filter after the user changes it', 
     cursor: null,
     filtersRef,
     loadOrders,
+    onSynced: (result) => syncedResults.push(result),
     syncRequest,
   });
-  filtersRef.current = { status: 'order_cancelled' };
+  filtersRef.current = { shopCode: 'dr-morepen', status: 'order_cancelled' };
   completeSync({ storedEvents: 1 });
   await pendingSync;
 
-  assert.deepEqual(loadedFilters, [{ status: 'order_cancelled' }]);
+  assert.deepEqual(syncOptions, { cursor: null, limit: 25, shopCode: 'sc-drug-store' });
+  assert.deepEqual(loadedFilters, [{ shopCode: 'dr-morepen', status: 'order_cancelled' }]);
   assert.deepEqual(renderedRows, [{ orderNumber: 'row-order_cancelled' }]);
+  assert.deepEqual(syncedResults, []);
+});
+
+test('an in-flight sync publishes its cursor and status only while the same shop is selected', async () => {
+  const { syncShopeeOrdersAndRefresh } = await vite.ssrLoadModule(
+    '/src/components/ShopeeOrderTimelinePanel.jsx',
+  );
+  const filtersRef = { current: { shopCode: 'sc-drug-store', status: '' } };
+  const syncedResults = [];
+
+  await syncShopeeOrdersAndRefresh({
+    cursor: 'cursor-1',
+    filtersRef,
+    loadOrders: async () => {},
+    onSynced: (result) => syncedResults.push(result),
+    syncRequest: async () => ({ nextCursor: 'cursor-2', storedEvents: 1 }),
+  });
+
+  assert.deepEqual(syncedResults, [{ nextCursor: 'cursor-2', storedEvents: 1 }]);
+});
+
+test('a detail response is stale when the same order number is selected under another shop', async () => {
+  const { isShopeeDetailRequestCurrent } = await vite.ssrLoadModule(
+    '/src/components/ShopeeOrderTimelinePanel.jsx',
+  );
+  const filtersRef = { current: { shopCode: 'dr-morepen' } };
+  const selectedOrderRef = { current: '260825ABC' };
+
+  assert.equal(isShopeeDetailRequestCurrent({
+    filtersRef,
+    orderNumber: '260825ABC',
+    selectedOrderRef,
+    shopCode: 'sc-drug-store',
+  }), false);
+  assert.equal(isShopeeDetailRequestCurrent({
+    filtersRef,
+    orderNumber: '260825ABC',
+    selectedOrderRef,
+    shopCode: 'dr-morepen',
+  }), true);
+});
+
+test('shop-required state clears rows without issuing a cross-shop default', async () => {
+  const { INITIAL_SHOPEE_ORDER_STATE, shopeeOrderReducer } = await vite.ssrLoadModule(
+    '/src/components/ShopeeOrderTimelinePanel.jsx',
+  );
+  const stale = {
+    ...INITIAL_SHOPEE_ORDER_STATE,
+    nextCursor: 'old-cursor',
+    orders: [order],
+  };
+  const state = shopeeOrderReducer(stale, { type: 'shop_required', generation: 4 });
+
+  assert.equal(state.generation, 4);
+  assert.deepEqual(state.orders, []);
+  assert.equal(state.nextCursor, null);
+  assert.match(state.status.message, /เลือกร้าน Shopee/u);
 });

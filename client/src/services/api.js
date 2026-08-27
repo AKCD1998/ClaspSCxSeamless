@@ -197,8 +197,13 @@ export async function getShopeeOrders(filters = {}) {
   return requestJson(`/app/shopee/orders${query ? `?${query}` : ''}`);
 }
 
-export async function getShopeeOrder(orderNumber) {
-  return requestJson(`/app/shopee/orders/${encodeURIComponent(orderNumber)}`);
+export async function getShopeeOrder(orderNumber, options = {}) {
+  const params = new URLSearchParams();
+  if (options.shopCode) params.set('shopCode', options.shopCode);
+  const query = params.toString();
+  return requestJson(
+    `/app/shopee/orders/${encodeURIComponent(orderNumber)}${query ? `?${query}` : ''}`,
+  );
 }
 
 export async function getShopeeAccountingCycleStatus() {
@@ -211,6 +216,7 @@ export async function syncShopeeOrders(options = {}) {
     body: JSON.stringify({
       ...(options.cursor ? { cursor: options.cursor } : {}),
       limit: options.limit || 25,
+      ...(options.shopCode ? { shopCode: options.shopCode } : {}),
     }),
   });
 }

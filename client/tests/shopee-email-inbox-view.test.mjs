@@ -32,7 +32,7 @@ async function renderView(overrides = {}) {
   return renderToString(
     React.createElement(ShopeeEmailInboxView, {
       emails: [],
-      filters: { category: '', receivedFrom: '', receivedTo: '' },
+      filters: { category: '', receivedFrom: '', receivedTo: '', shopCode: '' },
       isLoading: false,
       isLoadingMore: false,
       nextCursor: null,
@@ -67,6 +67,8 @@ test('renders classified Shopee email rows without exposing message bodies', asy
   assert.match(html, /ยังไม่อ่าน/);
   assert.match(html, /โหลดเพิ่ม/);
   assert.doesNotMatch(html, /snippet|bodyText/);
+  assert.match(html, /name="shopCode"/u);
+  assert.match(html, /DR.Morepen/u);
 });
 
 test('renders the empty and error states with a retry action', async () => {
@@ -92,11 +94,17 @@ test('date filter transition keeps a valid one-day range', async () => {
 
   assert.deepEqual(
     applyShopeeEmailFilterChange(
-      { category: '', receivedFrom: '2026-08-20', receivedTo: '2026-08-24' },
+      {
+        category: '', receivedFrom: '2026-08-20', receivedTo: '2026-08-24',
+        shopCode: 'sc-drug-store',
+      },
       'receivedFrom',
       '2026-08-25',
     ),
-    { category: '', receivedFrom: '2026-08-25', receivedTo: '2026-08-25' },
+    {
+      category: '', receivedFrom: '2026-08-25', receivedTo: '2026-08-25',
+      shopCode: 'sc-drug-store',
+    },
   );
 });
 
@@ -157,4 +165,21 @@ test('failed filter replacement cannot fall back to rows or cursor from the prev
   assert.equal(state.isLoading, false);
   assert.equal(state.status.state, 'error');
   assert.match(state.status.message, /quota exceeded/);
+});
+
+test('shop-required state clears inbox rows and pagination without choosing a mailbox', async () => {
+  const {
+    INITIAL_SHOPEE_INBOX_STATE,
+    shopeeInboxReducer,
+  } = await vite.ssrLoadModule('/src/components/ShopeeEmailInboxPanel.jsx');
+  const state = shopeeInboxReducer({
+    ...INITIAL_SHOPEE_INBOX_STATE,
+    emails: [{ id: 'old-row' }],
+    nextCursor: 'old-cursor',
+  }, { type: 'shop_required', generation: 9 });
+
+  assert.equal(state.generation, 9);
+  assert.deepEqual(state.emails, []);
+  assert.equal(state.nextCursor, null);
+  assert.match(state.status.message, /เลือกร้าน Shopee/u);
 });

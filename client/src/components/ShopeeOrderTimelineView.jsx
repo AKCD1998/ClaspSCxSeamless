@@ -7,6 +7,10 @@ import {
 } from './shopeeEmailLabels.js';
 
 const STATUS_OPTIONS = Object.entries(SHOPEE_ORDER_STATUS_LABELS);
+const SHOP_OPTIONS = [
+  ['sc-drug-store', 'SC Drug Store'],
+  ['dr-morepen', 'DR.Morepen'],
+];
 
 function StatusBadge({ status }) {
   return (
@@ -107,18 +111,18 @@ export default function ShopeeOrderTimelineView({
         <div>
           <p className="panel-eyebrow">Shopee Order Timeline</p>
           <p className="panel-copy">
-            จับคู่ด้วยเลขคำสั่งซื้อและกันข้อมูลซ้ำด้วย Gmail message ID — ไม่เก็บหัวเรื่อง เนื้อหาอีเมล หรือข้อมูลผู้ซื้อ
+            แยกข้อมูลด้วยร้านและเลขคำสั่งซื้อ พร้อมกันอีเมลซ้ำข้ามกล่องด้วย canonical hash — ไม่เก็บหัวเรื่อง เนื้อหาอีเมล หรือข้อมูลผู้ซื้อ
           </p>
         </div>
         {appRole === 'admin' ? (
           <div className="shopee-order-sync-actions">
-            <button disabled={isSyncing} onClick={onSyncLatest} type="button">
+            <button disabled={isSyncing || !filters.shopCode} onClick={onSyncLatest} type="button">
               {isSyncing ? 'กำลังซิงก์...' : 'ซิงก์อีเมลล่าสุด'}
             </button>
             {syncCursor ? (
               <button
                 className="history-view-button secondary"
-                disabled={isSyncing}
+                disabled={isSyncing || !filters.shopCode}
                 onClick={onSyncOlder}
                 type="button"
               >
@@ -136,6 +140,15 @@ export default function ShopeeOrderTimelineView({
       ) : null}
 
       <form className="history-filters shopee-order-filters" onSubmit={(event) => event.preventDefault()}>
+        <label className="history-filter-field">
+          <span>ร้าน Shopee</span>
+          <select name="shopCode" onChange={onFilterChange} value={filters.shopCode}>
+            <option value="">เลือกร้าน</option>
+            {SHOP_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
         <label className="history-filter-field">
           <span>สถานะล่าสุด</span>
           <select name="status" onChange={onFilterChange} value={filters.status}>

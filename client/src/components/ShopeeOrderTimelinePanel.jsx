@@ -7,7 +7,7 @@ import {
   syncShopeeOrders,
 } from '../services/api.js';
 
-const EMPTY_FILTERS = { status: '' };
+const EMPTY_FILTERS = { shopCode: '', status: '' };
 
 export const INITIAL_SHOPEE_ORDER_STATE = {
   generation: 0,
@@ -19,7 +19,10 @@ export const INITIAL_SHOPEE_ORDER_STATE = {
 };
 
 export function shopeeOrderReducer(state, action) {
-  if (action.type !== 'replacement_started' && action.generation !== state.generation) {
+  if (
+    !['replacement_started', 'shop_required'].includes(action.type) &&
+    action.generation !== state.generation
+  ) {
     return state;
   }
 
@@ -53,6 +56,15 @@ export function shopeeOrderReducer(state, action) {
         isLoading: false,
         status: { message: action.message || 'โหลดไทม์ไลน์ไม่สำเร็จ', state: 'error' },
       };
+    case 'shop_required':
+      return {
+        ...state,
+        generation: action.generation,
+        isLoading: false,
+        nextCursor: null,
+        orders: [],
+        status: { message: 'กรุณาเลือกร้าน Shopee', state: 'warning' },
+      };
     case 'load_more_started':
       return { ...state, isLoadingMore: true };
     case 'load_more_succeeded': {
@@ -84,6 +96,22 @@ export function shopeeOrderReducer(state, action) {
   }
 }
 
+export function isShopeeShopRequestCurrent(filtersRef, shopCode) {
+  return filtersRef.current.shopCode === shopCode;
+}
+
+export function isShopeeDetailRequestCurrent({
+  filtersRef,
+  orderNumber,
+  selectedOrderRef,
+  shopCode,
+}) {
+  return (
+    selectedOrderRef.current === orderNumber &&
+    isShopeeShopRequestCurrent(filtersRef, shopCode)
+  );
+}
+
 export async function syncShopeeOrdersAndRefresh({
   cursor,
   filtersRef,
@@ -91,8 +119,13 @@ export async function syncShopeeOrdersAndRefresh({
   onSynced,
   syncRequest = syncShopeeOrders,
 }) {
-  const result = await syncRequest({ cursor, limit: 25 });
-  if (onSynced) onSynced(result);
+  const shopCode = filtersRef.current.shopCode;
+  const result = await syncRequest({
+    cursor,
+    limit: 25,
+    shopCode,
+  });
+  if (isShopeeShopRequestCurrent(filtersRef, shopCode) && onSynced) onSynced(result);
   await loadOrders(filtersRef.current);
   return result;
 }
@@ -123,6 +156,10 @@ export default function ShopeeOrderTimelinePanel() {
   async function loadOrders(activeFilters) {
     const generation = requestSequenceRef.current + 1;
     requestSequenceRef.current = generation;
+    if (!activeFilters.shopCode) {
+      dispatch({ type: 'shop_required', generation });
+      return;
+    }
     dispatch({ type: 'replacement_started', generation });
 
     try {
@@ -151,15 +188,27 @@ export default function ShopeeOrderTimelinePanel() {
   }
 
   async function loadDetail(orderNumber) {
+    const shopCode = filtersRef.current.shopCode;
+    if (!shopCode) return;
     setDetailStatus({ message: 'กำลังโหลดรายละเอียด...', state: 'working' });
     try {
-      const detail = await getShopeeOrder(orderNumber);
-      if (selectedOrderRef.current !== orderNumber) return;
-      detailCacheRef.current[orderNumber] = detail;
+      const detail = await getShopeeOrder(orderNumber, { shopCode });
+      if (!isShopeeDetailRequestCurrent({
+        filtersRef,
+        orderNumber,
+        selectedOrderRef,
+        shopCode,
+      })) return;
+      detailCacheRef.current[`${shopCode}:${orderNumber}`] = detail;
       setOrderDetail(detail);
       setDetailStatus({ message: '', state: 'success' });
     } catch (error) {
-      if (selectedOrderRef.current !== orderNumber) return;
+      if (!isShopeeDetailRequestCurrent({
+        filtersRef,
+        orderNumber,
+        selectedOrderRef,
+        shopCode,
+      })) return;
       setDetailStatus({ message: error?.message || 'โหลดรายละเอียดไม่สำเร็จ', state: 'error' });
     }
   }
@@ -174,7 +223,7 @@ export default function ShopeeOrderTimelinePanel() {
 
     selectedOrderRef.current = orderNumber;
     setSelectedOrderNumber(orderNumber);
-    const cached = detailCacheRef.current[orderNumber];
+    const cached = detailCacheRef.current[`${filtersRef.current.shopCode}:${orderNumber}`];
     if (cached) {
       setOrderDetail(cached);
       setDetailStatus({ message: '', state: 'success' });
@@ -185,7 +234,8 @@ export default function ShopeeOrderTimelinePanel() {
   }
 
   async function handleSync(cursor = null) {
-    if (appRole !== 'admin' || isSyncing) return;
+    if (appRole !== 'admin' || isSyncing || !filtersRef.current.shopCode) return;
+    const shopCode = filtersRef.current.shopCode;
     setIsSyncing(true);
     setSyncStatus({ message: 'กำลังอ่านอีเมล Shopee หนึ่งหน้า...', state: 'working' });
     try {
@@ -204,6 +254,7 @@ export default function ShopeeOrderTimelinePanel() {
         },
       });
     } catch (error) {
+      if (!isShopeeShopRequestCurrent(filtersRef, shopCode)) return;
       setSyncStatus({ message: error?.message || 'ซิงก์อีเมลไม่สำเร็จ', state: 'error' });
     } finally {
       setIsSyncing(false);
@@ -237,6 +288,12 @@ export default function ShopeeOrderTimelinePanel() {
     const generation = requestSequenceRef.current + 1;
     requestSequenceRef.current = generation;
     dispatch({ type: 'replacement_started', generation });
+    if (name === 'shopCode') {
+      setSyncCursor(null);
+      setSyncStatus({ message: '', state: 'idle' });
+      detailCacheRef.current = {};
+      closeDetail();
+    }
     setFilters(nextFilters);
   }
 
