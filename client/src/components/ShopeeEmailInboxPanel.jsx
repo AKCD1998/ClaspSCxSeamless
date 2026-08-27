@@ -6,6 +6,7 @@ const EMPTY_FILTERS = {
   category: '',
   receivedFrom: '',
   receivedTo: '',
+  shopCode: '',
 };
 
 const DEFAULT_SOURCE = 'info@mail.shopee.co.th';
@@ -21,7 +22,10 @@ export const INITIAL_SHOPEE_INBOX_STATE = {
 };
 
 export function shopeeInboxReducer(state, action) {
-  if (action.type !== 'replacement_started' && action.generation !== state.generation) {
+  if (
+    !['replacement_started', 'shop_required'].includes(action.type) &&
+    action.generation !== state.generation
+  ) {
     return state;
   }
 
@@ -55,6 +59,16 @@ export function shopeeInboxReducer(state, action) {
         ...state,
         isLoading: false,
         status: { message: action.message || 'โหลดอีเมล Shopee ไม่สำเร็จ', state: 'error' },
+      };
+    case 'shop_required':
+      return {
+        ...state,
+        emails: [],
+        generation: action.generation,
+        isLoading: false,
+        isLoadingMore: false,
+        nextCursor: null,
+        status: { message: 'กรุณาเลือกร้าน Shopee', state: 'warning' },
       };
     case 'load_more_started':
       return { ...state, isLoadingMore: true };
@@ -103,6 +117,10 @@ export default function ShopeeEmailInboxPanel() {
   async function loadInbox(activeFilters) {
     const requestSequence = requestSequenceRef.current + 1;
     requestSequenceRef.current = requestSequence;
+    if (!activeFilters.shopCode) {
+      dispatch({ type: 'shop_required', generation: requestSequence });
+      return;
+    }
     dispatch({ type: 'replacement_started', generation: requestSequence });
 
     try {

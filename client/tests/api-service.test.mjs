@@ -202,11 +202,12 @@ test('getShopeeEmailInbox builds the live Gmail inbox query and keeps an opaque 
     category: 'shipment_due',
     cursor: 'page 2/token',
     receivedFrom: '2026-08-24',
+    shopCode: 'dr-morepen',
   });
 
   assert.equal(
     calls[0].url,
-    'http://api.test.local/api/app/shopee/inbox?category=shipment_due&cursor=page+2%2Ftoken&receivedFrom=2026-08-24',
+    'http://api.test.local/api/app/shopee/inbox?category=shipment_due&cursor=page+2%2Ftoken&receivedFrom=2026-08-24&shopCode=dr-morepen',
   );
   assert.equal(calls[0].options.credentials, 'include');
   assert.equal(payload.source, 'info@mail.shopee.co.th');
@@ -226,18 +227,33 @@ test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () =
   };
 
   const api = await vite.ssrLoadModule('/src/services/api.js');
-  await api.getShopeeOrders({ status: 'shipment_due', cursor: 'db page/token' });
-  await api.getShopeeOrder('26082471YK8C02');
-  await api.syncShopeeOrders({ cursor: 'gmail page/token', limit: 25 });
+  await api.getShopeeOrders({
+    shopCode: 'sc-drug-store',
+    status: 'shipment_due',
+    cursor: 'db page/token',
+  });
+  await api.getShopeeOrder('26082471YK8C02', { shopCode: 'sc-drug-store' });
+  await api.syncShopeeOrders({
+    cursor: 'gmail page/token',
+    limit: 25,
+    shopCode: 'sc-drug-store',
+  });
 
   assert.equal(
     calls[0].url,
-    'http://api.test.local/api/app/shopee/orders?status=shipment_due&cursor=db+page%2Ftoken',
+    'http://api.test.local/api/app/shopee/orders?shopCode=sc-drug-store&status=shipment_due&cursor=db+page%2Ftoken',
   );
-  assert.equal(calls[1].url, 'http://api.test.local/api/app/shopee/orders/26082471YK8C02');
+  assert.equal(
+    calls[1].url,
+    'http://api.test.local/api/app/shopee/orders/26082471YK8C02?shopCode=sc-drug-store',
+  );
   assert.equal(calls[2].url, 'http://api.test.local/api/app/shopee/orders/sync');
   assert.equal(calls[2].options.method, 'POST');
-  assert.deepEqual(JSON.parse(calls[2].options.body), { cursor: 'gmail page/token', limit: 25 });
+  assert.deepEqual(JSON.parse(calls[2].options.body), {
+    cursor: 'gmail page/token',
+    limit: 25,
+    shopCode: 'sc-drug-store',
+  });
   assert.equal(calls[2].options.credentials, 'include');
 });
 

@@ -6,6 +6,10 @@ import {
 const FILTERABLE_CATEGORIES = Object.entries(SHOPEE_EMAIL_CATEGORY_LABELS).filter(
   ([value]) => value !== 'other',
 );
+const SHOP_OPTIONS = [
+  ['sc-drug-store', 'SC Drug Store'],
+  ['dr-morepen', 'DR.Morepen'],
+];
 
 export default function ShopeeEmailInboxView({
   emails,
@@ -28,6 +32,15 @@ export default function ShopeeEmailInboxView({
       </p>
 
       <form className="history-filters" onSubmit={(event) => event.preventDefault()}>
+        <label className="history-filter-field">
+          <span>ร้าน Shopee</span>
+          <select name="shopCode" onChange={onFilterChange} value={filters.shopCode}>
+            <option value="">เลือกร้าน</option>
+            {SHOP_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
         <label className="history-filter-field">
           <span>ประเภทอีเมล</span>
           <select name="category" onChange={onFilterChange} value={filters.category}>
