@@ -329,6 +329,7 @@ export default function ShopeeOrderTimelineView({
                   typeof item === 'number' ? (
                     <button
                       aria-current={item === page ? 'page' : undefined}
+                      aria-label={item === page ? `หน้าปัจจุบัน ${item}` : `ไปหน้าที่ ${item}`}
                       className={`history-view-button secondary${item === page ? ' is-current' : ''}`}
                       disabled={isLoading || item === page}
                       key={item}

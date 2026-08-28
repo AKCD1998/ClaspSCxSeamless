@@ -197,6 +197,7 @@ test('renders numbered pagination and database-backed date/document sorting cont
   assert.match(html, /เลขคำสั่งซื้อ/u);
   assert.match(html, /name="sortOrder"/u);
   assert.match(html, /หน้า [\s\S]*6[\s\S]* จาก [\s\S]*13/u);
+  assert.match(html, /aria-current="page" aria-label="หน้าปัจจุบัน 6"/u);
   assert.match(html, /aria-current="page"[^>]*disabled=""[^>]*>6</u);
   assert.match(html, />…</u);
   assert.doesNotMatch(html, /โหลดคำสั่งซื้อเพิ่ม/u);
