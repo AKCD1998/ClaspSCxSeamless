@@ -22,6 +22,30 @@ function StatusBadge({ status }) {
   );
 }
 
+export function formatShopeeProductMatch(productMatch) {
+  if (productMatch?.status === 'matched') return productMatch.companySku || 'รอตรวจสอบ SKU';
+  if (productMatch?.status === 'bundle') {
+    const components = (productMatch.components || []).map((component) => (
+      component.quantityPerSale
+        ? `${component.companySku} ×${component.quantityPerSale}`
+        : component.companySku
+    ));
+    return components.length ? components.join(' + ') : 'ชุดหลาย SKU';
+  }
+  if (productMatch?.status === 'visibility_only') return 'สินค้าเพิ่มการมองเห็น';
+  if (productMatch?.status === 'unmapped') return 'รอตรวจสอบ SKU';
+  return '-';
+}
+
+function ProductMatchBadge({ productMatch }) {
+  if (!productMatch) return null;
+  return (
+    <span className="shopee-product-match" data-match-status={productMatch.status}>
+      {formatShopeeProductMatch(productMatch)}
+    </span>
+  );
+}
+
 function ShopeeOrderDetail({ detail, detailStatus, onRetry }) {
   if (detailStatus.state === 'working') {
     return <div className="shopee-order-detail-state">กำลังโหลดรายละเอียด...</div>;
@@ -50,6 +74,7 @@ function ShopeeOrderDetail({ detail, detailStatus, onRetry }) {
                 <strong>{item.name}</strong>
                 {item.variant ? <span>ตัวเลือก: {item.variant}</span> : null}
                 <span>จำนวน {item.quantity || 0} × {formatShopeeMoney(item.unitPrice)}</span>
+                <ProductMatchBadge productMatch={item.productMatch} />
               </li>
             ))}
           </ol>
@@ -186,6 +211,7 @@ export default function ShopeeOrderTimelineView({
               <col className="shopee-order-col-number" />
               <col className="shopee-order-col-status" />
               <col className="shopee-order-col-item" />
+              <col className="shopee-order-col-sku" />
               <col className="shopee-order-col-quantity" />
               <col className="shopee-order-col-total" />
               <col className="shopee-order-col-deadline" />
@@ -198,6 +224,7 @@ export default function ShopeeOrderTimelineView({
                 <th>เลขคำสั่งซื้อ</th>
                 <th>สถานะล่าสุด</th>
                 <th>สินค้า</th>
+                <th>Company SKU</th>
                 <th>จำนวน</th>
                 <th>ยอดรวม</th>
                 <th>กำหนดส่ง</th>
@@ -215,6 +242,7 @@ export default function ShopeeOrderTimelineView({
                     <td><strong>{order.orderNumber}</strong></td>
                     <td><StatusBadge status={order.currentStatus} /></td>
                     <td>{order.items?.[0]?.name || '-'}{order.itemCount > 1 ? ` +${order.itemCount - 1}` : ''}</td>
+                    <td>{formatShopeeProductMatch(order.items?.[0]?.productMatch)}</td>
                     <td>{order.totalQuantity || 0}</td>
                     <td>{formatShopeeMoney(order.totalAmount)}</td>
                     <td>{formatShopeeOrderDate(order.shippingDeadline)}</td>
@@ -232,7 +260,7 @@ export default function ShopeeOrderTimelineView({
                   </tr>,
                   isOpen ? (
                     <tr className="shopee-order-detail-row" key={`${orderKey}-detail`}>
-                      <td colSpan="9">
+                      <td colSpan="10">
                         <ShopeeOrderDetail
                           detail={orderDetail}
                           detailStatus={detailStatus}

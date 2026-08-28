@@ -991,18 +991,19 @@ button:disabled {
 }
 
 .shopee-order-table {
-  min-width: 1180px;
+  min-width: 1320px;
 }
 
-.shopee-order-col-shop { width: 10%; }
-.shopee-order-col-number { width: 14%; }
-.shopee-order-col-status { width: 13%; }
+.shopee-order-col-shop { width: 8%; }
+.shopee-order-col-number { width: 12%; }
+.shopee-order-col-status { width: 11%; }
 .shopee-order-col-item { width: 18%; }
-.shopee-order-col-quantity { width: 6%; }
-.shopee-order-col-total { width: 9%; }
-.shopee-order-col-deadline { width: 9%; }
-.shopee-order-col-updated { width: 13%; }
-.shopee-order-col-detail { width: 8%; }
+.shopee-order-col-sku { width: 11%; }
+.shopee-order-col-quantity { width: 5%; }
+.shopee-order-col-total { width: 8%; }
+.shopee-order-col-deadline { width: 8%; }
+.shopee-order-col-updated { width: 12%; }
+.shopee-order-col-detail { width: 7%; }
 
 .shopee-order-detail-row > td {
   padding: 0;
@@ -1053,6 +1054,42 @@ button:disabled {
   margin-top: 3px;
   color: var(--muted);
   font-size: 0.86rem;
+}
+
+.shopee-order-items .shopee-product-match {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 7px;
+  padding: 4px 7px;
+  border: 1px solid #b9dccc;
+  border-radius: 6px;
+  background: #eef8f3;
+  color: #126040;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.shopee-product-match[data-match-status="bundle"] {
+  border-color: #b8d8e5;
+  background: #edf7fb;
+  color: #14566e;
+}
+
+.shopee-product-match[data-match-status="visibility_only"] {
+  border-color: #d2d6d5;
+  background: #f3f5f4;
+  color: #53615d;
+  font-family: inherit;
+}
+
+.shopee-product-match[data-match-status="unmapped"] {
+  border-color: #e7ca95;
+  background: #fff7e8;
+  color: #80520b;
+  font-family: inherit;
 }
 
 .shopee-order-amounts {
@@ -1815,6 +1852,30 @@ a.history-view-button.secondary:hover {
 [data-color-mode="dark"] .shopee-order-detail-card {
   background: rgba(0, 0, 0, 0.18);
   border-color: rgba(231, 236, 233, 0.12);
+}
+
+[data-color-mode="dark"] .shopee-order-items .shopee-product-match {
+  border-color: rgba(110, 231, 183, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+  color: #a7f3d0;
+}
+
+[data-color-mode="dark"] .shopee-product-match[data-match-status="bundle"] {
+  border-color: rgba(103, 232, 249, 0.35);
+  background: rgba(6, 182, 212, 0.12);
+  color: #a5f3fc;
+}
+
+[data-color-mode="dark"] .shopee-product-match[data-match-status="visibility_only"] {
+  border-color: rgba(209, 213, 219, 0.3);
+  background: rgba(156, 163, 175, 0.12);
+  color: #d1d5db;
+}
+
+[data-color-mode="dark"] .shopee-product-match[data-match-status="unmapped"] {
+  border-color: rgba(252, 211, 77, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
 }
 
 [data-color-mode="dark"] .shopee-order-amounts {
