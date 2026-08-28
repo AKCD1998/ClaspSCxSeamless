@@ -994,14 +994,15 @@ button:disabled {
   min-width: 1180px;
 }
 
-.shopee-order-col-number { width: 15%; }
-.shopee-order-col-status { width: 15%; }
-.shopee-order-col-item { width: 20%; }
-.shopee-order-col-quantity { width: 7%; }
-.shopee-order-col-total { width: 10%; }
-.shopee-order-col-deadline { width: 10%; }
-.shopee-order-col-updated { width: 14%; }
-.shopee-order-col-detail { width: 9%; }
+.shopee-order-col-shop { width: 10%; }
+.shopee-order-col-number { width: 14%; }
+.shopee-order-col-status { width: 13%; }
+.shopee-order-col-item { width: 18%; }
+.shopee-order-col-quantity { width: 6%; }
+.shopee-order-col-total { width: 9%; }
+.shopee-order-col-deadline { width: 9%; }
+.shopee-order-col-updated { width: 13%; }
+.shopee-order-col-detail { width: 8%; }
 
 .shopee-order-detail-row > td {
   padding: 0;

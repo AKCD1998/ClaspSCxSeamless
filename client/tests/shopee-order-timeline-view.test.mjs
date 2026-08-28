@@ -32,6 +32,7 @@ const order = {
   lastEventAt: '2026-08-24T05:37:17.000Z',
   orderNumber: '26082476830R2P',
   shippingDeadline: '2026-08-30',
+  shopCode: 'sc-drug-store',
   totalAmount: 197,
   totalQuantity: 2,
 };
@@ -40,8 +41,9 @@ async function renderView(overrides = {}) {
   const { default: View } = await vite.ssrLoadModule('/src/components/ShopeeOrderTimelineView.jsx');
   return renderToString(React.createElement(View, {
     appRole: 'user',
+    canSync: false,
     detailStatus: { message: '', state: 'idle' },
-    filters: { shopCode: '', status: '' },
+    filters: { shopCode: 'all', status: '' },
     isLoading: false,
     isLoadingMore: false,
     isSyncing: false,
@@ -55,7 +57,7 @@ async function renderView(overrides = {}) {
     onToggleDetail: noop,
     orderDetail: null,
     orders: [],
-    selectedOrderNumber: null,
+    selectedOrderKey: null,
     status: { message: 'พร้อม', state: 'success' },
     syncCursor: null,
     syncStatus: { message: '', state: 'idle' },
@@ -75,12 +77,14 @@ test('renders an order summary with distinct status color hooks and no admin syn
   assert.match(html, /name="shopCode"/u);
   assert.match(html, /SC Drug Store/u);
   assert.match(html, /DR.Morepen/u);
+  assert.match(html, /ทุกร้าน/u);
+  assert.match(html, /<th>ร้าน<\/th>/u);
 });
 
 test('renders chronological event detail and bounded cancellation evidence', async () => {
   const html = await renderView({
     orders: [order],
-    selectedOrderNumber: order.orderNumber,
+    selectedOrderKey: `${order.shopCode}:${order.orderNumber}`,
     detailStatus: { message: '', state: 'success' },
     orderDetail: {
       order: { ...order, itemSubtotal: 168, shippingFee: 38 },
@@ -101,6 +105,7 @@ test('renders chronological event detail and bounded cancellation evidence', asy
 test('shows both bounded Gmail sync actions only to admins', async () => {
   const html = await renderView({
     appRole: 'admin',
+    canSync: true,
     filters: { shopCode: 'sc-drug-store', status: '' },
     syncCursor: 'opaque-gmail-cursor',
     syncStatus: { message: 'บันทึกเหตุการณ์ใหม่ 1 รายการ', state: 'success' },
@@ -109,6 +114,17 @@ test('shows both bounded Gmail sync actions only to admins', async () => {
   assert.match(html, /ซิงก์อีเมลล่าสุด/);
   assert.match(html, /ซิงก์อีเมลหน้าก่อนหน้า/);
   assert.match(html, /บันทึกเหตุการณ์ใหม่ 1 รายการ/);
+});
+
+test('all-shops view is readable but cannot start a mailbox sync', async () => {
+  const html = await renderView({
+    appRole: 'admin',
+    canSync: false,
+    filters: { shopCode: 'all', status: '' },
+  });
+
+  assert.match(html, /<button disabled=""[^>]*>ซิงก์อีเมลล่าสุด<\/button>/u);
+  assert.match(html, /เลือก SC Drug Store หรือ DR.Morepen เพื่อซิงก์ทีละร้าน/u);
 });
 
 test('replacement clears stale rows and ignores a previous page completion', async () => {
@@ -129,6 +145,25 @@ test('replacement clears stale rows and ignores a previous page completion', asy
     type: 'load_more_succeeded', generation: 1, response: { orders: [{ orderNumber: 'stale' }] },
   });
   assert.strictEqual(stale, state);
+});
+
+test('combined pagination keeps the same order number from different shops', async () => {
+  const { INITIAL_SHOPEE_ORDER_STATE, shopeeOrderReducer } = await vite.ssrLoadModule(
+    '/src/components/ShopeeOrderTimelinePanel.jsx',
+  );
+  const state = {
+    ...INITIAL_SHOPEE_ORDER_STATE,
+    generation: 1,
+    orders: [{ ...order, shopCode: 'sc-drug-store' }],
+  };
+  const next = shopeeOrderReducer(state, {
+    type: 'load_more_succeeded',
+    generation: 1,
+    response: { orders: [{ ...order, shopCode: 'dr-morepen' }] },
+  });
+
+  assert.equal(next.orders.length, 2);
+  assert.deepEqual(next.orders.map((item) => item.shopCode), ['sc-drug-store', 'dr-morepen']);
 });
 
 test('an in-flight sync refreshes the newest filter after the user changes it', async () => {
@@ -185,24 +220,46 @@ test('an in-flight sync publishes its cursor and status only while the same shop
   assert.deepEqual(syncedResults, [{ nextCursor: 'cursor-2', storedEvents: 1 }]);
 });
 
+test('all-shops scope is rejected before issuing a sync request', async () => {
+  const { syncShopeeOrdersAndRefresh } = await vite.ssrLoadModule(
+    '/src/components/ShopeeOrderTimelinePanel.jsx',
+  );
+  let requested = false;
+
+  await assert.rejects(
+    syncShopeeOrdersAndRefresh({
+      cursor: null,
+      filtersRef: { current: { shopCode: 'all', status: '' } },
+      loadOrders: async () => {},
+      syncRequest: async () => { requested = true; },
+    }),
+    /เลือกร้าน SC Drug Store หรือ DR.Morepen/u,
+  );
+  assert.equal(requested, false);
+});
+
 test('a detail response is stale when the same order number is selected under another shop', async () => {
   const { isShopeeDetailRequestCurrent } = await vite.ssrLoadModule(
     '/src/components/ShopeeOrderTimelinePanel.jsx',
   );
   const filtersRef = { current: { shopCode: 'dr-morepen' } };
-  const selectedOrderRef = { current: '260825ABC' };
+  const selectedOrderRef = {
+    current: { orderNumber: '260825ABC', shopCode: 'dr-morepen' },
+  };
 
   assert.equal(isShopeeDetailRequestCurrent({
     filtersRef,
     orderNumber: '260825ABC',
     selectedOrderRef,
     shopCode: 'sc-drug-store',
+    viewShopScope: 'sc-drug-store',
   }), false);
   assert.equal(isShopeeDetailRequestCurrent({
     filtersRef,
     orderNumber: '260825ABC',
     selectedOrderRef,
     shopCode: 'dr-morepen',
+    viewShopScope: 'dr-morepen',
   }), true);
 });
 

@@ -8,9 +8,11 @@ import {
 
 const STATUS_OPTIONS = Object.entries(SHOPEE_ORDER_STATUS_LABELS);
 const SHOP_OPTIONS = [
+  ['all', 'ทุกร้าน'],
   ['sc-drug-store', 'SC Drug Store'],
   ['dr-morepen', 'DR.Morepen'],
 ];
+const SHOP_LABELS = Object.fromEntries(SHOP_OPTIONS);
 
 function StatusBadge({ status }) {
   return (
@@ -85,6 +87,7 @@ function ShopeeOrderDetail({ detail, detailStatus, onRetry }) {
 
 export default function ShopeeOrderTimelineView({
   appRole,
+  canSync,
   detailStatus,
   filters,
   isLoading,
@@ -100,7 +103,7 @@ export default function ShopeeOrderTimelineView({
   onToggleDetail,
   orderDetail,
   orders,
-  selectedOrderNumber,
+  selectedOrderKey,
   status,
   syncCursor,
   syncStatus,
@@ -116,13 +119,13 @@ export default function ShopeeOrderTimelineView({
         </div>
         {appRole === 'admin' ? (
           <div className="shopee-order-sync-actions">
-            <button disabled={isSyncing || !filters.shopCode} onClick={onSyncLatest} type="button">
+            <button disabled={isSyncing || !canSync} onClick={onSyncLatest} type="button">
               {isSyncing ? 'กำลังซิงก์...' : 'ซิงก์อีเมลล่าสุด'}
             </button>
             {syncCursor ? (
               <button
                 className="history-view-button secondary"
-                disabled={isSyncing || !filters.shopCode}
+                disabled={isSyncing || !canSync}
                 onClick={onSyncOlder}
                 type="button"
               >
@@ -137,6 +140,10 @@ export default function ShopeeOrderTimelineView({
         <p className="status shopee-order-sync-status" data-state={syncStatus.state} aria-live="polite">
           {syncStatus.message}
         </p>
+      ) : null}
+
+      {appRole === 'admin' && !canSync ? (
+        <p className="result-meta">เลือก SC Drug Store หรือ DR.Morepen เพื่อซิงก์ทีละร้าน</p>
       ) : null}
 
       <form className="history-filters shopee-order-filters" onSubmit={(event) => event.preventDefault()}>
@@ -175,6 +182,7 @@ export default function ShopeeOrderTimelineView({
         <div className="history-table-wrap">
           <table className="history-table shopee-order-table">
             <colgroup>
+              <col className="shopee-order-col-shop" />
               <col className="shopee-order-col-number" />
               <col className="shopee-order-col-status" />
               <col className="shopee-order-col-item" />
@@ -186,6 +194,7 @@ export default function ShopeeOrderTimelineView({
             </colgroup>
             <thead>
               <tr>
+                <th>ร้าน</th>
                 <th>เลขคำสั่งซื้อ</th>
                 <th>สถานะล่าสุด</th>
                 <th>สินค้า</th>
@@ -198,9 +207,11 @@ export default function ShopeeOrderTimelineView({
             </thead>
             <tbody>
               {orders.map((order) => {
-                const isOpen = selectedOrderNumber === order.orderNumber;
+                const orderKey = `${order.shopCode}:${order.orderNumber}`;
+                const isOpen = selectedOrderKey === orderKey;
                 return [
-                  <tr key={order.orderNumber}>
+                  <tr key={orderKey}>
+                    <td>{SHOP_LABELS[order.shopCode] || order.shopCode || '-'}</td>
                     <td><strong>{order.orderNumber}</strong></td>
                     <td><StatusBadge status={order.currentStatus} /></td>
                     <td>{order.items?.[0]?.name || '-'}{order.itemCount > 1 ? ` +${order.itemCount - 1}` : ''}</td>
@@ -220,8 +231,8 @@ export default function ShopeeOrderTimelineView({
                     </td>
                   </tr>,
                   isOpen ? (
-                    <tr className="shopee-order-detail-row" key={`${order.orderNumber}-detail`}>
-                      <td colSpan="8">
+                    <tr className="shopee-order-detail-row" key={`${orderKey}-detail`}>
+                      <td colSpan="9">
                         <ShopeeOrderDetail
                           detail={orderDetail}
                           detailStatus={detailStatus}

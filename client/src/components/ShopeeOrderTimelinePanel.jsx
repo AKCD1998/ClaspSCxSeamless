@@ -7,7 +7,19 @@ import {
   syncShopeeOrders,
 } from '../services/api.js';
 
-const EMPTY_FILTERS = { shopCode: '', status: '' };
+export const SHOPEE_ALL_SHOPS_SCOPE = 'all';
+const DEFAULT_FILTERS = { shopCode: SHOPEE_ALL_SHOPS_SCOPE, status: '' };
+const SYNCABLE_SHOP_CODES = new Set(['sc-drug-store', 'dr-morepen']);
+
+export function getShopeeOrderIdentity(order) {
+  const shopCode = String(order?.shopCode || '').trim();
+  const orderNumber = String(order?.orderNumber || '').trim();
+  return shopCode && orderNumber ? `${shopCode}:${orderNumber}` : orderNumber;
+}
+
+export function isSyncableShopeeShopCode(shopCode) {
+  return SYNCABLE_SHOP_CODES.has(shopCode);
+}
 
 export const INITIAL_SHOPEE_ORDER_STATE = {
   generation: 0,
@@ -68,9 +80,9 @@ export function shopeeOrderReducer(state, action) {
     case 'load_more_started':
       return { ...state, isLoadingMore: true };
     case 'load_more_succeeded': {
-      const existingNumbers = new Set(state.orders.map((order) => order.orderNumber));
+      const existingIdentities = new Set(state.orders.map(getShopeeOrderIdentity));
       const appended = (action.response?.orders || []).filter(
-        (order) => !existingNumbers.has(order.orderNumber),
+        (order) => !existingIdentities.has(getShopeeOrderIdentity(order)),
       );
       return {
         ...state,
@@ -105,10 +117,13 @@ export function isShopeeDetailRequestCurrent({
   orderNumber,
   selectedOrderRef,
   shopCode,
+  viewShopScope,
 }) {
+  const selectedOrder = selectedOrderRef.current;
   return (
-    selectedOrderRef.current === orderNumber &&
-    isShopeeShopRequestCurrent(filtersRef, shopCode)
+    selectedOrder?.orderNumber === orderNumber &&
+    selectedOrder?.shopCode === shopCode &&
+    isShopeeShopRequestCurrent(filtersRef, viewShopScope)
   );
 }
 
@@ -120,6 +135,9 @@ export async function syncShopeeOrdersAndRefresh({
   syncRequest = syncShopeeOrders,
 }) {
   const shopCode = filtersRef.current.shopCode;
+  if (!isSyncableShopeeShopCode(shopCode)) {
+    throw new Error('กรุณาเลือกร้าน SC Drug Store หรือ DR.Morepen ก่อนซิงก์');
+  }
   const result = await syncRequest({
     cursor,
     limit: 25,
@@ -131,16 +149,16 @@ export async function syncShopeeOrdersAndRefresh({
 }
 
 export default function ShopeeOrderTimelinePanel() {
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [orderState, dispatch] = useReducer(shopeeOrderReducer, INITIAL_SHOPEE_ORDER_STATE);
   const [appRole, setAppRole] = useState('user');
-  const [selectedOrderNumber, setSelectedOrderNumber] = useState(null);
+  const [selectedOrderKey, setSelectedOrderKey] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [detailStatus, setDetailStatus] = useState({ message: '', state: 'idle' });
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncCursor, setSyncCursor] = useState(null);
   const [syncStatus, setSyncStatus] = useState({ message: '', state: 'idle' });
-  const filtersRef = useRef(EMPTY_FILTERS);
+  const filtersRef = useRef(DEFAULT_FILTERS);
   const requestSequenceRef = useRef(0);
   const selectedOrderRef = useRef(null);
   const detailCacheRef = useRef({});
@@ -148,7 +166,7 @@ export default function ShopeeOrderTimelinePanel() {
 
   function closeDetail() {
     selectedOrderRef.current = null;
-    setSelectedOrderNumber(null);
+    setSelectedOrderKey(null);
     setOrderDetail(null);
     setDetailStatus({ message: '', state: 'idle' });
   }
@@ -187,9 +205,12 @@ export default function ShopeeOrderTimelinePanel() {
     }
   }
 
-  async function loadDetail(orderNumber) {
-    const shopCode = filtersRef.current.shopCode;
-    if (!shopCode) return;
+  async function loadDetail(order) {
+    const orderNumber = order?.orderNumber;
+    const viewShopScope = filtersRef.current.shopCode;
+    const shopCode = order?.shopCode
+      || (isSyncableShopeeShopCode(viewShopScope) ? viewShopScope : '');
+    if (!orderNumber || !shopCode) return;
     setDetailStatus({ message: 'กำลังโหลดรายละเอียด...', state: 'working' });
     try {
       const detail = await getShopeeOrder(orderNumber, { shopCode });
@@ -198,6 +219,7 @@ export default function ShopeeOrderTimelinePanel() {
         orderNumber,
         selectedOrderRef,
         shopCode,
+        viewShopScope,
       })) return;
       detailCacheRef.current[`${shopCode}:${orderNumber}`] = detail;
       setOrderDetail(detail);
@@ -208,6 +230,7 @@ export default function ShopeeOrderTimelinePanel() {
         orderNumber,
         selectedOrderRef,
         shopCode,
+        viewShopScope,
       })) return;
       setDetailStatus({ message: error?.message || 'โหลดรายละเอียดไม่สำเร็จ', state: 'error' });
     }
@@ -215,26 +238,36 @@ export default function ShopeeOrderTimelinePanel() {
 
   function handleToggleDetail(order) {
     const orderNumber = order?.orderNumber;
-    if (!orderNumber) return;
-    if (selectedOrderRef.current === orderNumber) {
+    const shopCode = order?.shopCode
+      || (isSyncableShopeeShopCode(filtersRef.current.shopCode)
+        ? filtersRef.current.shopCode
+        : '');
+    if (!orderNumber || !shopCode) return;
+    const orderIdentity = { orderNumber, shopCode };
+    const orderKey = getShopeeOrderIdentity(orderIdentity);
+    if (getShopeeOrderIdentity(selectedOrderRef.current) === orderKey) {
       closeDetail();
       return;
     }
 
-    selectedOrderRef.current = orderNumber;
-    setSelectedOrderNumber(orderNumber);
-    const cached = detailCacheRef.current[`${filtersRef.current.shopCode}:${orderNumber}`];
+    selectedOrderRef.current = orderIdentity;
+    setSelectedOrderKey(orderKey);
+    const cached = detailCacheRef.current[orderKey];
     if (cached) {
       setOrderDetail(cached);
       setDetailStatus({ message: '', state: 'success' });
       return;
     }
     setOrderDetail(null);
-    loadDetail(orderNumber);
+    loadDetail(orderIdentity);
   }
 
   async function handleSync(cursor = null) {
-    if (appRole !== 'admin' || isSyncing || !filtersRef.current.shopCode) return;
+    if (
+      appRole !== 'admin'
+      || isSyncing
+      || !isSyncableShopeeShopCode(filtersRef.current.shopCode)
+    ) return;
     const shopCode = filtersRef.current.shopCode;
     setIsSyncing(true);
     setSyncStatus({ message: 'กำลังอ่านอีเมล Shopee หนึ่งหน้า...', state: 'working' });
@@ -300,6 +333,7 @@ export default function ShopeeOrderTimelinePanel() {
   return (
     <ShopeeOrderTimelineView
       appRole={appRole}
+      canSync={isSyncableShopeeShopCode(filters.shopCode)}
       detailStatus={detailStatus}
       filters={filters}
       isLoading={isLoading}
@@ -315,7 +349,7 @@ export default function ShopeeOrderTimelinePanel() {
       onToggleDetail={handleToggleDetail}
       orderDetail={orderDetail}
       orders={orders}
-      selectedOrderNumber={selectedOrderNumber}
+      selectedOrderKey={selectedOrderKey}
       status={status}
       syncCursor={syncCursor}
       syncStatus={syncStatus}
