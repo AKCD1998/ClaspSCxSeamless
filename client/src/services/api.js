@@ -221,6 +221,29 @@ export async function syncShopeeOrders(options = {}) {
   });
 }
 
+export async function getShopeeLegacyReconciliations(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+  const query = params.toString();
+  return requestJson(
+    `/app/shopee/orders/legacy-reconciliation${query ? `?${query}` : ''}`,
+  );
+}
+
+export async function reviewShopeeLegacyOrder(orderNumber, shopCode) {
+  return requestJson(
+    `/app/shopee/orders/legacy-reconciliation/${encodeURIComponent(orderNumber)}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ shopCode }),
+    },
+  );
+}
+
 export async function getPharmcareInbox(filters = {}) {
   const params = new URLSearchParams();
 

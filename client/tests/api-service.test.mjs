@@ -51,6 +51,32 @@ test('getBootstrap calls the configured backend URL', async () => {
   assert.equal(payload.maxUploadMb, 20);
 });
 
+test('legacy Shopee review API keeps list filters and sends only the selected shop', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ orders: [], reviewOnly: true }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.getShopeeLegacyReconciliations({
+    cursor: 'page 2/token',
+    limit: 10,
+    status: 'pending',
+  });
+  await api.reviewShopeeLegacyOrder('26082471YK8C02', 'dr-morepen');
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/shopee/orders/legacy-reconciliation?cursor=page+2%2Ftoken&limit=10&status=pending',
+  );
+  assert.equal(
+    calls[1].url,
+    'http://api.test.local/api/app/shopee/orders/legacy-reconciliation/26082471YK8C02',
+  );
+  assert.deepEqual(JSON.parse(calls[1].options.body), { shopCode: 'dr-morepen' });
+});
+
 test('API errors surface backend error messages', async () => {
   globalThis.fetch = async () => new Response(
     JSON.stringify({
