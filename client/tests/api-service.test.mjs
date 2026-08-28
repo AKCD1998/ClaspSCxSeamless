@@ -77,6 +77,36 @@ test('legacy Shopee review API keeps list filters and sends only the selected sh
   assert.deepEqual(JSON.parse(calls[1].options.body), { shopCode: 'dr-morepen' });
 });
 
+test('legacy Shopee timeline apply reads a dry-run and posts only its digest', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      dryRun: !options.method,
+      legacyOrderCount: 315,
+      orderCount: options.method ? 315 : undefined,
+      planDigest: 'a'.repeat(64),
+      readyToApply: true,
+    }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.getShopeeLegacyApplyPlan();
+  await api.applyShopeeLegacyTimeline('a'.repeat(64));
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/shopee/orders/legacy-reconciliation/apply-plan',
+  );
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(
+    calls[1].url,
+    'http://api.test.local/api/app/shopee/orders/legacy-reconciliation/apply',
+  );
+  assert.equal(calls[1].options.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[1].options.body), { planDigest: 'a'.repeat(64) });
+});
+
 test('API errors surface backend error messages', async () => {
   globalThis.fetch = async () => new Response(
     JSON.stringify({
