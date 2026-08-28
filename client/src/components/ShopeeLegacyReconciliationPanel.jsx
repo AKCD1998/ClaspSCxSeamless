@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
+  applyShopeeLegacyTimeline,
   getSession,
+  getShopeeLegacyApplyPlan,
   getShopeeLegacyReconciliations,
   reviewShopeeLegacyOrder,
 } from '../services/api.js';
@@ -35,10 +37,14 @@ const MAILBOX_EVIDENCE_LABELS = {
 };
 
 export function ShopeeLegacyReconciliationView({
+  applyPlan,
+  applyStatus,
   error,
+  isApplying,
   isLoading,
   nextCursor,
   onLoadMore,
+  onApply,
   onRefresh,
   onReview,
   onSelectionChange,
@@ -57,12 +63,12 @@ export function ShopeeLegacyReconciliationView({
     <section className="card shopee-legacy-review" aria-labelledby="legacy-review-heading">
       <div className="shopee-legacy-review__heading">
         <div>
-          <p className="eyebrow">ADMIN REVIEW · REVIEW-ONLY</p>
+          <p className="eyebrow">ADMIN REVIEW · CONTROLLED APPLY</p>
           <h2 id="legacy-review-heading">ตรวจร้านของข้อมูล Shopee เก่า</h2>
           <p>
             ถ้าพบอีเมลจากกล่องของร้านเดียวและหลักฐานไม่ขัดกัน ระบบจะจัดร้านให้อัตโนมัติ
             เฉพาะรายการที่ไม่ชัดเจนเท่านั้นที่ต้องเลือกเอง โดยไม่แสดงหัวเรื่อง เนื้อหาเมล Gmail ID หรือข้อมูลผู้ซื้อ
-            หน้านี้ยังไม่ย้าย legacy rows
+            เมื่อหลักฐานครบทุกแถว ผู้ดูแลสามารถนำข้อมูลเข้า Timeline ด้วยแผนล่าสุดได้ในครั้งเดียว
           </p>
         </div>
         <button className="button secondary" disabled={isLoading} onClick={onRefresh} type="button">
@@ -78,6 +84,35 @@ export function ShopeeLegacyReconciliationView({
           <option value="all">ทั้งหมด</option>
         </select>
       </label>
+
+      <section className="shopee-legacy-review__apply" aria-label="นำข้อมูลเก่าเข้า Timeline">
+        <div>
+          <strong>นำข้อมูลที่ยืนยันแล้วเข้า Timeline</strong>
+          {applyPlan ? (
+            <small>
+              พร้อม {applyPlan.automaticCount + applyPlan.reviewedCount} รายการ
+              {' · '}ต้องตรวจเอง {applyPlan.manualReviewRequiredCount} รายการ
+              {' · '}สร้างใหม่ {applyPlan.targetNewOrderCount || 0} รายการ
+              {' · '}รวมกับเดิม {applyPlan.targetExistingOrderCount || 0} รายการ
+            </small>
+          ) : <small>กำลังตรวจแผนแบบ read-only...</small>}
+          {applyStatus?.message ? (
+            <p className="status" data-state={applyStatus.state}>{applyStatus.message}</p>
+          ) : null}
+        </div>
+        {applyPlan?.legacyOrderCount ? (
+          <button
+            className="button"
+            disabled={isApplying || !applyPlan.readyToApply}
+            onClick={onApply}
+            type="button"
+          >
+            {isApplying ? 'กำลังนำเข้า Timeline...' : `นำ ${applyPlan.legacyOrderCount} รายการเข้า Timeline`}
+          </button>
+        ) : (
+          <span className="shopee-legacy-review__automatic-note">ไม่มีข้อมูลเก่ารอนำเข้า</span>
+        )}
+      </section>
 
       {error ? <p className="status" data-state="error">{error}</p> : null}
       {isLoading && !orders.length ? <p className="status" data-state="working">กำลังตรวจ routing metadata...</p> : null}
@@ -218,6 +253,9 @@ export function ShopeeLegacyReconciliationView({
 
 export default function ShopeeLegacyReconciliationPanel() {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [applyPlan, setApplyPlan] = useState(null);
+  const [applyStatus, setApplyStatus] = useState({ message: '', state: 'success' });
+  const [isApplying, setIsApplying] = useState(false);
   const [orders, setOrders] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [status, setStatus] = useState('pending');
@@ -254,6 +292,12 @@ export default function ShopeeLegacyReconciliationPanel() {
     }
   }
 
+  async function refreshApplyPlan() {
+    const plan = await getShopeeLegacyApplyPlan();
+    setApplyPlan(plan);
+    return plan;
+  }
+
   useEffect(() => {
     let cancelled = false;
     getSession()
@@ -261,6 +305,14 @@ export default function ShopeeLegacyReconciliationPanel() {
         if (cancelled || session?.role !== 'admin') return;
         setIsAdmin(true);
         loadPage({ reviewStatus: 'pending' });
+        refreshApplyPlan().catch((planError) => {
+          if (!cancelled) {
+            setApplyStatus({
+              message: planError?.message || 'ตรวจแผนนำเข้า Timeline ไม่สำเร็จ',
+              state: 'error',
+            });
+          }
+        });
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -276,7 +328,10 @@ export default function ShopeeLegacyReconciliationPanel() {
     setError('');
     try {
       await reviewShopeeLegacyOrder(orderNumber, shopCode);
-      await loadPage({ reviewStatus: status });
+      await Promise.all([
+        loadPage({ reviewStatus: status }),
+        refreshApplyPlan(),
+      ]);
     } catch (reviewError) {
       setError(reviewError?.message || 'บันทึกการเลือกร้านไม่สำเร็จ');
     } finally {
@@ -284,12 +339,44 @@ export default function ShopeeLegacyReconciliationPanel() {
     }
   }
 
+  async function handleApply() {
+    if (isApplying) return;
+    setIsApplying(true);
+    setApplyStatus({ message: 'กำลังตรวจแผนล่าสุด...', state: 'working' });
+    try {
+      const freshPlan = await refreshApplyPlan();
+      if (!freshPlan?.readyToApply) {
+        throw new Error('ยังมีรายการที่ต้องตรวจเอง จึงยังไม่นำข้อมูลเข้า Timeline');
+      }
+      const result = await applyShopeeLegacyTimeline(freshPlan.planDigest);
+      setApplyStatus({
+        message: `นำเข้า Timeline สำเร็จ ${result.orderCount || 0} รายการ (${result.eventCount || 0} เหตุการณ์)`,
+        state: 'success',
+      });
+      await Promise.all([
+        loadPage({ reviewStatus: status }),
+        refreshApplyPlan(),
+      ]);
+    } catch (applyError) {
+      setApplyStatus({
+        message: applyError?.message || 'นำข้อมูลเก่าเข้า Timeline ไม่สำเร็จ',
+        state: 'error',
+      });
+    } finally {
+      setIsApplying(false);
+    }
+  }
+
   return (
     <ShopeeLegacyReconciliationView
+      applyPlan={applyPlan}
+      applyStatus={applyStatus}
       error={error}
+      isApplying={isApplying}
       isLoading={isLoading}
       nextCursor={nextCursor}
       onLoadMore={() => loadPage({ append: true, cursor: nextCursor })}
+      onApply={handleApply}
       onRefresh={() => loadPage({ reviewStatus: status })}
       onReview={handleReview}
       onSelectionChange={(orderNumber, shopCode) => setSelections((current) => ({

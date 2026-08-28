@@ -234,6 +234,17 @@ export async function getShopeeLegacyReconciliations(filters = {}) {
   );
 }
 
+export async function getShopeeLegacyApplyPlan() {
+  return requestJson('/app/shopee/orders/legacy-reconciliation/apply-plan');
+}
+
+export async function applyShopeeLegacyTimeline(planDigest) {
+  return requestJson('/app/shopee/orders/legacy-reconciliation/apply', {
+    method: 'POST',
+    body: JSON.stringify({ planDigest }),
+  });
+}
+
 export async function reviewShopeeLegacyOrder(orderNumber, shopCode) {
   return requestJson(
     `/app/shopee/orders/legacy-reconciliation/${encodeURIComponent(orderNumber)}`,

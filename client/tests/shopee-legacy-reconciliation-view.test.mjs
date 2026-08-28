@@ -28,9 +28,21 @@ test('renders a trusted-mailbox classification without asking for confirmation',
     '/src/components/ShopeeLegacyReconciliationPanel.jsx',
   );
   const html = renderToString(React.createElement(View, {
+    applyPlan: {
+      automaticCount: 315,
+      legacyOrderCount: 315,
+      manualReviewRequiredCount: 0,
+      readyToApply: true,
+      reviewedCount: 0,
+      targetExistingOrderCount: 5,
+      targetNewOrderCount: 310,
+    },
+    applyStatus: null,
     error: '',
+    isApplying: false,
     isLoading: false,
     nextCursor: 'next',
+    onApply: () => {},
     onLoadMore: () => {},
     onRefresh: () => {},
     onReview: () => {},
@@ -78,7 +90,9 @@ test('renders a trusted-mailbox classification without asking for confirmation',
   }));
 
   assert.match(html, /ตรวจร้านของข้อมูล Shopee เก่า/u);
-  assert.match(html, /REVIEW-ONLY/u);
+  assert.match(html, /CONTROLLED APPLY/u);
+  assert.match(html, /นำ[\s\S]*315[\s\S]*รายการเข้า Timeline/u);
+  assert.match(html, /สร้างใหม่[\s\S]*310[\s\S]*รวมกับเดิม[\s\S]*5/u);
   assert.match(html, /ยืนยันผู้รับเดิม[\s\S]*2[\s\S]*\/[\s\S]*2[\s\S]*อีเมล/u);
   assert.match(html, /พบจากกล่องอีเมลของร้านเดียว/u);
   assert.match(html, /จัดร้านอัตโนมัติ:[\s\S]*DR\.Morepen/u);
@@ -95,9 +109,19 @@ test('renders conflict evidence without preselecting or fabricating a shop', asy
     '/src/components/ShopeeLegacyReconciliationPanel.jsx',
   );
   const html = renderToString(React.createElement(View, {
+    applyPlan: {
+      automaticCount: 0,
+      legacyOrderCount: 1,
+      manualReviewRequiredCount: 1,
+      readyToApply: false,
+      reviewedCount: 0,
+    },
+    applyStatus: null,
     error: '',
+    isApplying: false,
     isLoading: false,
     nextCursor: null,
+    onApply: () => {},
     onLoadMore: () => {},
     onRefresh: () => {},
     onReview: () => {},
@@ -124,9 +148,19 @@ test('renders product/recipient conflict and keeps the shop unselected', async (
     '/src/components/ShopeeLegacyReconciliationPanel.jsx',
   );
   const html = renderToString(React.createElement(View, {
+    applyPlan: {
+      automaticCount: 0,
+      legacyOrderCount: 1,
+      manualReviewRequiredCount: 1,
+      readyToApply: false,
+      reviewedCount: 0,
+    },
+    applyStatus: null,
     error: '',
+    isApplying: false,
     isLoading: false,
     nextCursor: null,
+    onApply: () => {},
     onLoadMore: () => {},
     onRefresh: () => {},
     onReview: () => {},
@@ -168,4 +202,37 @@ test('renders product/recipient conflict and keeps the shop unselected', async (
   assert.match(html, /หลักฐานจากกล่อง ผู้รับ หรือสินค้าชี้คนละร้าน/u);
   assert.doesNotMatch(html, /แนะนำ:/u);
   assert.match(html, /บันทึกการเลือก/u);
+});
+
+test('keeps Timeline apply disabled while any legacy order still needs review', async () => {
+  const { ShopeeLegacyReconciliationView: View } = await vite.ssrLoadModule(
+    '/src/components/ShopeeLegacyReconciliationPanel.jsx',
+  );
+  const html = renderToString(React.createElement(View, {
+    applyPlan: {
+      automaticCount: 314,
+      legacyOrderCount: 315,
+      manualReviewRequiredCount: 1,
+      readyToApply: false,
+      reviewedCount: 0,
+    },
+    applyStatus: null,
+    error: '',
+    isApplying: false,
+    isLoading: false,
+    nextCursor: null,
+    onApply: () => {},
+    onLoadMore: () => {},
+    onRefresh: () => {},
+    onReview: () => {},
+    onSelectionChange: () => {},
+    onStatusChange: () => {},
+    orders: [],
+    savingOrderNumber: '',
+    selections: {},
+    status: 'pending',
+  }));
+
+  assert.match(html, /ต้องตรวจเอง[\s\S]*1[\s\S]*รายการ/u);
+  assert.match(html, /<button[^>]*disabled=""[^>]*>นำ 315 รายการเข้า Timeline<\/button>/u);
 });
