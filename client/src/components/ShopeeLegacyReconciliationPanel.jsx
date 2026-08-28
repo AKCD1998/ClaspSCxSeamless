@@ -22,6 +22,17 @@ const EVIDENCE_LABELS = {
   message_not_found: 'อีเมลต้นทางไม่อยู่ใน Gmail แล้ว',
   metadata_unavailable: 'อ่าน routing metadata ไม่สำเร็จ',
 };
+const PRODUCT_EVIDENCE_LABELS = {
+  product_match: 'สินค้าทุกรายการตรงกับร้านเดียว',
+  product_partial: 'สินค้าบางรายการตรงกับร้านเดียว',
+  product_conflict: 'ข้อมูลสินค้าตรงมากกว่าหนึ่งร้าน',
+  product_unknown: 'ยังจับคู่สินค้ากับ catalog ไม่ได้',
+};
+const MAILBOX_EVIDENCE_LABELS = {
+  mailbox_match: 'พบจากกล่องอีเมลของร้านเดียว',
+  mailbox_conflict: 'พบอีเมลจากทั้งสองร้าน — ต้องตรวจเอง',
+  mailbox_unknown: 'ระบุร้านจากกล่องที่ sync ไม่ได้',
+};
 
 export function ShopeeLegacyReconciliationView({
   error,
@@ -37,6 +48,11 @@ export function ShopeeLegacyReconciliationView({
   selections,
   status,
 }) {
+  const automaticOrderCount = orders.filter((order) => (
+    order.evidence?.classification?.status === 'auto_classified'
+  )).length;
+  const manualOrderCount = orders.length - automaticOrderCount;
+
   return (
     <section className="card shopee-legacy-review" aria-labelledby="legacy-review-heading">
       <div className="shopee-legacy-review__heading">
@@ -44,8 +60,9 @@ export function ShopeeLegacyReconciliationView({
           <p className="eyebrow">ADMIN REVIEW · REVIEW-ONLY</p>
           <h2 id="legacy-review-heading">ตรวจร้านของข้อมูล Shopee เก่า</h2>
           <p>
-            ระบบเสนอร้านจาก From/To metadata เท่านั้น ไม่อ่านหรือแสดงหัวเรื่อง เนื้อหาเมล
-            Gmail ID หรือข้อมูลผู้ซื้อ การบันทึกหน้านี้ยังไม่ย้าย legacy rows
+            ถ้าพบอีเมลจากกล่องของร้านเดียวและหลักฐานไม่ขัดกัน ระบบจะจัดร้านให้อัตโนมัติ
+            เฉพาะรายการที่ไม่ชัดเจนเท่านั้นที่ต้องเลือกเอง โดยไม่แสดงหัวเรื่อง เนื้อหาเมล Gmail ID หรือข้อมูลผู้ซื้อ
+            หน้านี้ยังไม่ย้าย legacy rows
           </p>
         </div>
         <button className="button secondary" disabled={isLoading} onClick={onRefresh} type="button">
@@ -69,6 +86,12 @@ export function ShopeeLegacyReconciliationView({
       ) : null}
 
       {orders.length ? (
+        <p className="shopee-legacy-review__summary">
+          ชุดที่โหลดแล้ว: จัดให้อัตโนมัติ {automaticOrderCount} รายการ · ต้องตรวจเอง {manualOrderCount} รายการ
+        </p>
+      ) : null}
+
+      {orders.length ? (
         <div className="table-scroll">
           <table className="shopee-legacy-review__table">
             <thead>
@@ -77,7 +100,7 @@ export function ShopeeLegacyReconciliationView({
                 <th>สถานะเดิม</th>
                 <th>อีเมลเหตุการณ์</th>
                 <th>อัปเดตล่าสุด</th>
-                <th>หลักฐานผู้รับเดิม</th>
+                <th>หลักฐานแนะนำร้าน</th>
                 <th>เลือกร้าน</th>
                 <th>บันทึก</th>
               </tr>
@@ -85,9 +108,13 @@ export function ShopeeLegacyReconciliationView({
             <tbody>
               {orders.map((order) => {
                 const evidence = order.evidence || {};
+                const classification = evidence.classification || {};
+                const mailboxEvidence = evidence.mailboxEvidence || {};
+                const productEvidence = evidence.productEvidence || {};
                 const suggested = evidence.suggestedShopCode;
                 const selected = selections[order.orderNumber] || '';
                 const isSaving = savingOrderNumber === order.orderNumber;
+                const isAutomatic = classification.status === 'auto_classified';
                 return (
                   <tr key={order.orderNumber}>
                     <td><strong>{order.orderNumber}</strong></td>
@@ -101,29 +128,76 @@ export function ShopeeLegacyReconciliationView({
                       <small>
                         ยืนยันผู้รับเดิม {evidence.matchedEventCount || 0}/{evidence.totalEventCount || order.eventCount || 0} อีเมล
                       </small>
-                      {suggested ? <small>แนะนำ: {SHOP_LABELS[suggested]}</small> : null}
+                      <span
+                        className="shopee-legacy-review__mailbox-evidence"
+                        data-evidence={mailboxEvidence.evidenceStatus}
+                      >
+                        {MAILBOX_EVIDENCE_LABELS[mailboxEvidence.evidenceStatus] || 'ยังไม่มีหลักฐานจากกล่องที่ sync'}
+                      </span>
+                      <small>
+                        ตรวจกล่องที่ sync ได้ {mailboxEvidence.matchedEventCount || 0}/{mailboxEvidence.totalEventCount || order.eventCount || 0} อีเมล
+                      </small>
+                      <span
+                        className="shopee-legacy-review__product-evidence"
+                        data-evidence={productEvidence.evidenceStatus}
+                      >
+                        {PRODUCT_EVIDENCE_LABELS[productEvidence.evidenceStatus] || 'ยังไม่มีหลักฐานสินค้า'}
+                      </span>
+                      {(productEvidence.items || []).slice(0, 3).map((item, index) => {
+                        const recognized = (item.matches || []).filter((match) => match.status !== 'unmapped');
+                        return (
+                          <small className="shopee-legacy-review__product" key={`${item.name}-${item.variant}-${index}`}>
+                            {item.name || 'ไม่พบชื่อสินค้า'}{item.variant ? ` · ${item.variant}` : ''}
+                            {recognized.length ? ` → ${recognized.map((match) => (
+                              `${SHOP_LABELS[match.shopCode]}${match.companySku ? ` (${match.companySku})` : ''}`
+                            )).join(', ')}` : ' → ยังไม่ตรง catalog'}
+                          </small>
+                        );
+                      })}
+                      {(productEvidence.items || []).length > 3 ? (
+                        <small>และอีก {(productEvidence.items || []).length - 3} รายการ</small>
+                      ) : null}
+                      {evidence.recommendationStatus === 'evidence_conflict' ? (
+                        <small className="shopee-legacy-review__conflict">
+                          หลักฐานจากกล่อง ผู้รับ หรือสินค้าชี้คนละร้าน — ระบบไม่เลือกให้
+                        </small>
+                      ) : null}
+                      {isAutomatic ? (
+                        <span className="shopee-legacy-review__automatic" data-classification="auto_classified">
+                          จัดร้านอัตโนมัติ: {SHOP_LABELS[classification.shopCode]}
+                        </span>
+                      ) : null}
+                      {!isAutomatic && suggested ? <small>แนะนำ: {SHOP_LABELS[suggested]}</small> : null}
                     </td>
                     <td>
-                      <select
-                        aria-label={`เลือกร้านสำหรับ ${order.orderNumber}`}
-                        onChange={(event) => onSelectionChange(order.orderNumber, event.target.value)}
-                        value={selected}
-                      >
-                        <option value="">เลือก...</option>
-                        {SHOP_OPTIONS.map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
+                      {isAutomatic ? (
+                        <strong>{SHOP_LABELS[classification.shopCode]}</strong>
+                      ) : (
+                        <select
+                          aria-label={`เลือกร้านสำหรับ ${order.orderNumber}`}
+                          onChange={(event) => onSelectionChange(order.orderNumber, event.target.value)}
+                          value={selected}
+                        >
+                          <option value="">เลือก...</option>
+                          {SHOP_OPTIONS.map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      )}
                     </td>
-                    <td>
-                      <button
-                        className="button secondary"
-                        disabled={!selected || isSaving}
-                        onClick={() => onReview(order.orderNumber)}
-                        type="button"
-                      >
-                        {isSaving ? 'กำลังบันทึก...' : 'บันทึกการเลือก'}
-                      </button>
+                    <td data-review-action={isAutomatic ? 'automatic' : 'manual'}>
+                      {isAutomatic ? (
+                        <span className="shopee-legacy-review__automatic-note">ไม่ต้องยืนยัน</span>
+                      ) : (
+                        <button
+                          className="button secondary"
+                          disabled={!selected || isSaving}
+                          onClick={() => onReview(order.orderNumber)}
+                          type="button"
+                        >
+                          {isSaving ? 'กำลังบันทึก...' : 'บันทึกการเลือก'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

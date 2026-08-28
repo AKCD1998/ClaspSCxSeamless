@@ -58,6 +58,55 @@
   color: #9a4f0c;
 }
 
+.shopee-legacy-review__product-evidence {
+  display: block;
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.shopee-legacy-review__mailbox-evidence,
+.shopee-legacy-review__automatic {
+  display: block;
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.shopee-legacy-review__mailbox-evidence[data-evidence="mailbox_match"],
+.shopee-legacy-review__automatic,
+.shopee-legacy-review__automatic-note {
+  color: #15734b;
+}
+
+.shopee-legacy-review__mailbox-evidence[data-evidence="mailbox_conflict"],
+.shopee-legacy-review__mailbox-evidence[data-evidence="mailbox_unknown"] {
+  color: #9a4f0c;
+}
+
+.shopee-legacy-review__summary {
+  margin: 12px 0;
+  color: #334155;
+  font-weight: 700;
+}
+
+.shopee-legacy-review__automatic-note {
+  font-weight: 700;
+}
+
+.shopee-legacy-review__product-evidence[data-evidence="product_match"] {
+  color: #15734b;
+}
+
+.shopee-legacy-review__product-evidence[data-evidence="product_partial"],
+.shopee-legacy-review__product-evidence[data-evidence="product_conflict"],
+.shopee-legacy-review__conflict {
+  color: #9a4f0c;
+}
+
+.shopee-legacy-review__product {
+  max-width: 420px;
+  overflow-wrap: anywhere;
+}
+
 .shopee-legacy-review__table small {
   display: block;
   margin-top: 5px;

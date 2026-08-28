@@ -28,7 +28,13 @@ const order = {
   currentStatus: 'order_cancelled',
   eventCount: 3,
   itemCount: 1,
-  items: [{ name: 'สินค้าทดสอบ', quantity: 2, unitPrice: 84, variant: '9 กรัม' }],
+  items: [{
+    name: 'สินค้าทดสอบ',
+    quantity: 2,
+    unitPrice: 84,
+    variant: '9 กรัม',
+    productMatch: { status: 'matched', companySku: 'IC-001849' },
+  }],
   lastEventAt: '2026-08-24T05:37:17.000Z',
   orderNumber: '26082476830R2P',
   shippingDeadline: '2026-08-30',
@@ -79,6 +85,8 @@ test('renders an order summary with distinct status color hooks and no admin syn
   assert.match(html, /DR.Morepen/u);
   assert.match(html, /ทุกร้าน/u);
   assert.match(html, /<th>ร้าน<\/th>/u);
+  assert.match(html, /<th>Company SKU<\/th>/u);
+  assert.match(html, /IC-001849/u);
 });
 
 test('renders chronological event detail and bounded cancellation evidence', async () => {
@@ -100,6 +108,46 @@ test('renders chronological event detail and bounded cancellation evidence', asy
   assert.match(html, /เหตุการณ์ตามลำดับเวลา/);
   assert.match(html, /จัดส่งสินค้าไม่ทันเวลาที่กำหนด/);
   assert.match(html, /ตัวเลือก:[\s\S]*9 กรัม/);
+  assert.match(html, /data-match-status="matched"/u);
+  assert.match(html, /IC-001849/u);
+});
+
+test('renders component bundles and visibility-only listings without fabricating a Company SKU', async () => {
+  const html = await renderView({
+    orders: [{
+      ...order,
+      items: [{
+        ...order.items[0],
+        productMatch: {
+          status: 'bundle',
+          components: [
+            { companySku: 'IC-003230', quantityPerSale: null },
+            { companySku: 'IC-003478', quantityPerSale: null },
+          ],
+        },
+      }],
+    }],
+    selectedOrderKey: `${order.shopCode}:${order.orderNumber}`,
+    detailStatus: { message: '', state: 'success' },
+    orderDetail: {
+      order: {
+        ...order,
+        items: [{
+          ...order.items[0],
+          productMatch: {
+            status: 'visibility_only',
+            reasonCode: 'never_sold_visibility_listing',
+          },
+        }],
+      },
+      events: [],
+    },
+  });
+
+  assert.match(html, /IC-003230 \+ IC-003478/u);
+  assert.match(html, /data-match-status="visibility_only"/u);
+  assert.match(html, /สินค้าเพิ่มการมองเห็น/u);
+  assert.doesNotMatch(html, /IC-003230\+IC-003478/u);
 });
 
 test('shows both bounded Gmail sync actions only to admins', async () => {
