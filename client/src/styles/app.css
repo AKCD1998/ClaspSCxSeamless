@@ -987,7 +987,42 @@ button:disabled {
 }
 
 .shopee-order-filters {
-  grid-template-columns: minmax(180px, 240px);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.shopee-order-pagination {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.shopee-order-pagination__summary {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.shopee-order-pagination__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.shopee-order-pagination__pages .history-view-button {
+  min-width: 38px;
+  padding: 7px 10px;
+}
+
+.shopee-order-pagination__pages .is-current {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+  opacity: 1;
+}
+
+.shopee-order-pagination__ellipsis {
+  padding: 0 3px;
+  color: var(--muted);
 }
 
 .shopee-order-table {

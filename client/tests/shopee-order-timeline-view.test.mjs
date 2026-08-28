@@ -49,13 +49,18 @@ async function renderView(overrides = {}) {
     appRole: 'user',
     canSync: false,
     detailStatus: { message: '', state: 'idle' },
-    filters: { shopCode: 'all', status: '' },
+    filters: {
+      limit: 25,
+      page: 1,
+      shopCode: 'all',
+      sortBy: 'lastEventAt',
+      sortOrder: 'desc',
+      status: '',
+    },
     isLoading: false,
-    isLoadingMore: false,
     isSyncing: false,
-    nextCursor: null,
     onFilterChange: noop,
-    onLoadMore: noop,
+    onPageChange: noop,
     onRetry: noop,
     onRetryDetail: noop,
     onSyncLatest: noop,
@@ -63,10 +68,14 @@ async function renderView(overrides = {}) {
     onToggleDetail: noop,
     orderDetail: null,
     orders: [],
+    page: 1,
+    pageSize: 25,
     selectedOrderKey: null,
     status: { message: 'พร้อม', state: 'success' },
     syncCursor: null,
     syncStatus: { message: '', state: 'idle' },
+    totalCount: 0,
+    totalPages: 0,
     ...overrides,
   }));
 }
@@ -154,7 +163,7 @@ test('shows both bounded Gmail sync actions only to admins', async () => {
   const html = await renderView({
     appRole: 'admin',
     canSync: true,
-    filters: { shopCode: 'sc-drug-store', status: '' },
+    filters: { shopCode: 'sc-drug-store', sortBy: 'lastEventAt', sortOrder: 'desc', status: '' },
     syncCursor: 'opaque-gmail-cursor',
     syncStatus: { message: 'บันทึกเหตุการณ์ใหม่ 1 รายการ', state: 'success' },
   });
@@ -168,11 +177,29 @@ test('all-shops view is readable but cannot start a mailbox sync', async () => {
   const html = await renderView({
     appRole: 'admin',
     canSync: false,
-    filters: { shopCode: 'all', status: '' },
+    filters: { shopCode: 'all', sortBy: 'lastEventAt', sortOrder: 'desc', status: '' },
   });
 
   assert.match(html, /<button disabled=""[^>]*>ซิงก์อีเมลล่าสุด<\/button>/u);
   assert.match(html, /เลือก SC Drug Store หรือ DR.Morepen เพื่อซิงก์ทีละร้าน/u);
+});
+
+test('renders numbered pagination and database-backed date/document sorting controls', async () => {
+  const html = await renderView({
+    orders: [order],
+    page: 6,
+    totalCount: 315,
+    totalPages: 13,
+  });
+
+  assert.match(html, /name="sortBy"/u);
+  assert.match(html, /วันที่อัปเดต/u);
+  assert.match(html, /เลขคำสั่งซื้อ/u);
+  assert.match(html, /name="sortOrder"/u);
+  assert.match(html, /หน้า [\s\S]*6[\s\S]* จาก [\s\S]*13/u);
+  assert.match(html, /aria-current="page"[^>]*disabled=""[^>]*>6</u);
+  assert.match(html, />…</u);
+  assert.doesNotMatch(html, /โหลดคำสั่งซื้อเพิ่ม/u);
 });
 
 test('replacement clears stale rows and ignores a previous page completion', async () => {
@@ -183,31 +210,36 @@ test('replacement clears stale rows and ignores a previous page completion', asy
     type: 'replacement_started', generation: 1,
   });
   state = shopeeOrderReducer(state, {
-    type: 'replacement_succeeded', generation: 1, response: { orders: [order], nextCursor: 'old' },
+    type: 'replacement_succeeded', generation: 1,
+    response: { orders: [order], page: 1, pageSize: 25, totalCount: 30, totalPages: 2 },
   });
   state = shopeeOrderReducer(state, { type: 'replacement_started', generation: 2 });
 
   assert.deepEqual(state.orders, []);
-  assert.equal(state.nextCursor, null);
   const stale = shopeeOrderReducer(state, {
-    type: 'load_more_succeeded', generation: 1, response: { orders: [{ orderNumber: 'stale' }] },
+    type: 'replacement_succeeded', generation: 1,
+    response: { orders: [{ orderNumber: 'stale' }], page: 2, totalCount: 30, totalPages: 2 },
   });
   assert.strictEqual(stale, state);
 });
 
-test('combined pagination keeps the same order number from different shops', async () => {
+test('a numbered all-shops page keeps the same order number from different shops', async () => {
   const { INITIAL_SHOPEE_ORDER_STATE, shopeeOrderReducer } = await vite.ssrLoadModule(
     '/src/components/ShopeeOrderTimelinePanel.jsx',
   );
-  const state = {
-    ...INITIAL_SHOPEE_ORDER_STATE,
+  const next = shopeeOrderReducer({ ...INITIAL_SHOPEE_ORDER_STATE, generation: 1 }, {
+    type: 'replacement_succeeded',
     generation: 1,
-    orders: [{ ...order, shopCode: 'sc-drug-store' }],
-  };
-  const next = shopeeOrderReducer(state, {
-    type: 'load_more_succeeded',
-    generation: 1,
-    response: { orders: [{ ...order, shopCode: 'dr-morepen' }] },
+    response: {
+      orders: [
+        { ...order, shopCode: 'sc-drug-store' },
+        { ...order, shopCode: 'dr-morepen' },
+      ],
+      page: 1,
+      pageSize: 25,
+      totalCount: 2,
+      totalPages: 1,
+    },
   });
 
   assert.equal(next.orders.length, 2);
@@ -317,13 +349,16 @@ test('shop-required state clears rows without issuing a cross-shop default', asy
   );
   const stale = {
     ...INITIAL_SHOPEE_ORDER_STATE,
-    nextCursor: 'old-cursor',
     orders: [order],
+    page: 3,
+    totalCount: 51,
+    totalPages: 3,
   };
   const state = shopeeOrderReducer(stale, { type: 'shop_required', generation: 4 });
 
   assert.equal(state.generation, 4);
   assert.deepEqual(state.orders, []);
-  assert.equal(state.nextCursor, null);
+  assert.equal(state.page, 1);
+  assert.equal(state.totalPages, 0);
   assert.match(state.status.message, /เลือกร้าน Shopee/u);
 });

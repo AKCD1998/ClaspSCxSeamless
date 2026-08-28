@@ -284,9 +284,12 @@ test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () =
 
   const api = await vite.ssrLoadModule('/src/services/api.js');
   await api.getShopeeOrders({
+    limit: 25,
+    page: 2,
     shopCode: 'sc-drug-store',
+    sortBy: 'orderNumber',
+    sortOrder: 'asc',
     status: 'shipment_due',
-    cursor: 'db page/token',
   });
   await api.getShopeeOrder('26082471YK8C02', { shopCode: 'sc-drug-store' });
   await api.syncShopeeOrders({
@@ -297,7 +300,7 @@ test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () =
 
   assert.equal(
     calls[0].url,
-    'http://api.test.local/api/app/shopee/orders?shopCode=sc-drug-store&status=shipment_due&cursor=db+page%2Ftoken',
+    'http://api.test.local/api/app/shopee/orders?limit=25&page=2&shopCode=sc-drug-store&sortBy=orderNumber&sortOrder=asc&status=shipment_due',
   );
   assert.equal(
     calls[1].url,
