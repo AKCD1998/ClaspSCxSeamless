@@ -8,7 +8,14 @@ import {
 } from '../services/api.js';
 
 export const SHOPEE_ALL_SHOPS_SCOPE = 'all';
-const DEFAULT_FILTERS = { shopCode: SHOPEE_ALL_SHOPS_SCOPE, status: '' };
+const DEFAULT_FILTERS = {
+  limit: 25,
+  page: 1,
+  shopCode: SHOPEE_ALL_SHOPS_SCOPE,
+  sortBy: 'lastEventAt',
+  sortOrder: 'desc',
+  status: '',
+};
 const SYNCABLE_SHOP_CODES = new Set(['sc-drug-store', 'dr-morepen']);
 
 export function getShopeeOrderIdentity(order) {
@@ -24,10 +31,12 @@ export function isSyncableShopeeShopCode(shopCode) {
 export const INITIAL_SHOPEE_ORDER_STATE = {
   generation: 0,
   isLoading: false,
-  isLoadingMore: false,
-  nextCursor: null,
   orders: [],
+  page: 1,
+  pageSize: 25,
   status: { message: 'กำลังโหลด', state: 'idle' },
+  totalCount: 0,
+  totalPages: 0,
 };
 
 export function shopeeOrderReducer(state, action) {
@@ -44,8 +53,6 @@ export function shopeeOrderReducer(state, action) {
         ...state,
         generation: action.generation,
         isLoading: true,
-        isLoadingMore: false,
-        nextCursor: null,
         orders: [],
         status: { message: 'กำลังโหลดไทม์ไลน์คำสั่งซื้อ...', state: 'working' },
       };
@@ -54,12 +61,17 @@ export function shopeeOrderReducer(state, action) {
       return {
         ...state,
         isLoading: false,
-        nextCursor: action.response?.nextCursor || null,
         orders,
+        page: action.response?.page || 1,
+        pageSize: action.response?.pageSize || 25,
         status: {
-          message: orders.length ? `พบคำสั่งซื้อ ${orders.length} รายการ` : 'ยังไม่มีข้อมูลคำสั่งซื้อ',
+          message: orders.length
+            ? `พบคำสั่งซื้อ ${action.response?.totalCount ?? orders.length} รายการ`
+            : 'ยังไม่มีข้อมูลคำสั่งซื้อ',
           state: orders.length ? 'success' : 'warning',
         },
+        totalCount: action.response?.totalCount ?? orders.length,
+        totalPages: action.response?.totalPages ?? (orders.length ? 1 : 0),
       };
     }
     case 'replacement_failed':
@@ -73,35 +85,11 @@ export function shopeeOrderReducer(state, action) {
         ...state,
         generation: action.generation,
         isLoading: false,
-        nextCursor: null,
         orders: [],
+        page: 1,
+        totalCount: 0,
+        totalPages: 0,
         status: { message: 'กรุณาเลือกร้าน Shopee', state: 'warning' },
-      };
-    case 'load_more_started':
-      return { ...state, isLoadingMore: true };
-    case 'load_more_succeeded': {
-      const existingIdentities = new Set(state.orders.map(getShopeeOrderIdentity));
-      const appended = (action.response?.orders || []).filter(
-        (order) => !existingIdentities.has(getShopeeOrderIdentity(order)),
-      );
-      return {
-        ...state,
-        isLoadingMore: false,
-        nextCursor: action.response?.nextCursor || null,
-        orders: [...state.orders, ...appended],
-        status: {
-          message: appended.length
-            ? `แสดงคำสั่งซื้อ ${state.orders.length + appended.length} รายการ`
-            : 'ไม่มีคำสั่งซื้อเพิ่มในหน้านี้',
-          state: appended.length ? 'success' : 'warning',
-        },
-      };
-    }
-    case 'load_more_failed':
-      return {
-        ...state,
-        isLoadingMore: false,
-        status: { message: action.message || 'โหลดเพิ่มไม่สำเร็จ', state: 'error' },
       };
     default:
       return state;
@@ -162,7 +150,15 @@ export default function ShopeeOrderTimelinePanel() {
   const requestSequenceRef = useRef(0);
   const selectedOrderRef = useRef(null);
   const detailCacheRef = useRef({});
-  const { isLoading, isLoadingMore, nextCursor, orders, status } = orderState;
+  const {
+    isLoading,
+    orders,
+    page,
+    pageSize,
+    status,
+    totalCount,
+    totalPages,
+  } = orderState;
 
   function closeDetail() {
     selectedOrderRef.current = null;
@@ -187,21 +183,6 @@ export default function ShopeeOrderTimelinePanel() {
     } catch (error) {
       if (requestSequenceRef.current !== generation) return;
       dispatch({ type: 'replacement_failed', generation, message: error?.message });
-    }
-  }
-
-  async function loadMoreOrders() {
-    if (!nextCursor || isLoading || isLoadingMore) return;
-    const generation = requestSequenceRef.current;
-    dispatch({ type: 'load_more_started', generation });
-
-    try {
-      const response = await getShopeeOrders({ ...filters, cursor: nextCursor });
-      if (requestSequenceRef.current !== generation) return;
-      dispatch({ type: 'load_more_succeeded', generation, response });
-    } catch (error) {
-      if (requestSequenceRef.current !== generation) return;
-      dispatch({ type: 'load_more_failed', generation, message: error?.message });
     }
   }
 
@@ -316,7 +297,7 @@ export default function ShopeeOrderTimelinePanel() {
 
   function handleFilterChange(event) {
     const { name, value } = event.target;
-    const nextFilters = { ...filtersRef.current, [name]: value };
+    const nextFilters = { ...filtersRef.current, [name]: value, page: 1 };
     filtersRef.current = nextFilters;
     const generation = requestSequenceRef.current + 1;
     requestSequenceRef.current = generation;
@@ -330,6 +311,14 @@ export default function ShopeeOrderTimelinePanel() {
     setFilters(nextFilters);
   }
 
+  function handlePageChange(nextPage) {
+    if (isLoading || nextPage < 1 || nextPage > totalPages || nextPage === page) return;
+    closeDetail();
+    const nextFilters = { ...filtersRef.current, page: nextPage };
+    filtersRef.current = nextFilters;
+    setFilters(nextFilters);
+  }
+
   return (
     <ShopeeOrderTimelineView
       appRole={appRole}
@@ -337,11 +326,9 @@ export default function ShopeeOrderTimelinePanel() {
       detailStatus={detailStatus}
       filters={filters}
       isLoading={isLoading}
-      isLoadingMore={isLoadingMore}
       isSyncing={isSyncing}
-      nextCursor={nextCursor}
       onFilterChange={handleFilterChange}
-      onLoadMore={loadMoreOrders}
+      onPageChange={handlePageChange}
       onRetry={() => loadOrders(filters)}
       onRetryDetail={() => selectedOrderRef.current && loadDetail(selectedOrderRef.current)}
       onSyncLatest={() => handleSync(null)}
@@ -349,10 +336,14 @@ export default function ShopeeOrderTimelinePanel() {
       onToggleDetail={handleToggleDetail}
       orderDetail={orderDetail}
       orders={orders}
+      page={page}
+      pageSize={pageSize}
       selectedOrderKey={selectedOrderKey}
       status={status}
       syncCursor={syncCursor}
       syncStatus={syncStatus}
+      totalCount={totalCount}
+      totalPages={totalPages}
     />
   );
 }

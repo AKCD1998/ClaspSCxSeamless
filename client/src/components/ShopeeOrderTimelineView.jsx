@@ -14,6 +14,26 @@ const SHOP_OPTIONS = [
 ];
 const SHOP_LABELS = Object.fromEntries(SHOP_OPTIONS);
 
+export function getShopeePaginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const visible = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  if (currentPage <= 4) [2, 3, 4, 5].forEach((page) => visible.add(page));
+  if (currentPage >= totalPages - 3) {
+    [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1]
+      .forEach((page) => visible.add(page));
+  }
+  const pages = [...visible]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+  const items = [];
+  pages.forEach((page, index) => {
+    if (index && page - pages[index - 1] > 1) items.push(`ellipsis-${pages[index - 1]}`);
+    items.push(page);
+  });
+  return items;
+}
+
 function StatusBadge({ status }) {
   return (
     <span className="shopee-email-category" data-category={status}>
@@ -116,11 +136,9 @@ export default function ShopeeOrderTimelineView({
   detailStatus,
   filters,
   isLoading,
-  isLoadingMore,
   isSyncing,
-  nextCursor,
   onFilterChange,
-  onLoadMore,
+  onPageChange,
   onRetry,
   onRetryDetail,
   onSyncLatest,
@@ -128,11 +146,16 @@ export default function ShopeeOrderTimelineView({
   onToggleDetail,
   orderDetail,
   orders,
+  page,
+  pageSize,
   selectedOrderKey,
   status,
   syncCursor,
   syncStatus,
+  totalCount,
+  totalPages,
 }) {
+  const paginationItems = getShopeePaginationItems(page, totalPages);
   return (
     <section className="panel">
       <div className="shopee-order-heading">
@@ -188,6 +211,20 @@ export default function ShopeeOrderTimelineView({
             {STATUS_OPTIONS.map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
+          </select>
+        </label>
+        <label className="history-filter-field">
+          <span>เรียงตาม</span>
+          <select name="sortBy" onChange={onFilterChange} value={filters.sortBy}>
+            <option value="lastEventAt">วันที่อัปเดต</option>
+            <option value="orderNumber">เลขคำสั่งซื้อ</option>
+          </select>
+        </label>
+        <label className="history-filter-field">
+          <span>ลำดับ</span>
+          <select name="sortOrder" onChange={onFilterChange} value={filters.sortOrder}>
+            <option value="desc">มากไปน้อย / ล่าสุดก่อน</option>
+            <option value="asc">น้อยไปมาก / เก่าก่อน</option>
           </select>
         </label>
       </form>
@@ -273,16 +310,47 @@ export default function ShopeeOrderTimelineView({
               })}
             </tbody>
           </table>
-          {nextCursor ? (
-            <div className="history-dashboard-pagination">
-              <button
-                className="history-view-button secondary"
-                disabled={isLoadingMore}
-                onClick={onLoadMore}
-                type="button"
-              >
-                {isLoadingMore ? 'กำลังโหลด...' : 'โหลดคำสั่งซื้อเพิ่ม'}
-              </button>
+          {totalPages > 1 ? (
+            <div className="history-dashboard-pagination shopee-order-pagination">
+              <span className="shopee-order-pagination__summary">
+                หน้า {page} จาก {totalPages} · {totalCount} รายการ · หน้าละ {pageSize}
+              </span>
+              <nav aria-label="เปลี่ยนหน้าคำสั่งซื้อ" className="shopee-order-pagination__pages">
+                <button
+                  aria-label="หน้าก่อนหน้า"
+                  className="history-view-button secondary"
+                  disabled={isLoading || page <= 1}
+                  onClick={() => onPageChange(page - 1)}
+                  type="button"
+                >
+                  ก่อนหน้า
+                </button>
+                {paginationItems.map((item) => (
+                  typeof item === 'number' ? (
+                    <button
+                      aria-current={item === page ? 'page' : undefined}
+                      className={`history-view-button secondary${item === page ? ' is-current' : ''}`}
+                      disabled={isLoading || item === page}
+                      key={item}
+                      onClick={() => onPageChange(item)}
+                      type="button"
+                    >
+                      {item}
+                    </button>
+                  ) : (
+                    <span aria-hidden="true" className="shopee-order-pagination__ellipsis" key={item}>…</span>
+                  )
+                ))}
+                <button
+                  aria-label="หน้าถัดไป"
+                  className="history-view-button secondary"
+                  disabled={isLoading || page >= totalPages}
+                  onClick={() => onPageChange(page + 1)}
+                  type="button"
+                >
+                  ถัดไป
+                </button>
+              </nav>
             </div>
           ) : null}
         </div>
