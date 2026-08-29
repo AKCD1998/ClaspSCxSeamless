@@ -335,6 +335,32 @@ test('getShopeeAccountingCycleStatus fetches the configured accounting checkpoin
   assert.equal(payload.nextCycle.periodStart, '2026-08-24');
 });
 
+test('AdaSmart validation APIs send only processing identity and the reviewed plan digest', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ ok: true, planDigest: 'a'.repeat(64) }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.createAdaSmartValidationPreview('processing-record-id');
+  await api.confirmAdaSmartDryRunQueue('processing-record-id', 'a'.repeat(64));
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/shopee/adasmart/validation-preview',
+  );
+  assert.equal(calls[0].options.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    processingRecordId: 'processing-record-id',
+  });
+  assert.equal(calls[1].url, 'http://api.test.local/api/app/shopee/adasmart/confirm');
+  assert.deepEqual(JSON.parse(calls[1].options.body), {
+    processingRecordId: 'processing-record-id',
+    planDigest: 'a'.repeat(64),
+  });
+});
+
 test('getPharmcareInbox omits the query string when no filters are set', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

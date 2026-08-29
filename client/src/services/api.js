@@ -210,6 +210,20 @@ export async function getShopeeAccountingCycleStatus() {
   return requestJson('/app/shopee/accounting-cycle');
 }
 
+export async function createAdaSmartValidationPreview(processingRecordId) {
+  return requestJson('/app/shopee/adasmart/validation-preview', {
+    method: 'POST',
+    body: JSON.stringify({ processingRecordId }),
+  });
+}
+
+export async function confirmAdaSmartDryRunQueue(processingRecordId, planDigest) {
+  return requestJson('/app/shopee/adasmart/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ processingRecordId, planDigest }),
+  });
+}
+
 export async function syncShopeeOrders(options = {}) {
   return requestJson('/app/shopee/orders/sync', {
     method: 'POST',
