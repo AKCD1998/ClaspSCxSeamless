@@ -1,0 +1,138 @@
+.adasmart-validation-action,
+.adasmart-validation-preview {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.adasmart-validation-preview {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  max-width: 100%;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.adasmart-validation-preview > *,
+.adasmart-safe-lines,
+.adasmart-safe-lines-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.adasmart-validation-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.adasmart-validation-heading h4,
+.adasmart-validation-blocks h5,
+.adasmart-customer-policy h5,
+.adasmart-safe-lines h5 {
+  margin: 0;
+}
+
+.adasmart-validation-heading p {
+  margin: 4px 0 0;
+}
+
+.adasmart-validation-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.adasmart-validation-summary div {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.adasmart-validation-summary dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.adasmart-validation-summary dd {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.adasmart-customer-policy {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.adasmart-customer-policy[data-policy-approved="true"] {
+  border-color: rgba(25, 135, 84, 0.48);
+}
+
+.adasmart-customer-policy[data-policy-approved="false"] {
+  border-color: rgba(220, 53, 69, 0.5);
+}
+
+.adasmart-customer-policy dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin: 10px 0 0;
+}
+
+.adasmart-customer-policy dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.adasmart-customer-policy dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 650;
+}
+
+.adasmart-validation-blocks ul {
+  margin: 8px 0 0;
+}
+
+.adasmart-safe-lines-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.adasmart-safe-lines table {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+}
+
+.adasmart-safe-lines th,
+.adasmart-safe-lines td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+[data-color-mode="dark"] .adasmart-validation-preview {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+@media (max-width: 760px) {
+  .adasmart-validation-heading {
+    display: grid;
+  }
+
+  .adasmart-validation-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adasmart-customer-policy dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

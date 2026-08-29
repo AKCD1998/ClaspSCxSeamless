@@ -1,5 +1,8 @@
 import { useId, useRef, useState } from 'react';
 import { processWorkbookPayload } from '../services/api.js';
+import AdaSmartValidationPreview, {
+  shouldOfferAdaSmartValidation,
+} from './AdaSmartValidationPreview.jsx';
 
 const idleMessage = 'กรุณาเลือกไฟล์เพื่อเริ่ม';
 
@@ -272,6 +275,9 @@ export default function UploadPanel({
                     รูปแบบ: {payload.variant}. ตรวจพบ: {payload.detectedVariant}. รหัสไฟล์:{' '}
                     {payload.driveFileId}.
                   </div>
+                  {shouldOfferAdaSmartValidation(formatterMode, payload) && (
+                    <AdaSmartValidationPreview processingRecordId={payload.processingRecordId} />
+                  )}
                 </li>
               ))}
             </ul>
