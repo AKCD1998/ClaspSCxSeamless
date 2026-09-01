@@ -2,14 +2,18 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import ShopeeEmailInboxView from './ShopeeEmailInboxView.jsx';
 import { getShopeeEmailInbox } from '../services/api.js';
 
-const EMPTY_FILTERS = {
+export const DEFAULT_SHOPEE_INBOX_FILTERS = Object.freeze({
   category: '',
   receivedFrom: '',
   receivedTo: '',
-  shopCode: '',
-};
+  shopCode: 'all',
+});
 
 const DEFAULT_SOURCE = 'info@mail.shopee.co.th';
+
+function getShopeeEmailIdentity(email) {
+  return `${email?.shopCode || ''}:${email?.id || ''}`;
+}
 
 export const INITIAL_SHOPEE_INBOX_STATE = {
   emails: [],
@@ -23,7 +27,7 @@ export const INITIAL_SHOPEE_INBOX_STATE = {
 
 export function shopeeInboxReducer(state, action) {
   if (
-    !['replacement_started', 'shop_required'].includes(action.type) &&
+    action.type !== 'replacement_started' &&
     action.generation !== state.generation
   ) {
     return state;
@@ -60,21 +64,13 @@ export function shopeeInboxReducer(state, action) {
         isLoading: false,
         status: { message: action.message || 'โหลดอีเมล Shopee ไม่สำเร็จ', state: 'error' },
       };
-    case 'shop_required':
-      return {
-        ...state,
-        emails: [],
-        generation: action.generation,
-        isLoading: false,
-        isLoadingMore: false,
-        nextCursor: null,
-        status: { message: 'กรุณาเลือกร้าน Shopee', state: 'warning' },
-      };
     case 'load_more_started':
       return { ...state, isLoadingMore: true };
     case 'load_more_succeeded': {
-      const existingIds = new Set(state.emails.map((email) => email.id));
-      const appended = (action.response?.emails || []).filter((email) => !existingIds.has(email.id));
+      const existingIds = new Set(state.emails.map(getShopeeEmailIdentity));
+      const appended = (action.response?.emails || []).filter(
+        (email) => !existingIds.has(getShopeeEmailIdentity(email)),
+      );
       return {
         ...state,
         emails: [...state.emails, ...appended],
@@ -109,7 +105,7 @@ export function applyShopeeEmailFilterChange(current, name, value) {
 }
 
 export default function ShopeeEmailInboxPanel() {
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filters, setFilters] = useState(DEFAULT_SHOPEE_INBOX_FILTERS);
   const [inboxState, dispatch] = useReducer(shopeeInboxReducer, INITIAL_SHOPEE_INBOX_STATE);
   const { emails, isLoading, isLoadingMore, nextCursor, source, status } = inboxState;
   const requestSequenceRef = useRef(0);
@@ -117,10 +113,6 @@ export default function ShopeeEmailInboxPanel() {
   async function loadInbox(activeFilters) {
     const requestSequence = requestSequenceRef.current + 1;
     requestSequenceRef.current = requestSequence;
-    if (!activeFilters.shopCode) {
-      dispatch({ type: 'shop_required', generation: requestSequence });
-      return;
-    }
     dispatch({ type: 'replacement_started', generation: requestSequence });
 
     try {

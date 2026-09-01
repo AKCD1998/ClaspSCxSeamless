@@ -32,7 +32,7 @@ async function renderView(overrides = {}) {
   return renderToString(
     React.createElement(ShopeeEmailInboxView, {
       emails: [],
-      filters: { category: '', receivedFrom: '', receivedTo: '', shopCode: '' },
+      filters: { category: '', receivedFrom: '', receivedTo: '', shopCode: 'all' },
       isLoading: false,
       isLoadingMore: false,
       nextCursor: null,
@@ -56,6 +56,7 @@ test('renders classified Shopee email rows without exposing message bodies', asy
         orderNumber: '26082476830R2P',
         receivedAt: '2026-08-24T05:37:17.000Z',
         subject: 'คำสั่งซื้อชำระเงินปลายทาง #26082476830R2P ถูกยืนยันแล้ว',
+        shopCode: 'sc-drug-store',
         unread: true,
       },
     ],
@@ -68,6 +69,8 @@ test('renders classified Shopee email rows without exposing message bodies', asy
   assert.match(html, /โหลดเพิ่ม/);
   assert.doesNotMatch(html, /snippet|bodyText/);
   assert.match(html, /name="shopCode"/u);
+  assert.match(html, /value="all" selected="">ทั้งหมด/u);
+  assert.match(html, />SC Drug Store<\/td>/u);
   assert.match(html, /DR.Morepen/u);
 });
 
@@ -167,19 +170,33 @@ test('failed filter replacement cannot fall back to rows or cursor from the prev
   assert.match(state.status.message, /quota exceeded/);
 });
 
-test('shop-required state clears inbox rows and pagination without choosing a mailbox', async () => {
+test('all-shops pagination keeps equal Gmail message ids from different mailboxes', async () => {
   const {
     INITIAL_SHOPEE_INBOX_STATE,
     shopeeInboxReducer,
   } = await vite.ssrLoadModule('/src/components/ShopeeEmailInboxPanel.jsx');
+
   const state = shopeeInboxReducer({
     ...INITIAL_SHOPEE_INBOX_STATE,
-    emails: [{ id: 'old-row' }],
-    nextCursor: 'old-cursor',
-  }, { type: 'shop_required', generation: 9 });
+    emails: [{ id: 'shared-id', shopCode: 'sc-drug-store' }],
+    generation: 4,
+    isLoadingMore: true,
+  }, {
+    type: 'load_more_succeeded',
+    generation: 4,
+    response: { emails: [{ id: 'shared-id', shopCode: 'dr-morepen' }] },
+  });
 
-  assert.equal(state.generation, 9);
-  assert.deepEqual(state.emails, []);
-  assert.equal(state.nextCursor, null);
-  assert.match(state.status.message, /เลือกร้าน Shopee/u);
+  assert.deepEqual(state.emails.map((email) => email.shopCode), [
+    'sc-drug-store',
+    'dr-morepen',
+  ]);
+});
+
+test('uses the all-shops inbox as the default filter', async () => {
+  const {
+    DEFAULT_SHOPEE_INBOX_FILTERS,
+  } = await vite.ssrLoadModule('/src/components/ShopeeEmailInboxPanel.jsx');
+
+  assert.equal(DEFAULT_SHOPEE_INBOX_FILTERS.shopCode, 'all');
 });

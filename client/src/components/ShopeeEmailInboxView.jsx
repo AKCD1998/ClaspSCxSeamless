@@ -7,9 +7,11 @@ const FILTERABLE_CATEGORIES = Object.entries(SHOPEE_EMAIL_CATEGORY_LABELS).filte
   ([value]) => value !== 'other',
 );
 const SHOP_OPTIONS = [
+  ['all', 'ทั้งหมด'],
   ['sc-drug-store', 'SC Drug Store'],
   ['dr-morepen', 'DR.Morepen'],
 ];
+const SHOP_LABELS = Object.fromEntries(SHOP_OPTIONS);
 
 export default function ShopeeEmailInboxView({
   emails,
@@ -35,7 +37,6 @@ export default function ShopeeEmailInboxView({
         <label className="history-filter-field">
           <span>ร้าน Shopee</span>
           <select name="shopCode" onChange={onFilterChange} value={filters.shopCode}>
-            <option value="">เลือกร้าน</option>
             {SHOP_OPTIONS.map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
@@ -89,6 +90,7 @@ export default function ShopeeEmailInboxView({
         <div className="history-table-wrap">
           <table className="history-table shopee-email-table">
             <colgroup>
+              <col className="shopee-email-col-shop" />
               <col className="shopee-email-col-received" />
               <col className="shopee-email-col-category" />
               <col className="shopee-email-col-order" />
@@ -98,6 +100,7 @@ export default function ShopeeEmailInboxView({
             </colgroup>
             <thead>
               <tr>
+                <th>ร้าน</th>
                 <th>ได้รับเมื่อ</th>
                 <th>ประเภท</th>
                 <th>เลขคำสั่งซื้อ</th>
@@ -108,7 +111,8 @@ export default function ShopeeEmailInboxView({
             </thead>
             <tbody>
               {emails.map((email) => (
-                <tr key={email.id}>
+                <tr key={`${email.shopCode || filters.shopCode}:${email.id}`}>
+                  <td>{SHOP_LABELS[email.shopCode || filters.shopCode] || '-'}</td>
                   <td>{formatShopeeEmailReceivedAt(email.receivedAt)}</td>
                   <td>
                     <span className="shopee-email-category" data-category={email.category}>
