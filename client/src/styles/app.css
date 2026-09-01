@@ -1206,6 +1206,92 @@ button:disabled {
   font-size: 0.86rem;
 }
 
+.shopee-sales-summary-filters {
+  grid-template-columns: minmax(180px, 1fr) minmax(170px, 1fr) minmax(170px, 1fr) auto;
+}
+
+.shopee-sales-summary-filters > button {
+  min-height: 44px;
+}
+
+.shopee-sales-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.shopee-sales-summary-metric {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(238, 77, 45, 0.06);
+}
+
+.shopee-sales-summary-metric span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.shopee-sales-summary-metric strong {
+  color: var(--accent-strong);
+  font-size: 1.55rem;
+  line-height: 1.2;
+}
+
+.shopee-sales-summary-table {
+  min-width: 980px;
+}
+
+.shopee-sales-summary-table th:nth-child(1) { width: 34%; }
+.shopee-sales-summary-table th:nth-child(2) { width: 19%; }
+.shopee-sales-summary-table th:nth-child(3) { width: 17%; }
+.shopee-sales-summary-table th:nth-child(4) { width: 10%; }
+.shopee-sales-summary-table th:nth-child(5) { width: 8%; }
+.shopee-sales-summary-table th:nth-child(6) { width: 12%; }
+
+.shopee-sales-product-row {
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.shopee-sales-product-row:hover,
+.shopee-sales-product-row[data-open="true"] {
+  background: rgba(238, 77, 45, 0.07);
+}
+
+.shopee-sales-number {
+  color: var(--accent-strong);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.shopee-sales-orders-row > td {
+  padding: 0;
+  background: rgba(238, 77, 45, 0.035);
+}
+
+.shopee-sales-orders-detail {
+  padding: 18px 22px 22px;
+}
+
+.shopee-sales-orders-detail h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.shopee-sales-orders-table {
+  min-width: 680px;
+}
+
+.shopee-sales-orders-table th:nth-child(1) { width: 22%; }
+.shopee-sales-orders-table th:nth-child(2) { width: 34%; }
+.shopee-sales-orders-table th:nth-child(3) { width: 16%; }
+.shopee-sales-orders-table th:nth-child(4) { width: 28%; }
+
 .pharmcare-detail-row-tr > td {
   padding: 0;
 }
@@ -1383,6 +1469,11 @@ button:disabled {
 
   .shopee-order-sync-actions {
     justify-content: flex-start;
+  }
+
+  .shopee-sales-summary-filters,
+  .shopee-sales-summary-metrics {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1891,6 +1982,13 @@ a.history-view-button.secondary:hover {
 
 [data-color-mode="dark"] .shopee-order-detail-row > td {
   background: rgba(240, 104, 77, 0.055);
+}
+
+[data-color-mode="dark"] .shopee-sales-summary-metric,
+[data-color-mode="dark"] .shopee-sales-product-row:hover,
+[data-color-mode="dark"] .shopee-sales-product-row[data-open="true"],
+[data-color-mode="dark"] .shopee-sales-orders-row > td {
+  background: rgba(240, 104, 77, 0.09);
 }
 
 [data-color-mode="dark"] .shopee-order-detail-card {

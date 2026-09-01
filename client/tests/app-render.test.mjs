@@ -105,6 +105,16 @@ test('Shopee orders route renders the privacy-safe order timeline', async () => 
   assert.doesNotMatch(html, /ตรวจร้านของข้อมูล Shopee เก่า/);
 });
 
+test('Shopee sales summary route renders date filters and expandable product columns', async () => {
+  const html = await renderPage('/src/pages/ShopeeSalesSummaryPage.jsx', '/shopee/sales-summary');
+
+  assert.match(html, /สรุปยอดขายสินค้า Shopee/);
+  assert.match(html, /Shopee Product Sales Summary/);
+  assert.match(html, /name="startDate"/);
+  assert.match(html, /name="endDate"/);
+  assert.match(html, /ไม่นับออเดอร์ที่ยกเลิกหรือพัสดุตีกลับ/);
+});
+
 test('PharmCare reports route renders the email inbox under its new menu name', async () => {
   const html = await renderPage('/src/pages/PharmCareReportsPage.jsx', '/pharmcare/inbox');
 

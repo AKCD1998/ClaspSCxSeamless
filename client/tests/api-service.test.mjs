@@ -335,6 +335,35 @@ test('getShopeeAccountingCycleStatus fetches the configured accounting checkpoin
   assert.equal(payload.nextCycle.periodStart, '2026-08-24');
 });
 
+test('Shopee sales summary API passes the selected order-date range and shop scope', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      endDate: '2026-09-03',
+      orderCount: 2,
+      productCount: 1,
+      products: [],
+      startDate: '2026-09-01',
+      totalQuantity: 4,
+    }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const payload = await api.getShopeeSalesSummary({
+    endDate: '2026-09-03',
+    shopCode: 'all',
+    startDate: '2026-09-01',
+  });
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/shopee/orders/sales-summary?endDate=2026-09-03&shopCode=all&startDate=2026-09-01',
+  );
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(payload.totalQuantity, 4);
+});
+
 test('AdaSmart validation APIs send only processing identity and the reviewed plan digest', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
