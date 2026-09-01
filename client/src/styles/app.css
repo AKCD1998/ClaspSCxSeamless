@@ -892,13 +892,14 @@ button:disabled {
 .pharmcare-col-user-period { width: 10%; }
 .pharmcare-col-user-detail { width: 8%; }
 
-/* Live Shopee Gmail inbox: six fixed columns, intentionally separate from the existing Shopee
+/* Live Shopee Gmail inbox: seven fixed columns, intentionally separate from the existing Shopee
    workbook history so email rows never enter the document/print pipeline. Widths sum to 100%. */
-.shopee-email-col-received { width: 14%; }
-.shopee-email-col-category { width: 15%; }
-.shopee-email-col-order { width: 14%; }
-.shopee-email-col-subject { width: 34%; }
-.shopee-email-col-from { width: 15%; }
+.shopee-email-col-shop { width: 10%; }
+.shopee-email-col-received { width: 13%; }
+.shopee-email-col-category { width: 14%; }
+.shopee-email-col-order { width: 13%; }
+.shopee-email-col-subject { width: 28%; }
+.shopee-email-col-from { width: 14%; }
 .shopee-email-col-state { width: 8%; }
 
 .shopee-email-category {
