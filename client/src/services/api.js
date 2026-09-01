@@ -210,6 +210,17 @@ export async function getShopeeAccountingCycleStatus() {
   return requestJson('/app/shopee/accounting-cycle');
 }
 
+export async function getShopeeSalesSummary(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+  const query = params.toString();
+  return requestJson(`/app/shopee/orders/sales-summary${query ? `?${query}` : ''}`);
+}
+
 export async function createAdaSmartValidationPreview(processingRecordId) {
   return requestJson('/app/shopee/adasmart/validation-preview', {
     method: 'POST',
