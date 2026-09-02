@@ -257,7 +257,7 @@ test('shows both bounded Gmail sync actions only to admins', async () => {
   assert.match(html, /ซิงก์อีเมลล่าสุด/);
   assert.match(html, /ซิงก์อีเมลหน้าก่อนหน้า/);
   assert.match(html, /บันทึกเหตุการณ์ใหม่ 1 รายการ/);
-  assert.match(html, /ตั้งค่าสิทธิ์ข้อมูลการเงินสำหรับผู้ใช้ทั่วไป/u);
+  assert.match(html, /ตั้งค่าข้อมูลการเงินที่แสดงใน Timeline/u);
   assert.match(html, /name="unitPrice"/u);
   assert.match(html, /name="shippingFee"/u);
   assert.match(html, /name="totalAmount"/u);
@@ -266,13 +266,32 @@ test('shows both bounded Gmail sync actions only to admins', async () => {
 test('regular users never receive the financial visibility settings controls', async () => {
   const html = await renderView({ appRole: 'user', orders: [order] });
 
-  assert.doesNotMatch(html, /ตั้งค่าสิทธิ์ข้อมูลการเงินสำหรับผู้ใช้ทั่วไป/u);
-  assert.doesNotMatch(html, /บันทึกสิทธิ์ผู้ใช้/u);
+  assert.doesNotMatch(html, /ตั้งค่าข้อมูลการเงินที่แสดงใน Timeline/u);
+  assert.doesNotMatch(html, /บันทึกการแสดงผล/u);
 });
 
-test('admins always see every financial field while configuring regular-user access', async () => {
+test('admins follow the shared default and see item subtotal only', async () => {
   const html = await renderView({
     appRole: 'admin',
+    orders: [order],
+  });
+
+  assert.match(html, /<th>ค่าสินค้า<\/th>/u);
+  assert.doesNotMatch(html, /<th>ค่าจัดส่ง<\/th>|<th>ยอดรวม<\/th>/u);
+  assert.match(html, /฿168/u);
+  assert.doesNotMatch(html, /฿29|฿197/u);
+  assert.match(html, /การตั้งค่านี้มีผลกับทุกบัญชี รวมถึง admin/u);
+});
+
+test('admins see extra financial fields only when enabled in the shared setting', async () => {
+  const html = await renderView({
+    appRole: 'admin',
+    financialVisibility: {
+      itemSubtotal: true,
+      shippingFee: true,
+      totalAmount: true,
+      unitPrice: true,
+    },
     orders: [order],
   });
 
