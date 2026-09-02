@@ -109,16 +109,20 @@ test('explains expanded inventory units for a multi-unit bundle', async () => {
       products: [{
         companySkus: ['IC-003478'],
         id: 'bundle-1',
+        isBundle: true,
         name: 'Gluco One BG-03 Test Strip',
         orderCount: 1,
+        quantityRuleStatus: 'verified',
         totalQuantity: 3,
         unitsPerSale: 3,
         variant: 'แผ่นตรวจ 25 3 กล่อง',
         orders: [{
+          isBundle: true,
           listingQuantity: 1,
           orderNumber: '260825976WKJ0D',
           orderedAt: '2026-08-25T00:29:54.000Z',
           quantity: 3,
+          quantityRuleStatus: 'verified',
           shopCode: 'dr-morepen',
           unitsPerSale: 3,
         }],
@@ -127,7 +131,19 @@ test('explains expanded inventory units for a multi-unit bundle', async () => {
   }));
 
   assert.match(html, /IC-003478/u);
+  assert.match(html, /shopee-sales-product-row--bundle/u);
+  assert.match(html, /data-bundle="true"/u);
+  assert.match(html, /แถวพื้นหลังสีเหลือง/u);
+  assert.match(html, /BUNDLE · ต้องแกะ 1 ชุด = 3 หน่วย/u);
   assert.match(html, /1 ชุด = 3 หน่วย/u);
   assert.match(html, /1 ชุด[\s\S]*×[\s\S]*3/u);
   assert.match(html, /260825976WKJ0D/u);
+});
+
+test('does not highlight an ordinary product as a bundle', async () => {
+  const html = await renderSummary();
+
+  assert.doesNotMatch(html, /shopee-sales-product-row--bundle/u);
+  assert.doesNotMatch(html, /แถวพื้นหลังสีเหลือง/u);
+  assert.doesNotMatch(html, /BUNDLE/u);
 });

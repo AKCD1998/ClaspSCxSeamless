@@ -1306,6 +1306,28 @@ button:disabled {
   min-width: 980px;
 }
 
+.shopee-sales-bundle-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  border: 1px solid rgba(217, 119, 6, 0.38);
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.shopee-sales-bundle-legend__swatch {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 1px solid rgba(217, 119, 6, 0.72);
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.32);
+}
+
 .shopee-sales-summary-table th:nth-child(1) { width: 34%; }
 .shopee-sales-summary-table th:nth-child(2) { width: 19%; }
 .shopee-sales-summary-table th:nth-child(3) { width: 17%; }
@@ -1321,6 +1343,34 @@ button:disabled {
 .shopee-sales-product-row:hover,
 .shopee-sales-product-row[data-open="true"] {
   background: rgba(238, 77, 45, 0.07);
+}
+
+.shopee-sales-product-row--bundle > td {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.shopee-sales-product-row--bundle > td:first-child {
+  box-shadow: inset 4px 0 0 #d97706;
+}
+
+.shopee-sales-product-row--bundle:hover > td,
+.shopee-sales-product-row--bundle[data-open="true"] > td {
+  background: rgba(245, 158, 11, 0.23);
+}
+
+.shopee-sales-bundle-badge {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 7px;
+  padding: 4px 8px;
+  border: 1px solid rgba(217, 119, 6, 0.56);
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
 }
 
 .shopee-sales-number {
@@ -1341,6 +1391,14 @@ button:disabled {
 .shopee-sales-orders-row > td {
   padding: 0;
   background: rgba(238, 77, 45, 0.035);
+}
+
+.shopee-sales-orders-row--bundle > td {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.shopee-sales-order-row--bundle > td {
+  background: rgba(245, 158, 11, 0.07);
 }
 
 .shopee-sales-orders-detail {
@@ -2058,6 +2116,22 @@ a.history-view-button.secondary:hover {
 [data-color-mode="dark"] .shopee-sales-product-row[data-open="true"],
 [data-color-mode="dark"] .shopee-sales-orders-row > td {
   background: rgba(240, 104, 77, 0.09);
+}
+
+[data-color-mode="dark"] .shopee-sales-bundle-legend,
+[data-color-mode="dark"] .shopee-sales-product-row--bundle > td,
+[data-color-mode="dark"] .shopee-sales-orders-row--bundle > td,
+[data-color-mode="dark"] .shopee-sales-order-row--bundle > td {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+[data-color-mode="dark"] .shopee-sales-product-row--bundle:hover > td,
+[data-color-mode="dark"] .shopee-sales-product-row--bundle[data-open="true"] > td {
+  background: rgba(245, 158, 11, 0.22);
+}
+
+[data-color-mode="dark"] .shopee-sales-bundle-badge {
+  color: #fcd34d;
 }
 
 [data-color-mode="dark"] .shopee-order-detail-card {
