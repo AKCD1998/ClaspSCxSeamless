@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getShopeeSalesSummary } from '../services/api.js';
+import { formatShopeeMoney } from './shopeeEmailLabels.js';
 
 const SHOP_OPTIONS = [
   ['all', 'ทุกร้าน'],
@@ -180,6 +181,9 @@ export function ShopeeSalesSummaryView({
                           <td colSpan="6">
                             <div className="shopee-sales-orders-detail">
                               <h3>ออเดอร์ที่ขายสินค้านี้</h3>
+                              <p className="shopee-sales-orders-help">
+                                ค่าสินค้าของแต่ละออเดอร์สำหรับคีย์ขายและตัดสต๊อก โดยไม่รวมค่าจัดส่ง
+                              </p>
                               <div className="history-table-wrap">
                                 <table className="history-table shopee-sales-orders-table">
                                   <thead>
@@ -187,6 +191,7 @@ export function ShopeeSalesSummaryView({
                                       <th>ร้าน</th>
                                       <th>เลขคำสั่งซื้อ</th>
                                       <th>จำนวนหน่วยสินค้า</th>
+                                      <th>ค่าสินค้า</th>
                                       <th>วันที่ออเดอร์</th>
                                     </tr>
                                   </thead>
@@ -206,6 +211,9 @@ export function ShopeeSalesSummaryView({
                                               {`${new Intl.NumberFormat('th-TH').format(order.listingQuantity)} ชุด × ${new Intl.NumberFormat('th-TH').format(order.unitsPerSale)}`}
                                             </small>
                                           ) : null}
+                                        </td>
+                                        <td className="shopee-sales-order-subtotal">
+                                          {formatShopeeMoney(order.itemSubtotal)}
                                         </td>
                                         <td>{formatSalesOrderDate(order.orderedAt)}</td>
                                       </tr>

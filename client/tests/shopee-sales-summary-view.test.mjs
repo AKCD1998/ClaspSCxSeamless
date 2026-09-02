@@ -38,12 +38,14 @@ const summary = {
     variant: '30 เม็ด',
     orders: [
       {
+        itemSubtotal: 168,
         orderNumber: '260901TEST001',
         orderedAt: '2026-09-01T02:00:00.000Z',
         quantity: 2,
         shopCode: 'sc-drug-store',
       },
       {
+        itemSubtotal: 225,
         orderNumber: '260901TEST002',
         orderedAt: '2026-09-01T03:00:00.000Z',
         quantity: 3,
@@ -87,6 +89,10 @@ test('renders shop, order number, quantity, and order date when a product is exp
   assert.match(html, /DR\.Morepen/);
   assert.match(html, /260901TEST001/);
   assert.match(html, /260901TEST002/);
+  assert.match(html, /ค่าสินค้า/u);
+  assert.match(html, /฿168/u);
+  assert.match(html, /฿225/u);
+  assert.match(html, /ไม่รวมค่าจัดส่ง/u);
   assert.match(html, /วันที่ออเดอร์/);
 });
 
@@ -118,6 +124,7 @@ test('explains expanded inventory units for a multi-unit bundle', async () => {
         variant: 'แผ่นตรวจ 25 3 กล่อง',
         orders: [{
           isBundle: true,
+          itemSubtotal: 350,
           listingQuantity: 1,
           orderNumber: '260825976WKJ0D',
           orderedAt: '2026-08-25T00:29:54.000Z',
@@ -137,6 +144,7 @@ test('explains expanded inventory units for a multi-unit bundle', async () => {
   assert.match(html, /BUNDLE · ต้องแกะ 1 ชุด = 3 หน่วย/u);
   assert.match(html, /1 ชุด = 3 หน่วย/u);
   assert.match(html, /1 ชุด[\s\S]*×[\s\S]*3/u);
+  assert.match(html, /฿350/u);
   assert.match(html, /260825976WKJ0D/u);
 });
 
