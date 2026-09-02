@@ -138,6 +138,7 @@ export default function ShopeeOrderTimelineView({
   isLoading,
   isSyncing,
   onFilterChange,
+  onSearchChange,
   onPageChange,
   onRetry,
   onRetryDetail,
@@ -149,6 +150,7 @@ export default function ShopeeOrderTimelineView({
   page,
   pageSize,
   selectedOrderKey,
+  searchValue,
   status,
   syncCursor,
   syncStatus,
@@ -195,6 +197,22 @@ export default function ShopeeOrderTimelineView({
       ) : null}
 
       <form className="history-filters shopee-order-filters" onSubmit={(event) => event.preventDefault()}>
+        <label className="history-filter-field shopee-order-search-field">
+          <span>ค้นหาทั้งตาราง</span>
+          <input
+            aria-label="ค้นหาทั้งตาราง"
+            autoComplete="off"
+            maxLength="120"
+            name="search"
+            onChange={onSearchChange}
+            placeholder="ค้นหาร้าน เลขคำสั่งซื้อ สถานะ สินค้า SKU ยอด หรือวันที่"
+            type="search"
+            value={searchValue}
+          />
+          <small className="shopee-order-search-hint">
+            พิมพ์ได้เลย ระบบจะค้นหาอัตโนมัติจากทุกคอลัมน์และทุกหน้า
+          </small>
+        </label>
         <label className="history-filter-field">
           <span>ร้าน Shopee</span>
           <select name="shopCode" onChange={onFilterChange} value={filters.shopCode}>
@@ -356,7 +374,11 @@ export default function ShopeeOrderTimelineView({
           ) : null}
         </div>
       ) : (
-        <div className="history-empty">ยังไม่มีไทม์ไลน์ตามสถานะที่เลือก</div>
+        <div className="history-empty">
+          {filters.search
+            ? 'ไม่พบคำสั่งซื้อที่ตรงกับคำค้นหา'
+            : 'ยังไม่มีไทม์ไลน์ตามสถานะที่เลือก'}
+        </div>
       )}
     </section>
   );

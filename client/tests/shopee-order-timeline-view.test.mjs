@@ -52,6 +52,7 @@ async function renderView(overrides = {}) {
     filters: {
       limit: 25,
       page: 1,
+      search: '',
       shopCode: 'all',
       sortBy: 'lastEventAt',
       sortOrder: 'desc',
@@ -60,6 +61,7 @@ async function renderView(overrides = {}) {
     isLoading: false,
     isSyncing: false,
     onFilterChange: noop,
+    onSearchChange: noop,
     onPageChange: noop,
     onRetry: noop,
     onRetryDetail: noop,
@@ -71,6 +73,7 @@ async function renderView(overrides = {}) {
     page: 1,
     pageSize: 25,
     selectedOrderKey: null,
+    searchValue: '',
     status: { message: 'พร้อม', state: 'success' },
     syncCursor: null,
     syncStatus: { message: '', state: 'idle' },
@@ -96,6 +99,42 @@ test('renders an order summary with distinct status color hooks and no admin syn
   assert.match(html, /<th>ร้าน<\/th>/u);
   assert.match(html, /<th>Company SKU<\/th>/u);
   assert.match(html, /IC-001849/u);
+});
+
+test('renders one live search field for every visible table column and every page', async () => {
+  const html = await renderView();
+
+  assert.match(html, /type="search"/u);
+  assert.match(html, /name="search"/u);
+  assert.match(html, /aria-label="ค้นหาทั้งตาราง"/u);
+  assert.match(html, /ร้าน เลขคำสั่งซื้อ สถานะ สินค้า SKU ยอด หรือวันที่/u);
+  assert.match(html, /ค้นหาอัตโนมัติจากทุกคอลัมน์และทุกหน้า/u);
+  assert.equal((html.match(/type="search"/gu) || []).length, 1);
+});
+
+test('shows a search-specific empty state', async () => {
+  const html = await renderView({
+    filters: {
+      limit: 25,
+      page: 1,
+      search: 'IC-001849',
+      shopCode: 'all',
+      sortBy: 'lastEventAt',
+      sortOrder: 'desc',
+      status: '',
+    },
+    searchValue: 'IC-001849',
+  });
+
+  assert.match(html, /ไม่พบคำสั่งซื้อที่ตรงกับคำค้นหา/u);
+});
+
+test('normalizes a live search without forcing the user to choose a field', async () => {
+  const { normalizeShopeeOrderSearch } = await vite.ssrLoadModule(
+    '/src/components/ShopeeOrderTimelinePanel.jsx',
+  );
+
+  assert.equal(normalizeShopeeOrderSearch('  IC-001849   สินค้าทดสอบ  '), 'IC-001849 สินค้าทดสอบ');
 });
 
 test('renders chronological event detail and bounded cancellation evidence', async () => {
