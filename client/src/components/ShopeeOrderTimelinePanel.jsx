@@ -11,12 +11,17 @@ export const SHOPEE_ALL_SHOPS_SCOPE = 'all';
 const DEFAULT_FILTERS = {
   limit: 25,
   page: 1,
+  search: '',
   shopCode: SHOPEE_ALL_SHOPS_SCOPE,
   sortBy: 'lastEventAt',
   sortOrder: 'desc',
   status: '',
 };
 const SYNCABLE_SHOP_CODES = new Set(['sc-drug-store', 'dr-morepen']);
+
+export function normalizeShopeeOrderSearch(value) {
+  return String(value || '').normalize('NFKC').replace(/\s+/gu, ' ').trim();
+}
 
 export function getShopeeOrderIdentity(order) {
   const shopCode = String(order?.shopCode || '').trim();
@@ -138,6 +143,7 @@ export async function syncShopeeOrdersAndRefresh({
 
 export default function ShopeeOrderTimelinePanel() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [searchInput, setSearchInput] = useState(DEFAULT_FILTERS.search);
   const [orderState, dispatch] = useReducer(shopeeOrderReducer, INITIAL_SHOPEE_ORDER_STATE);
   const [appRole, setAppRole] = useState('user');
   const [selectedOrderKey, setSelectedOrderKey] = useState(null);
@@ -282,6 +288,17 @@ export default function ShopeeOrderTimelinePanel() {
   }, [filters]);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const search = normalizeShopeeOrderSearch(searchInput);
+      if (filtersRef.current.search === search) return;
+      const nextFilters = { ...filtersRef.current, page: 1, search };
+      filtersRef.current = nextFilters;
+      setFilters(nextFilters);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  useEffect(() => {
     let cancelled = false;
     getSession()
       .then((payload) => {
@@ -311,6 +328,10 @@ export default function ShopeeOrderTimelinePanel() {
     setFilters(nextFilters);
   }
 
+  function handleSearchChange(event) {
+    setSearchInput(event.target.value);
+  }
+
   function handlePageChange(nextPage) {
     if (isLoading || nextPage < 1 || nextPage > totalPages || nextPage === page) return;
     closeDetail();
@@ -328,6 +349,7 @@ export default function ShopeeOrderTimelinePanel() {
       isLoading={isLoading}
       isSyncing={isSyncing}
       onFilterChange={handleFilterChange}
+      onSearchChange={handleSearchChange}
       onPageChange={handlePageChange}
       onRetry={() => loadOrders(filters)}
       onRetryDetail={() => selectedOrderRef.current && loadDetail(selectedOrderRef.current)}
@@ -339,6 +361,7 @@ export default function ShopeeOrderTimelinePanel() {
       page={page}
       pageSize={pageSize}
       selectedOrderKey={selectedOrderKey}
+      searchValue={searchInput}
       status={status}
       syncCursor={syncCursor}
       syncStatus={syncStatus}

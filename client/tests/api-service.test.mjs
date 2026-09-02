@@ -286,6 +286,7 @@ test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () =
   await api.getShopeeOrders({
     limit: 25,
     page: 2,
+    search: 'IC-001849 Myda',
     shopCode: 'sc-drug-store',
     sortBy: 'orderNumber',
     sortOrder: 'asc',
@@ -300,7 +301,7 @@ test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () =
 
   assert.equal(
     calls[0].url,
-    'http://api.test.local/api/app/shopee/orders?limit=25&page=2&shopCode=sc-drug-store&sortBy=orderNumber&sortOrder=asc&status=shipment_due',
+    'http://api.test.local/api/app/shopee/orders?limit=25&page=2&search=IC-001849+Myda&shopCode=sc-drug-store&sortBy=orderNumber&sortOrder=asc&status=shipment_due',
   );
   assert.equal(
     calls[1].url,
