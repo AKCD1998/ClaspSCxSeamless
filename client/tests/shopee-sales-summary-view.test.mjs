@@ -74,7 +74,7 @@ test('renders totals and keeps order rows collapsed initially', async () => {
 
   assert.match(html, /สินค้าทดสอบ/);
   assert.match(html, /IC-001849/);
-  assert.match(html, /จำนวนที่ขายรวม/);
+  assert.match(html, /จำนวนหน่วยสินค้ารวม/);
   assert.match(html, /aria-expanded="false"/);
   assert.doesNotMatch(html, /260901TEST001/);
 });
@@ -88,4 +88,46 @@ test('renders shop, order number, quantity, and order date when a product is exp
   assert.match(html, /260901TEST001/);
   assert.match(html, /260901TEST002/);
   assert.match(html, /วันที่ออเดอร์/);
+});
+
+test('explains expanded inventory units for a multi-unit bundle', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule(
+    '/src/components/ShopeeSalesSummaryPanel.jsx',
+  );
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-09-01', shopCode: 'dr-morepen', startDate: '2026-09-01' },
+    isLoading: false,
+    onFilterChange: () => {},
+    onSubmit: () => {},
+    onToggleProduct: () => {},
+    openProductId: 'bundle-1',
+    status: { state: 'success', message: 'พร้อม' },
+    summary: {
+      orderCount: 1,
+      productCount: 1,
+      totalQuantity: 3,
+      products: [{
+        companySkus: ['IC-003478'],
+        id: 'bundle-1',
+        name: 'Gluco One BG-03 Test Strip',
+        orderCount: 1,
+        totalQuantity: 3,
+        unitsPerSale: 3,
+        variant: 'แผ่นตรวจ 25 3 กล่อง',
+        orders: [{
+          listingQuantity: 1,
+          orderNumber: '260825976WKJ0D',
+          orderedAt: '2026-08-25T00:29:54.000Z',
+          quantity: 3,
+          shopCode: 'dr-morepen',
+          unitsPerSale: 3,
+        }],
+      }],
+    },
+  }));
+
+  assert.match(html, /IC-003478/u);
+  assert.match(html, /1 ชุด = 3 หน่วย/u);
+  assert.match(html, /1 ชุด[\s\S]*×[\s\S]*3/u);
+  assert.match(html, /260825976WKJ0D/u);
 });

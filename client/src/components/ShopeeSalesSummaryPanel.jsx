@@ -97,7 +97,7 @@ export function ShopeeSalesSummaryView({
           <div className="shopee-sales-summary-metrics">
             <SummaryMetric label="ชนิดสินค้า" value={summary.productCount} />
             <SummaryMetric label="จำนวนออเดอร์" value={summary.orderCount} />
-            <SummaryMetric label="จำนวนที่ขายรวม" value={summary.totalQuantity} />
+            <SummaryMetric label="จำนวนหน่วยสินค้ารวม" value={summary.totalQuantity} />
           </div>
 
           {products.length ? (
@@ -108,7 +108,7 @@ export function ShopeeSalesSummaryView({
                     <th>สินค้า</th>
                     <th>ตัวเลือกสินค้า</th>
                     <th>Company SKU</th>
-                    <th>จำนวนที่ขาย</th>
+                    <th>จำนวนหน่วยสินค้า</th>
                     <th>ออเดอร์</th>
                     <th>รายละเอียด</th>
                   </tr>
@@ -126,7 +126,12 @@ export function ShopeeSalesSummaryView({
                         <td><strong>{product.name}</strong></td>
                         <td>{product.variant || '-'}</td>
                         <td>{product.companySkus?.length ? product.companySkus.join(', ') : '-'}</td>
-                        <td className="shopee-sales-number">{new Intl.NumberFormat('th-TH').format(product.totalQuantity)}</td>
+                        <td className="shopee-sales-number">
+                          {new Intl.NumberFormat('th-TH').format(product.totalQuantity)}
+                          {product.unitsPerSale > 1 ? (
+                            <small>{`1 ชุด = ${product.unitsPerSale} หน่วย`}</small>
+                          ) : null}
+                        </td>
                         <td>{new Intl.NumberFormat('th-TH').format(product.orderCount)}</td>
                         <td>
                           <button
@@ -153,7 +158,7 @@ export function ShopeeSalesSummaryView({
                                     <tr>
                                       <th>ร้าน</th>
                                       <th>เลขคำสั่งซื้อ</th>
-                                      <th>จำนวน</th>
+                                      <th>จำนวนหน่วยสินค้า</th>
                                       <th>วันที่ออเดอร์</th>
                                     </tr>
                                   </thead>
@@ -162,7 +167,14 @@ export function ShopeeSalesSummaryView({
                                       <tr key={`${order.shopCode}:${order.orderNumber}`}>
                                         <td>{SHOP_LABELS[order.shopCode] || order.shopCode || '-'}</td>
                                         <td><strong>{order.orderNumber}</strong></td>
-                                        <td>{new Intl.NumberFormat('th-TH').format(order.quantity)}</td>
+                                        <td>
+                                          {new Intl.NumberFormat('th-TH').format(order.quantity)}
+                                          {order.unitsPerSale > 1 ? (
+                                            <small className="shopee-sales-quantity-note">
+                                              {`${new Intl.NumberFormat('th-TH').format(order.listingQuantity)} ชุด × ${new Intl.NumberFormat('th-TH').format(order.unitsPerSale)}`}
+                                            </small>
+                                          ) : null}
+                                        </td>
                                         <td>{formatSalesOrderDate(order.orderedAt)}</td>
                                       </tr>
                                     ))}

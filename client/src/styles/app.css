@@ -1329,6 +1329,15 @@ button:disabled {
   font-weight: 800;
 }
 
+.shopee-sales-number small,
+.shopee-sales-quantity-note {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
 .shopee-sales-orders-row > td {
   padding: 0;
   background: rgba(238, 77, 45, 0.035);
