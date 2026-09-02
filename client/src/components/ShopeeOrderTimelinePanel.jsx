@@ -2,10 +2,16 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import ShopeeOrderTimelineView from './ShopeeOrderTimelineView.jsx';
 import {
   getSession,
+  getShopeeFinancialVisibility,
   getShopeeOrder,
   getShopeeOrders,
   syncShopeeOrders,
+  updateShopeeFinancialVisibility,
 } from '../services/api.js';
+import {
+  DEFAULT_USER_FINANCIAL_VISIBILITY,
+  normalizeShopeeFinancialVisibility,
+} from './shopeeFinancialVisibility.js';
 
 export const SHOPEE_ALL_SHOPS_SCOPE = 'all';
 const DEFAULT_FILTERS = {
@@ -146,6 +152,17 @@ export default function ShopeeOrderTimelinePanel() {
   const [searchInput, setSearchInput] = useState(DEFAULT_FILTERS.search);
   const [orderState, dispatch] = useReducer(shopeeOrderReducer, INITIAL_SHOPEE_ORDER_STATE);
   const [appRole, setAppRole] = useState('user');
+  const [financialVisibility, setFinancialVisibility] = useState(
+    DEFAULT_USER_FINANCIAL_VISIBILITY,
+  );
+  const [userFinancialVisibility, setUserFinancialVisibility] = useState(
+    DEFAULT_USER_FINANCIAL_VISIBILITY,
+  );
+  const [financialVisibilityStatus, setFinancialVisibilityStatus] = useState({
+    message: '',
+    state: 'idle',
+  });
+  const [isSavingFinancialVisibility, setIsSavingFinancialVisibility] = useState(false);
   const [selectedOrderKey, setSelectedOrderKey] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [detailStatus, setDetailStatus] = useState({ message: '', state: 'idle' });
@@ -185,6 +202,7 @@ export default function ShopeeOrderTimelinePanel() {
     try {
       const response = await getShopeeOrders(activeFilters);
       if (requestSequenceRef.current !== generation) return;
+      setFinancialVisibility(normalizeShopeeFinancialVisibility(response?.financialVisibility));
       dispatch({ type: 'replacement_succeeded', generation, response });
     } catch (error) {
       if (requestSequenceRef.current !== generation) return;
@@ -301,8 +319,25 @@ export default function ShopeeOrderTimelinePanel() {
   useEffect(() => {
     let cancelled = false;
     getSession()
-      .then((payload) => {
-        if (!cancelled && payload?.role === 'admin') setAppRole('admin');
+      .then(async (payload) => {
+        if (cancelled || payload?.role !== 'admin') return;
+        setAppRole('admin');
+        setFinancialVisibilityStatus({ message: 'กำลังโหลดการตั้งค่าสิทธิ์...', state: 'working' });
+        try {
+          const response = await getShopeeFinancialVisibility();
+          if (cancelled) return;
+          setUserFinancialVisibility(normalizeShopeeFinancialVisibility(
+            response?.userFinancialVisibility,
+          ));
+          setFinancialVisibilityStatus({ message: '', state: 'success' });
+        } catch (error) {
+          if (!cancelled) {
+            setFinancialVisibilityStatus({
+              message: error?.message || 'โหลดการตั้งค่าสิทธิ์ไม่สำเร็จ',
+              state: 'error',
+            });
+          }
+        }
       })
       .catch(() => {
         // Safe default: sync controls remain hidden, while the backend enforces the same role.
@@ -332,6 +367,40 @@ export default function ShopeeOrderTimelinePanel() {
     setSearchInput(event.target.value);
   }
 
+  function handleFinancialVisibilityChange(event) {
+    const { checked, name } = event.target;
+    setUserFinancialVisibility((current) => ({ ...current, [name]: checked }));
+    setFinancialVisibilityStatus({ message: '', state: 'idle' });
+  }
+
+  async function handleSaveFinancialVisibility() {
+    if (appRole !== 'admin' || isSavingFinancialVisibility) return;
+    setIsSavingFinancialVisibility(true);
+    setFinancialVisibilityStatus({ message: 'กำลังบันทึกสิทธิ์...', state: 'working' });
+    try {
+      const settings = {
+        shippingFee: userFinancialVisibility.shippingFee,
+        totalAmount: userFinancialVisibility.totalAmount,
+        unitPrice: userFinancialVisibility.unitPrice,
+      };
+      const response = await updateShopeeFinancialVisibility(settings);
+      setUserFinancialVisibility(normalizeShopeeFinancialVisibility(
+        response?.userFinancialVisibility,
+      ));
+      setFinancialVisibilityStatus({
+        message: 'บันทึกแล้ว ผู้ใช้ทั่วไปจะเห็นข้อมูลตามสิทธิ์นี้เมื่อโหลดหน้าใหม่',
+        state: 'success',
+      });
+    } catch (error) {
+      setFinancialVisibilityStatus({
+        message: error?.message || 'บันทึกการตั้งค่าสิทธิ์ไม่สำเร็จ',
+        state: 'error',
+      });
+    } finally {
+      setIsSavingFinancialVisibility(false);
+    }
+  }
+
   function handlePageChange(nextPage) {
     if (isLoading || nextPage < 1 || nextPage > totalPages || nextPage === page) return;
     closeDetail();
@@ -345,11 +414,16 @@ export default function ShopeeOrderTimelinePanel() {
       appRole={appRole}
       canSync={isSyncableShopeeShopCode(filters.shopCode)}
       detailStatus={detailStatus}
+      financialVisibility={financialVisibility}
+      financialVisibilityStatus={financialVisibilityStatus}
       filters={filters}
       isLoading={isLoading}
       isSyncing={isSyncing}
+      isSavingFinancialVisibility={isSavingFinancialVisibility}
+      onFinancialVisibilityChange={handleFinancialVisibilityChange}
       onFilterChange={handleFilterChange}
       onSearchChange={handleSearchChange}
+      onSaveFinancialVisibility={handleSaveFinancialVisibility}
       onPageChange={handlePageChange}
       onRetry={() => loadOrders(filters)}
       onRetryDetail={() => selectedOrderRef.current && loadDetail(selectedOrderRef.current)}
@@ -367,6 +441,7 @@ export default function ShopeeOrderTimelinePanel() {
       syncStatus={syncStatus}
       totalCount={totalCount}
       totalPages={totalPages}
+      userFinancialVisibility={userFinancialVisibility}
     />
   );
 }

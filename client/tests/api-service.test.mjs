@@ -317,6 +317,40 @@ test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () =
   assert.equal(calls[2].options.credentials, 'include');
 });
 
+test('Shopee financial visibility APIs read and update only the selected fields', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      userFinancialVisibility: {
+        itemSubtotal: true,
+        shippingFee: true,
+        totalAmount: false,
+        unitPrice: true,
+      },
+    }), { status: 200 });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.getShopeeFinancialVisibility();
+  await api.updateShopeeFinancialVisibility({
+    shippingFee: true,
+    totalAmount: false,
+    unitPrice: true,
+  });
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/shopee/orders/financial-visibility',
+  );
+  assert.equal(calls[1].options.method, 'PUT');
+  assert.deepEqual(JSON.parse(calls[1].options.body), {
+    shippingFee: true,
+    totalAmount: false,
+    unitPrice: true,
+  });
+});
+
 test('getShopeeAccountingCycleStatus fetches the configured accounting checkpoint', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
