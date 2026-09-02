@@ -1410,14 +1410,28 @@ button:disabled {
   font-size: 1rem;
 }
 
+.shopee-sales-orders-help {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.shopee-sales-order-subtotal {
+  white-space: nowrap;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
 .shopee-sales-orders-table {
   min-width: 680px;
 }
 
-.shopee-sales-orders-table th:nth-child(1) { width: 22%; }
-.shopee-sales-orders-table th:nth-child(2) { width: 34%; }
-.shopee-sales-orders-table th:nth-child(3) { width: 16%; }
-.shopee-sales-orders-table th:nth-child(4) { width: 28%; }
+.shopee-sales-orders-table th:nth-child(1) { width: 18%; }
+.shopee-sales-orders-table th:nth-child(2) { width: 27%; }
+.shopee-sales-orders-table th:nth-child(3) { width: 17%; }
+.shopee-sales-orders-table th:nth-child(4) { width: 16%; }
+.shopee-sales-orders-table th:nth-child(5) { width: 22%; }
 
 .pharmcare-detail-row-tr > td {
   padding: 0;
