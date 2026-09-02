@@ -49,6 +49,7 @@ export function ShopeeSalesSummaryView({
   summary,
 }) {
   const products = summary?.products || [];
+  const hasBundleProducts = products.some((product) => product.isBundle === true);
   return (
     <section className="panel shopee-sales-summary-panel">
       <div className="shopee-order-heading">
@@ -101,7 +102,16 @@ export function ShopeeSalesSummaryView({
           </div>
 
           {products.length ? (
-            <div className="history-table-wrap shopee-sales-summary-table-wrap">
+            <>
+              {hasBundleProducts ? (
+                <div className="shopee-sales-bundle-legend" role="note">
+                  <span aria-hidden="true" className="shopee-sales-bundle-legend__swatch" />
+                  <span>
+                    แถวพื้นหลังสีเหลืองคือ <strong>Bundle</strong> — ต้องแกะชุดสินค้าและหยิบตามจำนวนหน่วยที่ระบุ
+                  </span>
+                </div>
+              ) : null}
+              <div className="history-table-wrap shopee-sales-summary-table-wrap">
               <table className="history-table shopee-sales-summary-table">
                 <thead>
                   <tr>
@@ -116,21 +126,35 @@ export function ShopeeSalesSummaryView({
                 <tbody>
                   {products.map((product) => {
                     const isOpen = openProductId === product.id;
+                    const isBundle = product.isBundle === true;
+                    const hasVerifiedBundleQuantity = isBundle
+                      && product.quantityRuleStatus === 'verified'
+                      && Number.isSafeInteger(product.unitsPerSale)
+                      && product.unitsPerSale > 0;
+                    const bundleLabel = hasVerifiedBundleQuantity
+                      ? `BUNDLE · ต้องแกะ 1 ชุด = ${product.unitsPerSale} หน่วย`
+                      : 'BUNDLE · รอตรวจสอบจำนวนต่อชุด';
                     return [
                       <tr
-                        className="shopee-sales-product-row"
+                        className={`shopee-sales-product-row${isBundle ? ' shopee-sales-product-row--bundle' : ''}`}
+                        data-bundle={isBundle}
                         data-open={isOpen}
                         key={product.id}
                         onClick={() => onToggleProduct(product.id)}
                       >
-                        <td><strong>{product.name}</strong></td>
+                        <td>
+                          <strong>{product.name}</strong>
+                          {isBundle ? (
+                            <span className="shopee-sales-bundle-badge">{bundleLabel}</span>
+                          ) : null}
+                        </td>
                         <td>{product.variant || '-'}</td>
                         <td>{product.companySkus?.length ? product.companySkus.join(', ') : '-'}</td>
                         <td className="shopee-sales-number">
                           {new Intl.NumberFormat('th-TH').format(product.totalQuantity)}
-                          {product.unitsPerSale > 1 ? (
+                          {hasVerifiedBundleQuantity ? (
                             <small>{`1 ชุด = ${product.unitsPerSale} หน่วย`}</small>
-                          ) : null}
+                          ) : isBundle ? <small>รอตรวจสอบจำนวนต่อชุด</small> : null}
                         </td>
                         <td>{new Intl.NumberFormat('th-TH').format(product.orderCount)}</td>
                         <td>
@@ -148,7 +172,11 @@ export function ShopeeSalesSummaryView({
                         </td>
                       </tr>,
                       isOpen ? (
-                        <tr className="shopee-sales-orders-row" key={`${product.id}-orders`}>
+                        <tr
+                          className={`shopee-sales-orders-row${isBundle ? ' shopee-sales-orders-row--bundle' : ''}`}
+                          data-bundle={isBundle}
+                          key={`${product.id}-orders`}
+                        >
                           <td colSpan="6">
                             <div className="shopee-sales-orders-detail">
                               <h3>ออเดอร์ที่ขายสินค้านี้</h3>
@@ -164,7 +192,11 @@ export function ShopeeSalesSummaryView({
                                   </thead>
                                   <tbody>
                                     {product.orders.map((order) => (
-                                      <tr key={`${order.shopCode}:${order.orderNumber}`}>
+                                      <tr
+                                        className={isBundle ? 'shopee-sales-order-row--bundle' : undefined}
+                                        data-bundle={isBundle}
+                                        key={`${order.shopCode}:${order.orderNumber}`}
+                                      >
                                         <td>{SHOP_LABELS[order.shopCode] || order.shopCode || '-'}</td>
                                         <td><strong>{order.orderNumber}</strong></td>
                                         <td>
@@ -189,7 +221,8 @@ export function ShopeeSalesSummaryView({
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           ) : (
             <div className="history-empty">ไม่พบยอดขายในช่วงวันที่ที่เลือก</div>
           )}
