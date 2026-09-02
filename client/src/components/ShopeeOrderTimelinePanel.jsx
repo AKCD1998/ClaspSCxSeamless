@@ -384,11 +384,16 @@ export default function ShopeeOrderTimelinePanel() {
         unitPrice: userFinancialVisibility.unitPrice,
       };
       const response = await updateShopeeFinancialVisibility(settings);
-      setUserFinancialVisibility(normalizeShopeeFinancialVisibility(
+      const savedVisibility = normalizeShopeeFinancialVisibility(
         response?.userFinancialVisibility,
-      ));
+      );
+      setUserFinancialVisibility(savedVisibility);
+      setFinancialVisibility(savedVisibility);
+      detailCacheRef.current = {};
+      closeDetail();
+      await loadOrders(filtersRef.current);
       setFinancialVisibilityStatus({
-        message: 'บันทึกแล้ว ผู้ใช้ทั่วไปจะเห็นข้อมูลตามสิทธิ์นี้เมื่อโหลดหน้าใหม่',
+        message: 'บันทึกแล้ว การแสดงผลใหม่นี้มีผลกับทุกบัญชีรวมถึง admin',
         state: 'success',
       });
     } catch (error) {

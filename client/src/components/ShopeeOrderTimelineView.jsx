@@ -6,7 +6,6 @@ import {
   formatShopeeOrderDate,
 } from './shopeeEmailLabels.js';
 import {
-  ALL_FINANCIAL_FIELDS_VISIBLE,
   DEFAULT_USER_FINANCIAL_VISIBILITY,
   normalizeShopeeFinancialVisibility,
 } from './shopeeFinancialVisibility.js';
@@ -160,10 +159,10 @@ function FinancialVisibilitySettings({
     || ['working', 'error'].includes(financialVisibilityStatus.state);
   return (
     <details className="shopee-financial-settings">
-      <summary>ตั้งค่าสิทธิ์ข้อมูลการเงินสำหรับผู้ใช้ทั่วไป</summary>
+      <summary>ตั้งค่าข้อมูลการเงินที่แสดงใน Timeline</summary>
       <div className="shopee-financial-settings__body">
         <p className="result-meta">
-          ค่าเริ่มต้นแสดงเฉพาะค่าสินค้า ส่วนบัญชี admin จะเห็นข้อมูลครบเสมอ
+          ค่าเริ่มต้นแสดงเฉพาะค่าสินค้า การตั้งค่านี้มีผลกับทุกบัญชี รวมถึง admin
         </p>
         <div className="shopee-financial-settings__options">
           <label>
@@ -203,7 +202,7 @@ function FinancialVisibilitySettings({
         </div>
         <div className="shopee-financial-settings__actions">
           <button disabled={controlsDisabled} onClick={onSave} type="button">
-            {isSaving ? 'กำลังบันทึก...' : 'บันทึกสิทธิ์ผู้ใช้'}
+            {isSaving ? 'กำลังบันทึก...' : 'บันทึกการแสดงผล'}
           </button>
           {financialVisibilityStatus.message ? (
             <p
@@ -254,9 +253,7 @@ export default function ShopeeOrderTimelineView({
   userFinancialVisibility = DEFAULT_USER_FINANCIAL_VISIBILITY,
 }) {
   const paginationItems = getShopeePaginationItems(page, totalPages);
-  const visibleFinancials = appRole === 'admin'
-    ? ALL_FINANCIAL_FIELDS_VISIBLE
-    : normalizeShopeeFinancialVisibility(financialVisibility);
+  const visibleFinancials = normalizeShopeeFinancialVisibility(financialVisibility);
   const financialColumnCount = 1
     + (visibleFinancials.shippingFee ? 1 : 0)
     + (visibleFinancials.totalAmount ? 1 : 0);
