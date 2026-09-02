@@ -28,6 +28,7 @@ const order = {
   currentStatus: 'order_cancelled',
   eventCount: 3,
   itemCount: 1,
+  itemSubtotal: 168,
   items: [{
     name: 'สินค้าทดสอบ',
     quantity: 2,
@@ -38,6 +39,7 @@ const order = {
   lastEventAt: '2026-08-24T05:37:17.000Z',
   orderNumber: '26082476830R2P',
   shippingDeadline: '2026-08-30',
+  shippingFee: 29,
   shopCode: 'sc-drug-store',
   totalAmount: 197,
   totalQuantity: 2,
@@ -49,6 +51,13 @@ async function renderView(overrides = {}) {
     appRole: 'user',
     canSync: false,
     detailStatus: { message: '', state: 'idle' },
+    financialVisibility: {
+      itemSubtotal: true,
+      shippingFee: false,
+      totalAmount: false,
+      unitPrice: false,
+    },
+    financialVisibilityStatus: { message: '', state: 'idle' },
     filters: {
       limit: 25,
       page: 1,
@@ -60,8 +69,11 @@ async function renderView(overrides = {}) {
     },
     isLoading: false,
     isSyncing: false,
+    isSavingFinancialVisibility: false,
+    onFinancialVisibilityChange: noop,
     onFilterChange: noop,
     onSearchChange: noop,
+    onSaveFinancialVisibility: noop,
     onPageChange: noop,
     onRetry: noop,
     onRetryDetail: noop,
@@ -79,6 +91,12 @@ async function renderView(overrides = {}) {
     syncStatus: { message: '', state: 'idle' },
     totalCount: 0,
     totalPages: 0,
+    userFinancialVisibility: {
+      itemSubtotal: true,
+      shippingFee: false,
+      totalAmount: false,
+      unitPrice: false,
+    },
     ...overrides,
   }));
 }
@@ -98,7 +116,27 @@ test('renders an order summary with distinct status color hooks and no admin syn
   assert.match(html, /ทุกร้าน/u);
   assert.match(html, /<th>ร้าน<\/th>/u);
   assert.match(html, /<th>Company SKU<\/th>/u);
+  assert.match(html, /<th>ค่าสินค้า<\/th>/u);
+  assert.doesNotMatch(html, /<th>ค่าจัดส่ง<\/th>|<th>ยอดรวม<\/th>/u);
+  assert.match(html, /฿168/u);
+  assert.doesNotMatch(html, /฿197/u);
   assert.match(html, /IC-001849/u);
+});
+
+test('regular-user detail shows item subtotal only even if hidden values are supplied', async () => {
+  const html = await renderView({
+    orders: [order],
+    selectedOrderKey: `${order.shopCode}:${order.orderNumber}`,
+    detailStatus: { message: '', state: 'success' },
+    orderDetail: {
+      order,
+      events: [],
+    },
+  });
+
+  assert.match(html, /ค่าสินค้า[\s\S]*฿168/u);
+  assert.doesNotMatch(html, /ค่าจัดส่ง|ยอดรวม|฿29|฿197|× ฿84/u);
+  assert.match(html, /จำนวน [\s\S]*2/u);
 });
 
 test('renders one live search field for every visible table column and every page', async () => {
@@ -139,6 +177,12 @@ test('normalizes a live search without forcing the user to choose a field', asyn
 
 test('renders chronological event detail and bounded cancellation evidence', async () => {
   const html = await renderView({
+    financialVisibility: {
+      itemSubtotal: true,
+      shippingFee: true,
+      totalAmount: true,
+      unitPrice: true,
+    },
     orders: [order],
     selectedOrderKey: `${order.shopCode}:${order.orderNumber}`,
     detailStatus: { message: '', state: 'success' },
@@ -158,6 +202,9 @@ test('renders chronological event detail and bounded cancellation evidence', asy
   assert.match(html, /ตัวเลือก:[\s\S]*9 กรัม/);
   assert.match(html, /data-match-status="matched"/u);
   assert.match(html, /IC-001849/u);
+  assert.match(html, /ค่าจัดส่ง[\s\S]*฿38/u);
+  assert.match(html, /ยอดรวม[\s\S]*฿197/u);
+  assert.match(html, /× ฿84/u);
 });
 
 test('renders component bundles and visibility-only listings without fabricating a Company SKU', async () => {
@@ -210,6 +257,31 @@ test('shows both bounded Gmail sync actions only to admins', async () => {
   assert.match(html, /ซิงก์อีเมลล่าสุด/);
   assert.match(html, /ซิงก์อีเมลหน้าก่อนหน้า/);
   assert.match(html, /บันทึกเหตุการณ์ใหม่ 1 รายการ/);
+  assert.match(html, /ตั้งค่าสิทธิ์ข้อมูลการเงินสำหรับผู้ใช้ทั่วไป/u);
+  assert.match(html, /name="unitPrice"/u);
+  assert.match(html, /name="shippingFee"/u);
+  assert.match(html, /name="totalAmount"/u);
+});
+
+test('regular users never receive the financial visibility settings controls', async () => {
+  const html = await renderView({ appRole: 'user', orders: [order] });
+
+  assert.doesNotMatch(html, /ตั้งค่าสิทธิ์ข้อมูลการเงินสำหรับผู้ใช้ทั่วไป/u);
+  assert.doesNotMatch(html, /บันทึกสิทธิ์ผู้ใช้/u);
+});
+
+test('admins always see every financial field while configuring regular-user access', async () => {
+  const html = await renderView({
+    appRole: 'admin',
+    orders: [order],
+  });
+
+  assert.match(html, /<th>ค่าสินค้า<\/th>/u);
+  assert.match(html, /<th>ค่าจัดส่ง<\/th>/u);
+  assert.match(html, /<th>ยอดรวม<\/th>/u);
+  assert.match(html, /฿168/u);
+  assert.match(html, /฿29/u);
+  assert.match(html, /฿197/u);
 });
 
 test('all-shops view is readable but cannot start a mailbox sync', async () => {

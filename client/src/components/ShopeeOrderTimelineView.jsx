@@ -5,6 +5,11 @@ import {
   formatShopeeMoney,
   formatShopeeOrderDate,
 } from './shopeeEmailLabels.js';
+import {
+  ALL_FINANCIAL_FIELDS_VISIBLE,
+  DEFAULT_USER_FINANCIAL_VISIBILITY,
+  normalizeShopeeFinancialVisibility,
+} from './shopeeFinancialVisibility.js';
 
 const STATUS_OPTIONS = Object.entries(SHOPEE_ORDER_STATUS_LABELS);
 const SHOP_OPTIONS = [
@@ -66,7 +71,7 @@ function ProductMatchBadge({ productMatch }) {
   );
 }
 
-function ShopeeOrderDetail({ detail, detailStatus, onRetry }) {
+function ShopeeOrderDetail({ detail, detailStatus, financialVisibility, onRetry }) {
   if (detailStatus.state === 'working') {
     return <div className="shopee-order-detail-state">กำลังโหลดรายละเอียด...</div>;
   }
@@ -83,17 +88,27 @@ function ShopeeOrderDetail({ detail, detailStatus, onRetry }) {
   if (!detail?.order) return null;
 
   const { order, events = [] } = detail;
+  const visibleFinancials = normalizeShopeeFinancialVisibility(
+    detail.financialVisibility || financialVisibility,
+  );
   return (
     <div className="shopee-order-detail">
       <section className="shopee-order-detail-card">
-        <h3>สินค้าและยอดชำระ</h3>
+        <h3>
+          {visibleFinancials.shippingFee || visibleFinancials.totalAmount
+            ? 'สินค้าและยอดชำระ'
+            : 'สินค้าและค่าสินค้า'}
+        </h3>
         {order.items?.length ? (
           <ol className="shopee-order-items">
             {order.items.map((item, index) => (
               <li key={`${item.name}-${index}`}>
                 <strong>{item.name}</strong>
                 {item.variant ? <span>ตัวเลือก: {item.variant}</span> : null}
-                <span>จำนวน {item.quantity || 0} × {formatShopeeMoney(item.unitPrice)}</span>
+                <span>
+                  จำนวน {item.quantity || 0}
+                  {visibleFinancials.unitPrice ? ` × ${formatShopeeMoney(item.unitPrice)}` : ''}
+                </span>
                 <ProductMatchBadge productMatch={item.productMatch} />
               </li>
             ))}
@@ -101,8 +116,12 @@ function ShopeeOrderDetail({ detail, detailStatus, onRetry }) {
         ) : <p className="result-meta">อีเมลเหตุการณ์นี้ไม่มีรายละเอียดสินค้า</p>}
         <dl className="shopee-order-amounts">
           <div><dt>ค่าสินค้า</dt><dd>{formatShopeeMoney(order.itemSubtotal)}</dd></div>
-          <div><dt>ค่าจัดส่ง</dt><dd>{formatShopeeMoney(order.shippingFee)}</dd></div>
-          <div><dt>ยอดรวม</dt><dd>{formatShopeeMoney(order.totalAmount)}</dd></div>
+          {visibleFinancials.shippingFee ? (
+            <div><dt>ค่าจัดส่ง</dt><dd>{formatShopeeMoney(order.shippingFee)}</dd></div>
+          ) : null}
+          {visibleFinancials.totalAmount ? (
+            <div><dt>ยอดรวม</dt><dd>{formatShopeeMoney(order.totalAmount)}</dd></div>
+          ) : null}
         </dl>
       </section>
 
@@ -130,15 +149,91 @@ function ShopeeOrderDetail({ detail, detailStatus, onRetry }) {
   );
 }
 
+function FinancialVisibilitySettings({
+  financialVisibilityStatus,
+  isSaving,
+  onChange,
+  onSave,
+  userFinancialVisibility,
+}) {
+  const controlsDisabled = isSaving
+    || ['working', 'error'].includes(financialVisibilityStatus.state);
+  return (
+    <details className="shopee-financial-settings">
+      <summary>ตั้งค่าสิทธิ์ข้อมูลการเงินสำหรับผู้ใช้ทั่วไป</summary>
+      <div className="shopee-financial-settings__body">
+        <p className="result-meta">
+          ค่าเริ่มต้นแสดงเฉพาะค่าสินค้า ส่วนบัญชี admin จะเห็นข้อมูลครบเสมอ
+        </p>
+        <div className="shopee-financial-settings__options">
+          <label>
+            <input checked disabled name="itemSubtotal" type="checkbox" />
+            ค่าสินค้า (แสดงเสมอ)
+          </label>
+          <label>
+            <input
+              checked={userFinancialVisibility.unitPrice}
+              disabled={controlsDisabled}
+              name="unitPrice"
+              onChange={onChange}
+              type="checkbox"
+            />
+            ราคาต่อหน่วยในรายละเอียด
+          </label>
+          <label>
+            <input
+              checked={userFinancialVisibility.shippingFee}
+              disabled={controlsDisabled}
+              name="shippingFee"
+              onChange={onChange}
+              type="checkbox"
+            />
+            ค่าจัดส่ง
+          </label>
+          <label>
+            <input
+              checked={userFinancialVisibility.totalAmount}
+              disabled={controlsDisabled}
+              name="totalAmount"
+              onChange={onChange}
+              type="checkbox"
+            />
+            ยอดรวม
+          </label>
+        </div>
+        <div className="shopee-financial-settings__actions">
+          <button disabled={controlsDisabled} onClick={onSave} type="button">
+            {isSaving ? 'กำลังบันทึก...' : 'บันทึกสิทธิ์ผู้ใช้'}
+          </button>
+          {financialVisibilityStatus.message ? (
+            <p
+              aria-live="polite"
+              className="status"
+              data-state={financialVisibilityStatus.state}
+            >
+              {financialVisibilityStatus.message}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 export default function ShopeeOrderTimelineView({
   appRole,
   canSync,
   detailStatus,
+  financialVisibility = DEFAULT_USER_FINANCIAL_VISIBILITY,
+  financialVisibilityStatus = { message: '', state: 'idle' },
   filters,
   isLoading,
   isSyncing,
+  isSavingFinancialVisibility,
+  onFinancialVisibilityChange,
   onFilterChange,
   onSearchChange,
+  onSaveFinancialVisibility,
   onPageChange,
   onRetry,
   onRetryDetail,
@@ -156,8 +251,16 @@ export default function ShopeeOrderTimelineView({
   syncStatus,
   totalCount,
   totalPages,
+  userFinancialVisibility = DEFAULT_USER_FINANCIAL_VISIBILITY,
 }) {
   const paginationItems = getShopeePaginationItems(page, totalPages);
+  const visibleFinancials = appRole === 'admin'
+    ? ALL_FINANCIAL_FIELDS_VISIBLE
+    : normalizeShopeeFinancialVisibility(financialVisibility);
+  const financialColumnCount = 1
+    + (visibleFinancials.shippingFee ? 1 : 0)
+    + (visibleFinancials.totalAmount ? 1 : 0);
+  const tableColumnCount = 9 + financialColumnCount;
   return (
     <section className="panel">
       <div className="shopee-order-heading">
@@ -194,6 +297,16 @@ export default function ShopeeOrderTimelineView({
 
       {appRole === 'admin' && !canSync ? (
         <p className="result-meta">เลือก SC Drug Store หรือ DR.Morepen เพื่อซิงก์ทีละร้าน</p>
+      ) : null}
+
+      {appRole === 'admin' ? (
+        <FinancialVisibilitySettings
+          financialVisibilityStatus={financialVisibilityStatus}
+          isSaving={isSavingFinancialVisibility}
+          onChange={onFinancialVisibilityChange}
+          onSave={onSaveFinancialVisibility}
+          userFinancialVisibility={userFinancialVisibility}
+        />
       ) : null}
 
       <form className="history-filters shopee-order-filters" onSubmit={(event) => event.preventDefault()}>
@@ -268,7 +381,9 @@ export default function ShopeeOrderTimelineView({
               <col className="shopee-order-col-item" />
               <col className="shopee-order-col-sku" />
               <col className="shopee-order-col-quantity" />
-              <col className="shopee-order-col-total" />
+              <col className="shopee-order-col-money" />
+              {visibleFinancials.shippingFee ? <col className="shopee-order-col-money" /> : null}
+              {visibleFinancials.totalAmount ? <col className="shopee-order-col-money" /> : null}
               <col className="shopee-order-col-deadline" />
               <col className="shopee-order-col-updated" />
               <col className="shopee-order-col-detail" />
@@ -281,7 +396,9 @@ export default function ShopeeOrderTimelineView({
                 <th>สินค้า</th>
                 <th>Company SKU</th>
                 <th>จำนวน</th>
-                <th>ยอดรวม</th>
+                <th>ค่าสินค้า</th>
+                {visibleFinancials.shippingFee ? <th>ค่าจัดส่ง</th> : null}
+                {visibleFinancials.totalAmount ? <th>ยอดรวม</th> : null}
                 <th>กำหนดส่ง</th>
                 <th>อัปเดตล่าสุด</th>
                 <th>เหตุการณ์</th>
@@ -299,7 +416,13 @@ export default function ShopeeOrderTimelineView({
                     <td>{order.items?.[0]?.name || '-'}{order.itemCount > 1 ? ` +${order.itemCount - 1}` : ''}</td>
                     <td>{formatShopeeProductMatch(order.items?.[0]?.productMatch)}</td>
                     <td>{order.totalQuantity || 0}</td>
-                    <td>{formatShopeeMoney(order.totalAmount)}</td>
+                    <td>{formatShopeeMoney(order.itemSubtotal)}</td>
+                    {visibleFinancials.shippingFee ? (
+                      <td>{formatShopeeMoney(order.shippingFee)}</td>
+                    ) : null}
+                    {visibleFinancials.totalAmount ? (
+                      <td>{formatShopeeMoney(order.totalAmount)}</td>
+                    ) : null}
                     <td>{formatShopeeOrderDate(order.shippingDeadline)}</td>
                     <td>{formatShopeeEmailReceivedAt(order.lastEventAt)}</td>
                     <td>
@@ -315,10 +438,11 @@ export default function ShopeeOrderTimelineView({
                   </tr>,
                   isOpen ? (
                     <tr className="shopee-order-detail-row" key={`${orderKey}-detail`}>
-                      <td colSpan="10">
+                      <td colSpan={tableColumnCount}>
                         <ShopeeOrderDetail
                           detail={orderDetail}
                           detailStatus={detailStatus}
+                          financialVisibility={visibleFinancials}
                           onRetry={onRetryDetail}
                         />
                       </td>

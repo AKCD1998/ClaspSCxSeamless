@@ -206,6 +206,17 @@ export async function getShopeeOrder(orderNumber, options = {}) {
   );
 }
 
+export async function getShopeeFinancialVisibility() {
+  return requestJson('/app/shopee/orders/financial-visibility');
+}
+
+export async function updateShopeeFinancialVisibility(settings) {
+  return requestJson('/app/shopee/orders/financial-visibility', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
+}
+
 export async function getShopeeAccountingCycleStatus() {
   return requestJson('/app/shopee/accounting-cycle');
 }

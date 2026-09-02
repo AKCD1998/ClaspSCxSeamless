@@ -987,6 +987,56 @@ button:disabled {
   margin-top: 16px;
 }
 
+.shopee-financial-settings {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.shopee-financial-settings summary {
+  padding: 14px 16px;
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.shopee-financial-settings__body {
+  padding: 0 16px 16px;
+}
+
+.shopee-financial-settings__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 12px 0;
+}
+
+.shopee-financial-settings__options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.shopee-financial-settings__options input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.shopee-financial-settings__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.shopee-financial-settings__actions .status {
+  margin: 0;
+}
+
 .shopee-order-filters {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
@@ -1054,7 +1104,7 @@ button:disabled {
 .shopee-order-col-item { width: 18%; }
 .shopee-order-col-sku { width: 11%; }
 .shopee-order-col-quantity { width: 5%; }
-.shopee-order-col-total { width: 8%; }
+.shopee-order-col-money { width: 8%; }
 .shopee-order-col-deadline { width: 8%; }
 .shopee-order-col-updated { width: 12%; }
 .shopee-order-col-detail { width: 7%; }
