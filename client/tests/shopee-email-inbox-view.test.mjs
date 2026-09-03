@@ -39,6 +39,17 @@ async function renderView(overrides = {}) {
       onFilterChange: noop,
       onLoadMore: noop,
       onRetry: noop,
+      onRetryOverview: noop,
+      overview: {
+        cancelledToday: 2,
+        confirmedCodToday: 3,
+        date: '2026-09-03',
+        lastUpdatedAt: '2026-09-03T01:15:00.000Z',
+        ordersToday: 7,
+        returnedToday: 1,
+        shipmentDueToday: 6,
+      },
+      overviewStatus: { message: 'อัปเดตภาพรวมแล้ว', state: 'success' },
       source: 'info@mail.shopee.co.th',
       status: { message: 'พร้อม', state: 'success' },
       ...overrides,
@@ -72,6 +83,20 @@ test('renders classified Shopee email rows without exposing message bodies', asy
   assert.match(html, /value="all" selected="">ทั้งหมด/u);
   assert.match(html, />SC Drug Store<\/td>/u);
   assert.match(html, /DR.Morepen/u);
+});
+
+test('renders a trustworthy today overview from persisted email timeline events', async () => {
+  const html = await renderView();
+
+  assert.match(html, /ภาพรวมงาน Shopee วันนี้/u);
+  assert.match(html, /ออเดอร์วันนี้/u);
+  assert.match(html, /แจ้งให้จัดส่งวันนี้/u);
+  assert.match(html, /COD ยืนยันวันนี้/u);
+  assert.match(html, /ยกเลิกวันนี้/u);
+  assert.match(html, /ตีกลับวันนี้/u);
+  assert.match(html, /ไม่ใช่สถานะสดจาก Seller Centre/u);
+  assert.match(html, /3 ก.ย. 2569/u);
+  assert.match(html, /08:15/u);
 });
 
 test('renders the empty and error states with a retry action', async () => {
