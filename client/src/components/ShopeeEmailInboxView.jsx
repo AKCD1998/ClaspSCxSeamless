@@ -1,6 +1,7 @@
 import {
   SHOPEE_EMAIL_CATEGORY_LABELS,
   formatShopeeEmailReceivedAt,
+  formatShopeeOrderDate,
 } from './shopeeEmailLabels.js';
 
 const FILTERABLE_CATEGORIES = Object.entries(SHOPEE_EMAIL_CATEGORY_LABELS).filter(
@@ -13,6 +14,71 @@ const SHOP_OPTIONS = [
 ];
 const SHOP_LABELS = Object.fromEntries(SHOP_OPTIONS);
 
+const OVERVIEW_METRICS = [
+  { key: 'ordersToday', label: 'ออเดอร์วันนี้', hint: 'นับจากวันที่สั่งซื้อ', tone: 'orders' },
+  { key: 'shipmentDueToday', label: 'แจ้งให้จัดส่งวันนี้', hint: 'อีเมลถึงเวลาจัดส่ง', tone: 'shipment' },
+  { key: 'confirmedCodToday', label: 'COD ยืนยันวันนี้', hint: 'อีเมลยืนยันเก็บเงินปลายทาง', tone: 'confirmed' },
+  { key: 'cancelledToday', label: 'ยกเลิกวันนี้', hint: 'เลขออเดอร์ไม่ซ้ำ', tone: 'cancelled' },
+  { key: 'returnedToday', label: 'ตีกลับวันนี้', hint: 'พัสดุส่งคืนผู้ขาย', tone: 'returned' },
+];
+
+function ShopeeInboxOperationsOverview({
+  isLoading,
+  onRetry,
+  overview,
+  shopCode,
+  status,
+}) {
+  const numberFormatter = new Intl.NumberFormat('th-TH');
+  return (
+    <section
+      aria-busy={isLoading}
+      aria-labelledby="shopee-inbox-overview-title"
+      className="shopee-inbox-overview"
+    >
+      <div className="shopee-inbox-overview__heading">
+        <div>
+          <h3 id="shopee-inbox-overview-title">ภาพรวมงาน Shopee วันนี้</h3>
+          <p>
+            {overview?.date ? formatShopeeOrderDate(overview.date) : 'วันนี้'}
+            {' · '}
+            {shopCode === 'all' ? 'ทุกร้าน' : SHOP_LABELS[shopCode] || shopCode}
+          </p>
+        </div>
+        <span className="shopee-inbox-overview__source">จากอีเมลที่เข้า Timeline</span>
+      </div>
+
+      {status?.state === 'error' ? (
+        <div className="shopee-inbox-overview__error">
+          <p className="status" data-state="error">{status.message}</p>
+          <button className="history-view-button secondary" onClick={onRetry} type="button">
+            ลองใหม่
+          </button>
+        </div>
+      ) : (
+        <div className="shopee-inbox-overview__metrics">
+          {OVERVIEW_METRICS.map((metric) => (
+            <article data-tone={metric.tone} key={metric.key}>
+              <strong>{isLoading ? '…' : numberFormatter.format(overview?.[metric.key] || 0)}</strong>
+              <span>{metric.label}</span>
+              <small>{metric.hint}</small>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <div className="shopee-inbox-overview__footer">
+        <span>
+          อัปเดตล่าสุด: {overview?.lastUpdatedAt
+            ? formatShopeeEmailReceivedAt(overview.lastUpdatedAt)
+            : isLoading ? 'กำลังตรวจสอบ...' : '-'}
+        </span>
+        <span>เป็นเหตุการณ์จากอีเมล ไม่ใช่สถานะสดจาก Seller Centre</span>
+      </div>
+    </section>
+  );
+}
+
 export default function ShopeeEmailInboxView({
   emails,
   filters,
@@ -22,6 +88,9 @@ export default function ShopeeEmailInboxView({
   onFilterChange,
   onLoadMore,
   onRetry,
+  onRetryOverview,
+  overview,
+  overviewStatus,
   source,
   status,
 }) {
@@ -72,6 +141,14 @@ export default function ShopeeEmailInboxView({
           />
         </label>
       </form>
+
+      <ShopeeInboxOperationsOverview
+        isLoading={overviewStatus?.state === 'working'}
+        onRetry={onRetryOverview}
+        overview={overview}
+        shopCode={filters.shopCode}
+        status={overviewStatus}
+      />
 
       <section className="status-panel history-status-panel" aria-live="polite">
         <p className="status" data-state={status.state}>

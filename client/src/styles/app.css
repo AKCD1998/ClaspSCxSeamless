@@ -894,6 +894,125 @@ button:disabled {
 
 /* Live Shopee Gmail inbox: seven fixed columns, intentionally separate from the existing Shopee
    workbook history so email rows never enter the document/print pipeline. Widths sum to 100%. */
+.shopee-inbox-overview {
+  margin: 18px 0 4px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(238, 77, 45, 0.035);
+}
+
+.shopee-inbox-overview__heading,
+.shopee-inbox-overview__footer,
+.shopee-inbox-overview__error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shopee-inbox-overview__heading h3 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.shopee-inbox-overview__heading p,
+.shopee-inbox-overview__footer {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.shopee-inbox-overview__source {
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.shopee-inbox-overview__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.shopee-inbox-overview__metrics article {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-top: 3px solid #64748b;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.shopee-inbox-overview__metrics strong,
+.shopee-inbox-overview__metrics span,
+.shopee-inbox-overview__metrics small {
+  display: block;
+}
+
+.shopee-inbox-overview__metrics strong {
+  color: var(--accent-strong);
+  font-size: 1.55rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.shopee-inbox-overview__metrics span {
+  margin-top: 5px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.shopee-inbox-overview__metrics small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.shopee-inbox-overview__metrics article[data-tone="orders"] {
+  border-top-color: #16a34a;
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.shopee-inbox-overview__metrics article[data-tone="shipment"] {
+  border-top-color: #2563eb;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.shopee-inbox-overview__metrics article[data-tone="confirmed"] {
+  border-top-color: #0d9488;
+  background: rgba(20, 184, 166, 0.08);
+}
+
+.shopee-inbox-overview__metrics article[data-tone="cancelled"] {
+  border-top-color: #dc2626;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.shopee-inbox-overview__metrics article[data-tone="returned"] {
+  border-top-color: #0891b2;
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.shopee-inbox-overview__footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.shopee-inbox-overview__error {
+  margin-top: 14px;
+}
+
+.shopee-inbox-overview__error .status {
+  margin: 0;
+}
+
 .shopee-email-col-shop { width: 10%; }
 .shopee-email-col-received { width: 13%; }
 .shopee-email-col-category { width: 14%; }
@@ -2048,6 +2167,34 @@ a.history-view-button.secondary:hover {
 [data-color-mode="dark"] .print-queue-summary {
   background: rgba(24, 31, 29, 0.75);
   border-color: rgba(231, 236, 233, 0.12);
+}
+
+[data-color-mode="dark"] .shopee-inbox-overview {
+  background: rgba(240, 104, 77, 0.055);
+}
+
+[data-color-mode="dark"] .shopee-inbox-overview__metrics article {
+  background: rgba(8, 13, 12, 0.32);
+}
+
+[data-color-mode="dark"] .shopee-inbox-overview__metrics article[data-tone="orders"] {
+  background: rgba(34, 197, 94, 0.11);
+}
+
+[data-color-mode="dark"] .shopee-inbox-overview__metrics article[data-tone="shipment"] {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+[data-color-mode="dark"] .shopee-inbox-overview__metrics article[data-tone="confirmed"] {
+  background: rgba(20, 184, 166, 0.11);
+}
+
+[data-color-mode="dark"] .shopee-inbox-overview__metrics article[data-tone="cancelled"] {
+  background: rgba(239, 68, 68, 0.11);
+}
+
+[data-color-mode="dark"] .shopee-inbox-overview__metrics article[data-tone="returned"] {
+  background: rgba(6, 182, 212, 0.11);
 }
 
 [data-color-mode="dark"] .history-dashboard-wrap {
