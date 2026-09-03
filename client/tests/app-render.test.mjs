@@ -112,6 +112,7 @@ test('Shopee sales summary route renders date filters and expandable product col
   assert.match(html, /Shopee Product Sales Summary/);
   assert.match(html, /name="startDate"/);
   assert.match(html, /name="endDate"/);
+  assert.match(html, /Export Excel/);
   assert.match(html, /ไม่นับออเดอร์ที่ยกเลิกหรือพัสดุตีกลับ/);
 });
 

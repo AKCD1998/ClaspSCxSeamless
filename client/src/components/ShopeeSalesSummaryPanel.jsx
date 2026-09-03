@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getShopeeSalesSummary } from '../services/api.js';
+import { getShopeeSalesSummary, getShopeeSalesSummaryExcel } from '../services/api.js';
 import { formatShopeeMoney } from './shopeeEmailLabels.js';
 
 const SHOP_OPTIONS = [
@@ -41,7 +41,9 @@ function SummaryMetric({ label, value }) {
 
 export function ShopeeSalesSummaryView({
   filters,
+  isExporting,
   isLoading,
+  onExport,
   onFilterChange,
   onSubmit,
   onToggleProduct,
@@ -85,10 +87,22 @@ export function ShopeeSalesSummaryView({
             value={filters.endDate}
           />
         </label>
-        <button disabled={isLoading} type="submit">
+        <button disabled={isLoading || isExporting} type="submit">
           {isLoading ? 'กำลังสรุป...' : 'แสดงยอดขาย'}
         </button>
+        <button
+          className="secondary"
+          disabled={isLoading || isExporting || !summary}
+          onClick={onExport}
+          type="button"
+        >
+          {isExporting ? 'กำลังสร้าง Excel...' : 'Export Excel'}
+        </button>
       </form>
+      <p className="shopee-sales-export-help">
+        Excel จะแยกรายการที่พร้อมใช้กับโปรแกรมพิมพ์อัตโนมัติไว้ในชีต “พร้อมคีย์”
+        และแยกรายการที่ยังต้องยืนยัน SKU หรือหน่วยฐานไว้ในชีต “ต้องตรวจสอบ”
+      </p>
 
       <section className="status-panel history-status-panel" aria-live="polite">
         <p className="status" data-state={status.state}>{status.message}</p>
@@ -245,6 +259,7 @@ export default function ShopeeSalesSummaryPanel() {
   const [filters, setFilters] = useState({ endDate: today, shopCode: 'all', startDate: today });
   const [summary, setSummary] = useState(null);
   const [openProductId, setOpenProductId] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState({ state: 'working', message: 'กำลังสรุปยอดขาย...' });
 
@@ -290,10 +305,42 @@ export default function ShopeeSalesSummaryPanel() {
     loadSummary(effectiveFilters);
   }
 
+  async function handleExport() {
+    const endDate = filters.endDate || filters.startDate;
+    if (endDate < filters.startDate) {
+      setStatus({ state: 'error', message: 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น' });
+      return;
+    }
+
+    setIsExporting(true);
+    setStatus({ state: 'working', message: 'กำลังสร้างไฟล์ Excel สำหรับคีย์ข้อมูล...' });
+    try {
+      const exported = await getShopeeSalesSummaryExcel({ ...filters, endDate });
+      const objectUrl = URL.createObjectURL(exported.blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = exported.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      setStatus({
+        state: 'success',
+        message: 'ดาวน์โหลด Excel แล้ว — ใช้ชีต “พร้อมคีย์” กับโปรแกรมพิมพ์อัตโนมัติ',
+      });
+    } catch (error) {
+      setStatus({ state: 'error', message: error.message || 'สร้างไฟล์ Excel ไม่สำเร็จ' });
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <ShopeeSalesSummaryView
       filters={filters}
+      isExporting={isExporting}
       isLoading={isLoading}
+      onExport={handleExport}
       onFilterChange={handleFilterChange}
       onSubmit={handleSubmit}
       onToggleProduct={(productId) => setOpenProductId((current) => (

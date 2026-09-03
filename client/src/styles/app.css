@@ -1267,11 +1267,17 @@ button:disabled {
 }
 
 .shopee-sales-summary-filters {
-  grid-template-columns: minmax(180px, 1fr) minmax(170px, 1fr) minmax(170px, 1fr) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(170px, 1fr) minmax(170px, 1fr) auto auto;
 }
 
 .shopee-sales-summary-filters > button {
   min-height: 44px;
+}
+
+.shopee-sales-export-help {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
 }
 
 .shopee-sales-summary-metrics {

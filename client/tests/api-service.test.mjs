@@ -399,6 +399,37 @@ test('Shopee sales summary API passes the selected order-date range and shop sco
   assert.equal(payload.totalQuantity, 4);
 });
 
+test('Shopee sales summary Excel API downloads the selected range as a blob', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response('xlsx-bytes', {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      status: 200,
+    });
+  };
+
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const result = await api.getShopeeSalesSummaryExcel({
+    endDate: '2026-09-03',
+    shopCode: 'sc-drug-store',
+    startDate: '2026-09-01',
+  });
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/shopee/orders/sales-summary/export?endDate=2026-09-03&shopCode=sc-drug-store&startDate=2026-09-01',
+  );
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(await result.blob.text(), 'xlsx-bytes');
+  assert.equal(
+    result.filename,
+    'shopee-sales-sc-drug-store-2026-09-01-to-2026-09-03.xlsx',
+  );
+});
+
 test('AdaSmart validation APIs send only processing identity and the reviewed plan digest', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

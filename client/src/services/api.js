@@ -232,6 +232,41 @@ export async function getShopeeSalesSummary(filters = {}) {
   return requestJson(`/app/shopee/orders/sales-summary${query ? `?${query}` : ''}`);
 }
 
+export async function getShopeeSalesSummaryExcel(filters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+  const query = params.toString();
+  const response = await fetch(
+    `${API_BASE_URL}/app/shopee/orders/sales-summary/export${query ? `?${query}` : ''}`,
+    { credentials: 'include' },
+  );
+
+  if (!response.ok) {
+    let message = `Request failed with HTTP ${response.status}`;
+    try {
+      const payload = await response.json();
+      message = payload?.error?.message || payload?.message || message;
+    } catch (error) {
+      // Keep the HTTP status when the error response is not JSON.
+    }
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+
+  const startDate = filters.startDate || 'unknown-date';
+  const endDate = filters.endDate || startDate;
+  const shopCode = filters.shopCode || 'all';
+  return {
+    blob: await response.blob(),
+    filename: `shopee-sales-${shopCode}-${startDate}-to-${endDate}.xlsx`,
+  };
+}
+
 export async function createAdaSmartValidationPreview(processingRecordId) {
   return requestJson('/app/shopee/adasmart/validation-preview', {
     method: 'POST',

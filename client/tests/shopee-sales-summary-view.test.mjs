@@ -61,8 +61,10 @@ async function renderSummary(openProductId = '') {
   );
   return renderToString(React.createElement(ShopeeSalesSummaryView, {
     filters: { endDate: '2026-09-01', shopCode: 'all', startDate: '2026-09-01' },
+    isExporting: false,
     isLoading: false,
     onFilterChange: () => {},
+    onExport: () => {},
     onSubmit: () => {},
     onToggleProduct: () => {},
     openProductId,
@@ -77,6 +79,9 @@ test('renders totals and keeps order rows collapsed initially', async () => {
   assert.match(html, /สินค้าทดสอบ/);
   assert.match(html, /IC-001849/);
   assert.match(html, /จำนวนหน่วยสินค้ารวม/);
+  assert.match(html, /Export Excel/);
+  assert.match(html, /ชีต “พร้อมคีย์”/u);
+  assert.match(html, /ชีต “ต้องตรวจสอบ”/u);
   assert.match(html, /aria-expanded="false"/);
   assert.doesNotMatch(html, /260901TEST001/);
 });
