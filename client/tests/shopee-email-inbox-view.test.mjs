@@ -39,17 +39,6 @@ async function renderView(overrides = {}) {
       onFilterChange: noop,
       onLoadMore: noop,
       onRetry: noop,
-      onRetryOverview: noop,
-      overview: {
-        cancelledToday: 2,
-        confirmedCodToday: 3,
-        date: '2026-09-03',
-        lastUpdatedAt: '2026-09-03T01:15:00.000Z',
-        ordersToday: 7,
-        returnedToday: 1,
-        shipmentDueToday: 6,
-      },
-      overviewStatus: { message: 'อัปเดตภาพรวมแล้ว', state: 'success' },
       source: 'info@mail.shopee.co.th',
       status: { message: 'พร้อม', state: 'success' },
       ...overrides,
@@ -83,34 +72,6 @@ test('renders classified Shopee email rows without exposing message bodies', asy
   assert.match(html, /value="all" selected="">ทั้งหมด/u);
   assert.match(html, />SC Drug Store<\/td>/u);
   assert.match(html, /DR.Morepen/u);
-});
-
-test('renders Seller Centre task cards without inventing live queue counts from email events', async () => {
-  const html = await renderView();
-
-  assert.match(html, /งานที่ต้องทำใน Shopee Seller Centre/u);
-  assert.match(html, /ที่ต้องจัดส่ง/u);
-  assert.match(html, /เตรียมจัดส่งแล้ว/u);
-  assert.match(html, /คำขอคืนเงิน\/คืนสินค้า\/ยกเลิก/u);
-  assert.match(html, /สินค้าที่ละเมิดนโยบาย/u);
-  assert.match(html, /เข้าร่วมแคมเปญเสนอราคา/u);
-  assert.match(html, /ที่ต้องจัดส่ง: ไม่มีตัวเลขที่ยืนยันได้จากอีเมล/u);
-  assert.match(html, /กรุณาเปิดตรวจแยกบัญชี SC Drug Store และ DR.Morepen/u);
-  assert.match(html, /seller\.shopee\.co\.th\/portal\/shipment/u);
-  assert.match(html, /ข้อมูลประกอบจากอีเมลวันนี้/u);
-  assert.match(html, /ออเดอร์ที่พบวันนี้/u);
-  assert.match(html, /เป็นจำนวนเหตุการณ์รายวัน ไม่ใช่ยอดงานค้างใน Seller Centre/u);
-  assert.match(html, /ตั้งใจเว้นตัวเลขไว้จนกว่าจะเชื่อมข้อมูลสถานะจาก Shopee/u);
-  assert.match(html, /3 ก.ย. 2569/u);
-  assert.match(html, /08:15/u);
-});
-
-test('reminds users to verify the selected shop account before opening Seller Centre', async () => {
-  const html = await renderView({
-    filters: { category: '', receivedFrom: '', receivedTo: '', shopCode: 'dr-morepen' },
-  });
-
-  assert.match(html, /กรุณาตรวจว่า Seller Centre อยู่ในบัญชี DR.Morepen/u);
 });
 
 test('renders the empty and error states with a retry action', async () => {

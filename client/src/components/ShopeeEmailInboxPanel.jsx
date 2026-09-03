@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import ShopeeEmailInboxView from './ShopeeEmailInboxView.jsx';
-import { getShopeeEmailInbox, getShopeeInboxOverview } from '../services/api.js';
+import { getShopeeEmailInbox } from '../services/api.js';
 
 export const DEFAULT_SHOPEE_INBOX_FILTERS = Object.freeze({
   category: '',
@@ -10,17 +10,6 @@ export const DEFAULT_SHOPEE_INBOX_FILTERS = Object.freeze({
 });
 
 const DEFAULT_SOURCE = 'info@mail.shopee.co.th';
-
-export function getBangkokTodayString(now = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone: 'Asia/Bangkok',
-    year: 'numeric',
-  }).formatToParts(now);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
 
 function getShopeeEmailIdentity(email) {
   return `${email?.shopCode || ''}:${email?.id || ''}`;
@@ -118,13 +107,7 @@ export function applyShopeeEmailFilterChange(current, name, value) {
 export default function ShopeeEmailInboxPanel() {
   const [filters, setFilters] = useState(DEFAULT_SHOPEE_INBOX_FILTERS);
   const [inboxState, dispatch] = useReducer(shopeeInboxReducer, INITIAL_SHOPEE_INBOX_STATE);
-  const [overview, setOverview] = useState(null);
-  const [overviewStatus, setOverviewStatus] = useState({
-    message: 'กำลังสรุปภาพรวมวันนี้...',
-    state: 'working',
-  });
   const { emails, isLoading, isLoadingMore, nextCursor, source, status } = inboxState;
-  const overviewRequestSequenceRef = useRef(0);
   const requestSequenceRef = useRef(0);
 
   async function loadInbox(activeFilters) {
@@ -158,38 +141,10 @@ export default function ShopeeEmailInboxPanel() {
     }
   }
 
-  async function loadOverview(shopCode) {
-    const requestSequence = overviewRequestSequenceRef.current + 1;
-    overviewRequestSequenceRef.current = requestSequence;
-    setOverview(null);
-    setOverviewStatus({ message: 'กำลังสรุปภาพรวมวันนี้...', state: 'working' });
-    try {
-      const response = await getShopeeInboxOverview({
-        date: getBangkokTodayString(),
-        shopCode,
-      });
-      if (overviewRequestSequenceRef.current !== requestSequence) return;
-      setOverview(response);
-      setOverviewStatus({ message: 'อัปเดตภาพรวมแล้ว', state: 'success' });
-    } catch (error) {
-      if (overviewRequestSequenceRef.current !== requestSequence) return;
-      setOverviewStatus({
-        message: error?.message || 'โหลดภาพรวม Shopee ไม่สำเร็จ',
-        state: 'error',
-      });
-    }
-  }
-
   useEffect(() => {
     loadInbox(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
-
-  useEffect(() => {
-    loadOverview(filters.shopCode);
-    // Overview is always for today and only follows the selected shop, not the inbox category/date.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.shopCode]);
 
   function handleFilterChange(event) {
     const { name, value } = event.target;
@@ -212,9 +167,6 @@ export default function ShopeeEmailInboxPanel() {
       onFilterChange={handleFilterChange}
       onLoadMore={loadMoreInbox}
       onRetry={() => loadInbox(filters)}
-      onRetryOverview={() => loadOverview(filters.shopCode)}
-      overview={overview}
-      overviewStatus={overviewStatus}
       source={source}
       status={status}
     />
