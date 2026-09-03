@@ -14,12 +14,40 @@ const SHOP_OPTIONS = [
 ];
 const SHOP_LABELS = Object.fromEntries(SHOP_OPTIONS);
 
-const OVERVIEW_METRICS = [
-  { key: 'ordersToday', label: 'ออเดอร์วันนี้', hint: 'นับจากวันที่สั่งซื้อ', tone: 'orders' },
-  { key: 'shipmentDueToday', label: 'แจ้งให้จัดส่งวันนี้', hint: 'อีเมลถึงเวลาจัดส่ง', tone: 'shipment' },
-  { key: 'confirmedCodToday', label: 'COD ยืนยันวันนี้', hint: 'อีเมลยืนยันเก็บเงินปลายทาง', tone: 'confirmed' },
-  { key: 'cancelledToday', label: 'ยกเลิกวันนี้', hint: 'เลขออเดอร์ไม่ซ้ำ', tone: 'cancelled' },
-  { key: 'returnedToday', label: 'ตีกลับวันนี้', hint: 'พัสดุส่งคืนผู้ขาย', tone: 'returned' },
+const SELLER_CENTRE_TASKS = [
+  {
+    href: 'https://seller.shopee.co.th/portal/shipment',
+    label: 'ที่ต้องจัดส่ง',
+    reason: 'อีเมลบอกยอดงานค้างปัจจุบันไม่ได้',
+  },
+  {
+    href: 'https://seller.shopee.co.th/portal/shipment',
+    label: 'เตรียมจัดส่งแล้ว',
+    reason: 'ไม่มีอีเมลเมื่อร้านเปลี่ยนเป็นสถานะนี้',
+  },
+  {
+    href: 'https://seller.shopee.co.th/portal/sale/returnrefundcancel',
+    label: 'คำขอคืนเงิน/คืนสินค้า/ยกเลิก',
+    reason: 'อีเมลไม่ครอบคลุมคิวปัจจุบันทั้งหมด',
+  },
+  {
+    href: 'https://seller.shopee.co.th/portal/product/list/banned/action',
+    label: 'สินค้าที่ละเมิดนโยบาย',
+    reason: 'ยังไม่มีข้อมูลสถานะปัจจุบันจากอีเมล',
+  },
+  {
+    href: 'https://seller.shopee.co.th/portal/marketing/realtime-bidding/list',
+    label: 'เข้าร่วมแคมเปญเสนอราคา',
+    reason: 'ยังไม่มีข้อมูลสถานะปัจจุบันจากอีเมล',
+  },
+];
+
+const EMAIL_ACTIVITY_METRICS = [
+  { key: 'ordersToday', label: 'ออเดอร์ที่พบวันนี้' },
+  { key: 'shipmentDueToday', label: 'ออเดอร์ที่ได้รับอีเมลแจ้งจัดส่ง' },
+  { key: 'confirmedCodToday', label: 'ออเดอร์ที่ได้รับอีเมลยืนยัน COD' },
+  { key: 'cancelledToday', label: 'ออเดอร์ที่ได้รับอีเมลยกเลิก' },
+  { key: 'returnedToday', label: 'ออเดอร์ที่ได้รับอีเมลตีกลับ' },
 ];
 
 function ShopeeInboxOperationsOverview({
@@ -30,6 +58,7 @@ function ShopeeInboxOperationsOverview({
   status,
 }) {
   const numberFormatter = new Intl.NumberFormat('th-TH');
+  const shopLabel = shopCode === 'all' ? 'ทุกร้าน' : SHOP_LABELS[shopCode] || shopCode;
   return (
     <section
       aria-busy={isLoading}
@@ -38,42 +67,74 @@ function ShopeeInboxOperationsOverview({
     >
       <div className="shopee-inbox-overview__heading">
         <div>
-          <h3 id="shopee-inbox-overview-title">ภาพรวมงาน Shopee วันนี้</h3>
+          <h3 id="shopee-inbox-overview-title">งานที่ต้องทำใน Shopee Seller Centre</h3>
           <p>
             {overview?.date ? formatShopeeOrderDate(overview.date) : 'วันนี้'}
             {' · '}
-            {shopCode === 'all' ? 'ทุกร้าน' : SHOP_LABELS[shopCode] || shopCode}
+            {shopLabel}
           </p>
         </div>
-        <span className="shopee-inbox-overview__source">จากอีเมลที่เข้า Timeline</span>
+        <span className="shopee-inbox-overview__source">สถานะจริงอยู่ใน Seller Centre</span>
       </div>
 
-      {status?.state === 'error' ? (
-        <div className="shopee-inbox-overview__error">
-          <p className="status" data-state="error">{status.message}</p>
-          <button className="history-view-button secondary" onClick={onRetry} type="button">
-            ลองใหม่
-          </button>
+      <p className="shopee-inbox-overview__scope-note">
+        {shopCode === 'all'
+          ? 'กรุณาเปิดตรวจแยกบัญชี SC Drug Store และ DR.Morepen'
+          : `กรุณาตรวจว่า Seller Centre อยู่ในบัญชี ${shopLabel}`}
+      </p>
+
+      <div className="shopee-inbox-overview__tasks">
+        {SELLER_CENTRE_TASKS.map((task) => (
+          <a
+            className="shopee-inbox-overview__task"
+            href={task.href}
+            key={task.label}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <strong aria-label={`${task.label}: ไม่มีตัวเลขที่ยืนยันได้จากอีเมล`}>—</strong>
+            <span>{task.label}</span>
+            <small>{task.reason}</small>
+            <em>เปิดดูใน Seller Centre ↗</em>
+          </a>
+        ))}
+      </div>
+
+      <div className="shopee-inbox-overview__email-summary">
+        <div className="shopee-inbox-overview__email-heading">
+          <div>
+            <h4>ข้อมูลประกอบจากอีเมลวันนี้</h4>
+            <p>เป็นจำนวนเหตุการณ์รายวัน ไม่ใช่ยอดงานค้างใน Seller Centre</p>
+          </div>
+          <span>จากอีเมลที่เข้า Timeline</span>
         </div>
-      ) : (
-        <div className="shopee-inbox-overview__metrics">
-          {OVERVIEW_METRICS.map((metric) => (
-            <article data-tone={metric.tone} key={metric.key}>
-              <strong>{isLoading ? '…' : numberFormatter.format(overview?.[metric.key] || 0)}</strong>
-              <span>{metric.label}</span>
-              <small>{metric.hint}</small>
-            </article>
-          ))}
-        </div>
-      )}
+
+        {status?.state === 'error' ? (
+          <div className="shopee-inbox-overview__error">
+            <p className="status" data-state="error">{status.message}</p>
+            <button className="history-view-button secondary" onClick={onRetry} type="button">
+              ลองใหม่
+            </button>
+          </div>
+        ) : (
+          <dl className="shopee-inbox-overview__email-metrics">
+            {EMAIL_ACTIVITY_METRICS.map((metric) => (
+              <div key={metric.key}>
+                <dt>{metric.label}</dt>
+                <dd>{isLoading ? '…' : numberFormatter.format(overview?.[metric.key] || 0)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
 
       <div className="shopee-inbox-overview__footer">
         <span>
-          อัปเดตล่าสุด: {overview?.lastUpdatedAt
+          Timeline อัปเดตล่าสุด: {overview?.lastUpdatedAt
             ? formatShopeeEmailReceivedAt(overview.lastUpdatedAt)
             : isLoading ? 'กำลังตรวจสอบ...' : '-'}
         </span>
-        <span>เป็นเหตุการณ์จากอีเมล ไม่ใช่สถานะสดจาก Seller Centre</span>
+        <span>การ์ดงานด้านบนตั้งใจเว้นตัวเลขไว้จนกว่าจะเชื่อมข้อมูลสถานะจาก Shopee</span>
       </div>
     </section>
   );
