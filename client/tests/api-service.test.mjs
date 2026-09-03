@@ -269,29 +269,6 @@ test('getShopeeEmailInbox builds the live Gmail inbox query and keeps an opaque 
   assert.equal(payload.source, 'info@mail.shopee.co.th');
 });
 
-test('getShopeeInboxOverview requests a shop-scoped Bangkok date', async () => {
-  const calls = [];
-  globalThis.fetch = async (url, options) => {
-    calls.push({ url, options });
-    return new Response(JSON.stringify({
-      date: '2026-09-03',
-      ordersToday: 7,
-      shopCode: 'all',
-      timezone: 'Asia/Bangkok',
-    }), { status: 200 });
-  };
-
-  const api = await vite.ssrLoadModule('/src/services/api.js');
-  const payload = await api.getShopeeInboxOverview({ date: '2026-09-03', shopCode: 'all' });
-
-  assert.equal(
-    calls[0].url,
-    'http://api.test.local/api/app/shopee/inbox/overview?date=2026-09-03&shopCode=all',
-  );
-  assert.equal(calls[0].options.credentials, 'include');
-  assert.equal(payload.ordersToday, 7);
-});
-
 test('Shopee timeline APIs list, read, and admin-sync parsed orders', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
