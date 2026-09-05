@@ -40,3 +40,11 @@ test('runCommand rejects for a non-zero exit code', async () => {
 
   await assert.rejects(() => runCommand(command, args), /exited with code 3/);
 });
+
+test('runCommand terminates only its timed-out invocation', async () => {
+  const { runCommand } = require('../src/convert');
+  await assert.rejects(
+    runCommand(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { timeout: 150 }),
+    /timed out/,
+  );
+});

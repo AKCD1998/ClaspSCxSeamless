@@ -176,6 +176,39 @@ test('processWorkbookPayload rejects non-File values before network calls', asyn
   );
 });
 
+test('uploadAccountingOriginals sends untouched files under separate shop fields', async () => {
+  if (typeof File === 'undefined') return;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ manifest: { sourceFileCount: 42 } }), { status: 201 });
+  };
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const payload = await api.uploadAccountingOriginals({
+    'sc-drug-store': [new File(['source PDF'], 'weekly_report_20260727.pdf')],
+    'dr-morepen': [new File(['source Excel'], 'Income.xlsx')],
+  });
+
+  assert.equal(calls[0].url, 'http://api.test.local/api/app/accounting-print-bundles');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(calls[0].options.body.get('sc-drug-store').name, 'weekly_report_20260727.pdf');
+  assert.equal(await calls[0].options.body.get('sc-drug-store').text(), 'source PDF');
+  assert.equal(calls[0].options.body.get('dr-morepen').name, 'Income.xlsx');
+  assert.equal(payload.manifest.sourceFileCount, 42);
+});
+
+test('accounting approval sends only the selected batch and reviewed digest', async () => {
+  const calls = [];
+  globalThis.fetch = async (url,options) => {
+    calls.push({url,options});
+    return new Response(JSON.stringify({id:'batch-1',status:'queued'}));
+  };
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.approveAccountingPrintBatch('batch-1','reviewed-digest');
+  assert.equal(calls[0].url, 'http://api.test.local/api/app/accounting-print-bundles/batch-1/approve');
+  assert.deepEqual(JSON.parse(calls[0].options.body),{digest:'reviewed-digest'});
+});
+
 test('processWorkbookPayload surfaces duplicate-upload failures from backend payloads', async () => {
   if (typeof File === 'undefined') {
     return;

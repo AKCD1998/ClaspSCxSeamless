@@ -121,6 +121,33 @@ export async function processWorkbookPayload(payload) {
   throw new Error('Workbook processing returned no result.');
 }
 
+export async function uploadAccountingOriginals(shopFiles) {
+  const form = new FormData();
+  for (const shop of ['sc-drug-store', 'dr-morepen']) {
+    for (const file of shopFiles[shop] || []) form.append(shop, file, file.name);
+  }
+  return requestJson('/app/accounting-print-bundles', { method: 'POST', body: form });
+}
+export function listAccountingPrintBatches() {
+  return requestJson('/app/accounting-print-bundles');
+}
+export function getAccountingPrintBatch(id) {
+  return requestJson('/app/accounting-print-bundles/' + encodeURIComponent(id));
+}
+export function approveAccountingPrintBatch(id, digest) {
+  return requestJson('/app/accounting-print-bundles/' + encodeURIComponent(id) + '/approve', {
+    method: 'POST', body: JSON.stringify({ digest }),
+  });
+}
+export function resolveAccountingPrintBatch(id, body) {
+  return requestJson('/app/accounting-print-bundles/' + encodeURIComponent(id) + '/resolve', {
+    method: 'POST', body: JSON.stringify(body),
+  });
+}
+export function accountingFileUrl(relativePath) {
+  return API_BASE_URL + relativePath;
+}
+
 export async function fetchProcessingHistory(filters = {}) {
   const params = new URLSearchParams();
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AnimatedThemeBackground from './components/AnimatedThemeBackground.jsx';
 import TopNavBar from './components/TopNavBar.jsx';
+import AccountingPrintBundlePage from './pages/AccountingPrintBundlePage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import PharmCareHistoryPage from './pages/PharmCareHistoryPage.jsx';
@@ -16,7 +17,7 @@ import UploadPage from './pages/UploadPage.jsx';
 import { getSession, logout } from './services/api.js';
 
 function resolveTheme(pathname) {
-  if (pathname.startsWith('/shopee')) {
+  if (pathname.startsWith('/shopee') || pathname.startsWith('/accounting')) {
     return 'shopee';
   }
 
@@ -63,6 +64,7 @@ function AuthenticatedApp({ onLogout }) {
       <Routes>
         <Route index element={<UploadPage />} />
         <Route path="history" element={<HistoryPage />} />
+        <Route path="accounting/print-bundle" element={<AccountingPrintBundlePage />} />
         <Route path="shopee" element={<Navigate to="/shopee/upload" replace />} />
         <Route path="shopee/upload" element={<ShopeeUploadPage />} />
         <Route path="shopee/inbox" element={<ShopeeReportsPage />} />

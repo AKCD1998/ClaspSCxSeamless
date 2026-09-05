@@ -1,13 +1,13 @@
 const { spawn } = require('node:child_process');
 
-function buildSumatraArgs(sumatraPath, printerName, pdfFile) {
+function buildSumatraArgs(sumatraPath, printerName, pdfFile, printSettings = '') {
   return {
     command: sumatraPath,
-    args: ['-print-to', printerName, '-silent', pdfFile],
+    args: ['-print-to', printerName, ...(printSettings ? ['-print-settings', printSettings] : []), '-silent', pdfFile],
   };
 }
 
-function parseGetPrintJobOutput(output) {
+function parseGetPrintJobOutput(output, { strict = false } = {}) {
   const text = String(output || '').trim();
 
   if (!text) {
@@ -18,6 +18,7 @@ function parseGetPrintJobOutput(output) {
   try {
     parsed = JSON.parse(text);
   } catch (error) {
+    if (strict) throw new Error('อ่านสถานะคิวพิมพ์ไม่ได้');
     return [];
   }
 
@@ -26,6 +27,7 @@ function parseGetPrintJobOutput(output) {
   return rows.filter(Boolean).map((row) => ({
     id: row.Id ?? row.id ?? null,
     jobStatus: row.JobStatus ?? row.jobStatus ?? '',
+    ...(row.DocumentName ? { documentName: row.DocumentName } : {}),
   }));
 }
 
@@ -60,15 +62,15 @@ function runPowerShell(script) {
   });
 }
 
-async function getPrintJobs(printerName) {
+async function getPrintJobs(printerName, options = {}) {
   const escaped = String(printerName || '').replace(/'/g, "''");
-  const script = `Get-PrintJob -PrinterName '${escaped}' | ConvertTo-Json -Compress`;
+  const script = `$ErrorActionPreference='Stop'; Get-PrintJob -PrinterName '${escaped}' | Select-Object Id,DocumentName,@{Name='JobStatus';Expression={$_.JobStatus.ToString()}} | ConvertTo-Json -Compress`;
   const output = await runPowerShell(script);
-  return parseGetPrintJobOutput(output);
+  return parseGetPrintJobOutput(output, options);
 }
 
-function printPdf({ sumatraPath, printerName, pdfFile }) {
-  const { command, args } = buildSumatraArgs(sumatraPath, printerName, pdfFile);
+function printPdf({ sumatraPath, printerName, pdfFile, printSettings }) {
+  const { command, args } = buildSumatraArgs(sumatraPath, printerName, pdfFile, printSettings);
 
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { windowsHide: true });
@@ -121,12 +123,17 @@ async function waitForSpecificJobToClear({
   pollIntervalMs = 5000,
   sleep = defaultSleep,
   getJobs = getPrintJobs,
+  strict = false,
 }) {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
     const jobs = await getJobs(printerName);
-    const stillThere = jobs.some((job) => job.id === jobId);
+    const current = jobs.find((job) => job.id === jobId);
+    const stillThere = !!current;
+    if (strict && current && /Error|Offline|PaperOut|Blocked|UserIntervention|Paused|Deleting|Deleted/i.test(String(current.jobStatus))) {
+      return { completed: false, reason: 'เครื่องพิมพ์แจ้งสถานะ ' + current.jobStatus };
+    }
 
     if (!stillThere) {
       return { completed: true };

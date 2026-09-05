@@ -19,6 +19,28 @@ test('getPrintQueue sends a bearer token and unwraps the queue array', async () 
   assert.equal(calls[0].url, 'http://api.test.local/api/agent/print-queue');
   assert.equal(calls[0].options.headers.Authorization, 'Bearer secret-token');
   assert.deepEqual(queue, [{ processingRecordId: 'abc' }]);
+  assert.deepEqual(Object.keys(calls[0].options.headers).sort(), ['Authorization','Content-Type']);
+});
+
+test('accounting transport exposes callable claim/event/download/preview methods with layout metadata', async () => {
+  const calls=[];
+  global.fetch=async(url,options)=>{
+    calls.push({url,options});
+    return url.endsWith('/original')?new Response('PDF bytes'):new Response(JSON.stringify({ok:true,work:null}));
+  };
+  const api=createApiClient({apiBaseUrl:'https://example.invalid',internalApiToken:'test-only'});
+  await api.claimBatchWork({protocol:1,agentHost:'FAKE',printerName:'FAKE'});
+  await api.batchEvent('item',{token:'claim',event:'heartbeat'});
+  const bytes=await api.downloadBatchFile('/api/agent/accounting-print-batches/b/items/i/original');
+  const layout={version:'shopee-a4-landscape-reference-v2',columns:['หมายเลขคำสั่งซื้อ']};
+  await api.uploadBatchPreview('item','claim',bytes,layout);
+  assert.equal(calls.length,4);
+  assert.match(calls[0].url,/\/claim$/);
+  assert.deepEqual(Object.keys(calls[0].options.headers).sort(),['Authorization','Content-Type']);
+  assert.equal(calls[2].options.redirect,'error');
+  assert.equal(calls[3].options.body.get('token'),'claim');
+  assert.deepEqual(JSON.parse(calls[3].options.body.get('printLayout')),layout);
+  await assert.rejects(api.downloadBatchFile('https://elsewhere.invalid/file'));
 });
 
 test('getPrintQueue returns [] when the response has no queue field', async () => {

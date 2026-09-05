@@ -1,5 +1,9 @@
 # Print Agent
 
+## ชุดต้นฉบับบัญชี Shopee (ยังปิดไว้เป็นค่าเริ่มต้น)
+
+โหมด `ACCOUNTING_BATCH_ENABLED=true` เพิ่มคิวชุดต้นฉบับ PDF/XLSX ที่แยกจากงานเดิม: สร้าง PDF ให้ตรวจครบก่อนอนุมัติ แล้วพิมพ์ทีละไฟล์ตามร้าน/สัปดาห์ ตรวจ hash และ Job ID หยุดเมื่อผลไม่แน่ชัด ไม่พิมพ์ซ้ำอัตโนมัติ อ่านขั้นตอน rollout/rollback ใน `../docs/24-accounting-original-print-batches.md` ก่อนเปิดใช้ ต้องอัปเดต backend คู่กัน
+
 Node.js CLI ที่รันบนเครื่อง 000 (สาขา, Windows Server 2019) ทุก 2 นาทีผ่าน Task Scheduler เพื่อ:
 
 1. เช็คเว็บ ClaspSCxSeamless ว่ามีเอกสารที่ยังไม่ได้ปริ้นท์ส่งพี่เอหรือไม่ (`GET /api/agent/print-queue`)
@@ -28,7 +32,7 @@ Node.js CLI ที่รันบนเครื่อง 000 (สาขา, Win
 git clone <repo-url> C:\apps\ClaspSCxSeamless
 cd C:\apps\ClaspSCxSeamless\print-agent
 
-# ติดตั้ง dependency (มีแค่ dotenv)
+# ติดตั้ง dependency รวม ExcelJS สำหรับสำเนาพิมพ์บัญชี
 npm install
 
 # สร้าง .env จริงจาก .env.example แล้วกรอกค่าจริง
@@ -119,3 +123,8 @@ Start-ScheduledTask -TaskName "ClaspSCxSeamless Print Agent"   # สั่งร
 - **printer offline / ไม่เจอ printer**: เช็คชื่อ printer ด้วย `Get-Printer` แล้วเทียบกับ `PRINTER_NAME` ใน `.env` ให้ตรงเป๊ะ
 - **แปลง PDF ไม่ได้**: เช็ค `SOFFICE_PATH` ชี้ถูกไฟล์จริงไหม, ลองรัน `soffice --headless --convert-to pdf --outdir . test.xlsx` มือเปล่าดูว่า error อะไร
 - **ก่อนเปิดใช้งานจริงครั้งแรก**: ปริ้นไฟล์ตัวอย่างจริง 1 รอบเทียบกับที่เคยปริ้นจาก Excel/GAS เดิม เพื่อยืนยันว่า format จาก LibreOffice ไม่เพี้ยน (ดู docs/09 section 5.2)
+# Accounting print-layout update (2026-09-05)
+
+The new original-batch path prepares **print copies only** via `src/accountingPrintLayout.js` before LibreOffice conversion. Deploy `package.json` and `package-lock.json` and run `npm ci --omit=dev` for ExcelJS 4.4.0. Preserve the existing `.env` and logs. The legacy converter is unchanged.
+
+All accounting Excel sheets use A4 landscape, width 1 page and unlimited vertical pages. Orders use the user's 14-column reference without row/status filters; Income uses approved accounting columns and preserves every nonzero monetary component, Summary and supplemental fee data. Original bytes are never edited. The agent uploads v2 layout metadata with the preview, and the backend rejects portrait or old-version Excel previews. Each conversion writes to a fresh output directory so a failed conversion cannot reuse an old PDF. Review and print approvals remain separate from deployment approval; no real printing or LINE sending was performed in local tests.

@@ -20,6 +20,7 @@ export const NAV_GROUPS = [
       { to: '/shopee/inbox', end: false, label: 'รายงานอีเมล์จาก Shopee' },
       { to: '/shopee/orders', end: false, label: 'ไทม์ไลน์คำสั่งซื้อ' },
       { to: '/shopee/sales-summary', end: false, label: 'สรุปยอดขายสินค้า' },
+      { to: '/accounting/print-bundle', end: false, label: 'ชุดเอกสารบัญชี/ปริ้น' },
       { to: '/shopee/history', end: false, label: 'ประวัติ' },
     ],
   },
@@ -40,7 +41,8 @@ function isGroupActive(group, pathname) {
     return pathname === '/' || pathname === '/history';
   }
 
-  return pathname.startsWith(group.basePath);
+  return pathname.startsWith(group.basePath)
+    || (group.key === 'shopee' && pathname.startsWith('/accounting'));
 }
 
 export default function TopNavBar({ onLogout, colorMode = 'light', onToggleColorMode }) {

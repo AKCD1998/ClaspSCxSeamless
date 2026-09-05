@@ -72,6 +72,47 @@ test('Shopee upload route renders the live workbook upload workflow', async () =
   assert.doesNotMatch(html, /กำลังพัฒนา/);
 });
 
+test('accounting bundle route separates upload from the final print request', async () => {
+  const html = await renderPage('/src/pages/AccountingPrintBundlePage.jsx', '/accounting/print-bundle');
+
+  assert.match(html, /ชุดเอกสารบัญชี Shopee/);
+  assert.match(html, /ตรวจไฟล์และสร้างตัวอย่าง/);
+  assert.match(html, /ยังไม่สั่งปริ้น/);
+  assert.match(html, /type="file"/);
+});
+
+function reviewFixture(status = 'review') {
+  return { id:'test-batch', title:'เอกสารบัญชีทดสอบ', status, digest:'approved-bytes', totalPages:4,
+    completedCount:0, printerName:'TEST ONLY', agentHost:'FAKE', notifications:[],
+    items:[{ id:'item-1',sequence:1,shop:'SC Drug Store',periodStart:'2026-07-27',periodEnd:'2026-08-02',
+      start:'2026-07-20',end:'2026-07-26',filename:'Order.all.xlsx',documentType:'คำสั่งซื้อทั้งหมด',
+      carryOver:true,relatedPeriods:['2026-07-27','2026-08-03'],pageCount:4,status:'ready',
+      originalUrl:'/app/test/original',previewUrl:'/app/test/preview',warnings:[]}] };
+}
+
+test('accounting review shows carry-over links and requires explicit checked approval', async () => {
+  const { BatchDetails } = await vite.ssrLoadModule('/src/pages/AccountingPrintBundlePage.jsx');
+  const html = renderToString(React.createElement(BatchDetails,{batch:reviewFixture(),busy:false}));
+  assert.match(html,/คำสั่งซื้อยกมา/);
+  assert.match(html,/2026-07-20/);
+  assert.match(html,/2026-08-03/);
+  assert.match(html,/ตัวอย่างที่จะพิมพ์/);
+  assert.match(html,/type="checkbox"/);
+  assert.match(html,/<button disabled="">อนุมัติและสั่งพิมพ์/);
+});
+
+test('preparation never renders a print-approval control; uncertain jobs require operator evidence', async () => {
+  const { BatchDetails } = await vite.ssrLoadModule('/src/pages/AccountingPrintBundlePage.jsx');
+  const preparing = renderToString(React.createElement(BatchDetails,{batch:reviewFixture('preparing'),busy:false}));
+  assert.doesNotMatch(preparing,/อนุมัติและสั่งพิมพ์/);
+  const batch = reviewFixture('paused');
+  batch.items[0].status='uncertain';
+  const paused = renderToString(React.createElement(BatchDetails,{batch,busy:false}));
+  assert.match(paused,/อาจพิมพ์ไปแล้วบางส่วนหรือครบแล้ว/);
+  assert.match(paused,/confirm-printed/);
+  assert.match(paused,/<button disabled="">บันทึกผลตรวจและทำต่อ/);
+});
+
 test('Shopee history route is locked to Shopee records and exposes admin print controls', async () => {
   const html = await renderPage('/src/pages/ShopeeHistoryPage.jsx', '/shopee/history');
 

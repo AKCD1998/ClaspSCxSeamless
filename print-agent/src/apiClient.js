@@ -28,6 +28,30 @@ function createApiClient({ apiBaseUrl, internalApiToken }) {
   const base = String(apiBaseUrl || '').replace(/\/+$/, '');
 
   return {
+    async claimBatchWork(body) {
+      return requestJson(`${base}/api/agent/accounting-print-batches/claim`,
+        { method:'POST',body:JSON.stringify(body) },internalApiToken);
+    },
+    async batchEvent(id,body) {
+      return requestJson(`${base}/api/agent/accounting-print-batches/items/${encodeURIComponent(id)}/events`,
+        {method:'POST',body:JSON.stringify(body)},internalApiToken);
+    },
+    async uploadBatchPreview(id,token,buffer,printLayout) {
+      const form=new FormData();form.append('token',token);
+      if(printLayout)form.append('printLayout',JSON.stringify(printLayout));
+      form.append('preview',new Blob([buffer],{type:'application/pdf'}),'preview.pdf');
+      const response=await fetch(`${base}/api/agent/accounting-print-batches/items/${encodeURIComponent(id)}/preview`,{
+        method:'POST',headers:{Authorization:`Bearer ${internalApiToken}`},body:form,signal:AbortSignal.timeout(120000),
+      });
+      if(!response.ok)throw new Error('บันทึกตัวอย่างไม่สำเร็จ (HTTP '+response.status+')');
+      return response.json();
+    },
+    async downloadBatchFile(url) {
+      if(!/^\/api\/agent\/accounting-print-batches\//.test(url))throw new Error('Invalid batch download path');
+      const response=await fetch(base+url,{headers:{Authorization:`Bearer ${internalApiToken}`},signal:AbortSignal.timeout(120000),redirect:'error'});
+      if(!response.ok)throw new Error('ดาวน์โหลดไม่สำเร็จ (HTTP '+response.status+')');
+      return Buffer.from(await response.arrayBuffer());
+    },
     async getPrintQueue() {
       const payload = await requestJson(`${base}/api/agent/print-queue`, { method: 'GET' }, internalApiToken);
       return (payload && payload.queue) || [];

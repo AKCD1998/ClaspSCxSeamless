@@ -9,6 +9,7 @@ const { convertToPdf } = require('./convert');
 const { detectNewSpoolerJobId, getPrintJobs, printPdf, waitForSpecificJobToClear } = require('./print');
 const { createLogger } = require('./logger');
 const { acquireLock, releaseLock } = require('./lock');
+const { runOriginalBatchQueue } = require('./originalBatch');
 
 function readEnv() {
   return {
@@ -19,6 +20,7 @@ function readEnv() {
     sofficePath: process.env.SOFFICE_PATH || '',
     sumatraPath: process.env.SUMATRA_PATH || '',
     pollLogDir: process.env.POLL_LOG_DIR || 'logs',
+    accountingBatchEnabled: process.env.ACCOUNTING_BATCH_ENABLED === 'true',
   };
 }
 
@@ -126,6 +128,20 @@ async function runOnce({ dryRun = false } = {}) {
   try {
     const api = createApiClient({ apiBaseUrl: env.apiBaseUrl, internalApiToken: env.internalApiToken });
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'print-agent-'));
+
+    if (env.accountingBatchEnabled) {
+      try {
+        const batchResult = await runOriginalBatchQueue({ api, env, logger, dryRun, tempDir });
+        if (batchResult.holdLegacy) {
+          anyFailures = !!batchResult.failed;
+          return;
+        }
+      } catch (error) {
+        logger.log('Cannot verify accounting batch queue; stopping this run: ' + error.message);
+        anyFailures = true;
+        return;
+      }
+    }
 
     let queue;
     try {
