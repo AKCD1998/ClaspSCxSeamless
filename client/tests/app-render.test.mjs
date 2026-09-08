@@ -154,7 +154,8 @@ test('Shopee sales summary route renders date filters and expandable product col
   assert.match(html, /name="startDate"/);
   assert.match(html, /name="endDate"/);
   assert.match(html, /Export Excel/);
-  assert.match(html, /ไม่นับออเดอร์ที่ยกเลิกหรือพัสดุตีกลับ/);
+  assert.match(html, /ยอดหลักใช้รายงาน Shopee “ยืนยันแล้ว” ก่อนหักยกเลิก/);
+  assert.match(html, /รายละเอียดสินค้าด้านล่างใช้วันที่สร้างออเดอร์/);
 });
 
 test('PharmCare reports route renders the email inbox under its new menu name', async () => {

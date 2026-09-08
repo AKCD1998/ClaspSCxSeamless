@@ -160,3 +160,73 @@ test('does not highlight an ordinary product as a bundle', async () => {
   assert.doesNotMatch(html, /แถวพื้นหลังสีเหลือง/u);
   assert.doesNotMatch(html, /BUNDLE/u);
 });
+
+test('shows provisional financial coverage without treating unknown discounts as zero', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-08-31', shopCode: 'sc-drug-store', startDate: '2026-08-01' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, accounting: { status: 'provisional', calculatedSalesTotal: 146548,
+      sourceBackedSalesTotal: null, sourceBackedOrderCount: 520, provisionalOrderCount: 60,
+      quantityReviewOrderCount: 0 } },
+  }));
+  assert.match(html, /146,548/);
+  assert.match(html, /ประมาณการบางส่วน/);
+  assert.match(html, /60/);
+  assert.match(html, /ส่วนลดยังไม่ทราบ ไม่ใช่ศูนย์/);
+  assert.match(html, /ยังต้องตรวจความครบถ้วนของทั้งช่วง/);
+  assert.match(html, /ยอดขายรายออเดอร์/);
+});
+
+test('does not present missing monetary data as a zero total', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-08-31', shopCode: 'all', startDate: '2026-08-01' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, accounting: { status: 'incomplete', calculatedSalesTotal: null,
+      sourceBackedOrderCount: 0, provisionalOrderCount: 2, quantityReviewOrderCount: 1 } },
+  }));
+  assert.match(html, /ยังรวมยอดไม่ได้ มีออเดอร์ขาดยอดเงิน/);
+  assert.match(html, /ต้องตรวจสอบก่อนคีย์สินค้า/);
+});
+
+test('primary confirmed gross is separate from net orders and follows report dates', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-08-31', shopCode: 'all', startDate: '2026-08-01' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, confirmedSales: { startDate: '2026-08-01', endDate: '2026-08-31',
+      status: 'source_backed', salesTotal: 171917, shops: [
+        { shopCode: 'sc-drug-store', salesTotal: 154026, orderCount: 613, cancelledSales: 7478, coveredDays: 31, expectedDays: 31 },
+        { shopCode: 'dr-morepen', salesTotal: 17891, orderCount: 36, cancelledSales: 350, coveredDays: 31, expectedDays: 31 },
+      ] }, accounting: { calculatedSalesTotal: 164089, status: 'provisional', sourceBackedOrderCount: 554, provisionalOrderCount: 61 } },
+  }));
+  assert.match(html, /ยอดขายยืนยันแล้ว — ก่อนหักยกเลิก/);
+  assert.match(html, /154,026/); assert.match(html, /17,891/);
+  assert.match(html, /613/); assert.match(html, /36/);
+  assert.match(html, /วันที่ในรายงานยืนยันแล้ว/);
+  assert.match(html, /ไม่หักยอดยกเลิกออกจากยอดหลัก/);
+  assert.match(html, /คนละเกณฑ์/);
+  assert.ok(html.indexOf('154,026') < html.indexOf('164,089'));
+});
+
+test('missing official source is unavailable while explicit zero remains zero', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-08-01', shopCode: 'all', startDate: '2026-08-01' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' }, summary: { ...summary, confirmedSales: {
+      startDate: '2026-08-01', endDate: '2026-08-01', status: 'incomplete', salesTotal: null,
+      missingDays: [{ shopCode: 'dr-morepen', date: '2026-08-01' }], shops: [
+        { shopCode: 'sc-drug-store', salesTotal: 0, orderCount: 0, cancelledSales: 0, coveredDays: 1, expectedDays: 1 },
+        { shopCode: 'dr-morepen', salesTotal: null, orderCount: null, cancelledSales: null, coveredDays: 0, expectedDays: 1 },
+      ],
+    } },
+  }));
+  assert.match(html, /ยังสรุปยอดยืนยันแล้วไม่ได้ รายงานต้นทางไม่ครบ/);
+  assert.match(html, /ไม่มีการใช้ยอดจากอีเมลหรือยอดหลังยกเลิกแทน/);
+  assert.match(html, /฿0/);
+});
