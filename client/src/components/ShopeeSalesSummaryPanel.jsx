@@ -61,7 +61,7 @@ export function ShopeeSalesSummaryView({
         <div>
           <p className="panel-eyebrow">Shopee Product Sales Summary</p>
           <p className="panel-copy">
-            ยอดหลักใช้รายงาน Shopee “ยืนยันแล้ว” ก่อนหักยกเลิก ส่วนรายละเอียดสินค้าด้านล่างใช้วันที่สร้างออเดอร์ (เวลาไทย) และตัดออเดอร์ยกเลิก/พัสดุตีกลับ
+            เลือกช่วงวันที่เพื่อดูยอดขายยืนยันแล้วและรายละเอียดสินค้า
           </p>
         </div>
       </div>
@@ -101,13 +101,6 @@ export function ShopeeSalesSummaryView({
           {isExporting ? 'กำลังสร้าง Excel...' : 'Export Excel'}
         </button>
       </form>
-      <p className="shopee-sales-export-help">
-        Excel จะแยกรายการที่พร้อมใช้กับโปรแกรมพิมพ์อัตโนมัติไว้ในชีต “พร้อมคีย์”
-        และแยกรายการที่ยังต้องยืนยัน SKU หรือหน่วยฐานไว้ในชีต “ต้องตรวจสอบ”
-        {accounting ? ' ยอดเงินอยู่ในชีต “ยอดขายรายออเดอร์” โดยนับออเดอร์ละครั้ง ไม่รวมซ้ำตามแถวสินค้า' : ''}
-        {confirmed ? ' ยอดหลักอยู่ในชีต “ยอดขายยืนยันแล้ว” แยกจากยอดรายออเดอร์หลังยกเลิก' : ''}
-      </p>
-
       <section className="status-panel history-status-panel" aria-live="polite">
         <p className="status" data-state={status.state}>{status.message}</p>
       </section>
@@ -119,7 +112,7 @@ export function ShopeeSalesSummaryView({
               <h3>ยอดขายยืนยันแล้ว — ก่อนหักยกเลิก</h3>
               <p>วันที่ในรายงานยืนยันแล้ว: {confirmed.startDate} ถึง {confirmed.endDate}</p>
               <p><strong>{confirmed.salesTotal == null ? 'ยังสรุปยอดยืนยันแล้วไม่ได้ รายงานต้นทางไม่ครบ' : formatShopeeMoney(confirmed.salesTotal)}</strong></p>
-              {confirmed.status === 'incomplete' ? <p role="alert">ขาดรายงาน {confirmed.missingDays.length} วัน-ร้าน ไม่มีการใช้ยอดจากอีเมลหรือยอดหลังยกเลิกแทน</p> : null}
+              {confirmed.status === 'incomplete' ? <p role="alert">รายงานต้นทางไม่ครบ {confirmed.missingDays.length} วัน-ร้าน</p> : null}
               <div className="history-table-wrap">
                 <table className="history-table">
                   <thead><tr><th>ร้าน</th><th>ยอดขายยืนยันแล้ว (บาท)</th><th>ออเดอร์ยืนยันแล้ว</th><th>ยอดยกเลิกในกลุ่มนี้ (บาท)</th><th>ข้อมูลต้นทาง</th></tr></thead>
@@ -132,9 +125,6 @@ export function ShopeeSalesSummaryView({
                   </tr>)}</tbody>
                 </table>
               </div>
-              <p>อ้างอิงชีต “ยืนยันแล้ว” ในไฟล์สรุป Shopee ไม่หักยอดยกเลิกออกจากยอดหลัก และไม่ใช่ยอดเงินโอนจาก Income</p>
-              <p>เป็นยอดจากไฟล์ที่นำเข้า ไม่ได้ดึงสดจาก Shopee หากรายงานเปลี่ยนย้อนหลังต้องนำเข้าไฟล์ใหม่</p>
-              <p>วันที่ในรายงานนี้อาจต่างจากวันที่สร้างออเดอร์ จึงไม่ใช้รายละเอียดด้านล่างแทนยอดยืนยันแล้ว</p>
             </section>
           ) : null}
           <h3>รายละเอียดสินค้าและออเดอร์หลังตัดยกเลิก/พัสดุตีกลับ</h3>
@@ -152,15 +142,6 @@ export function ShopeeSalesSummaryView({
                   : formatShopeeMoney(accounting.calculatedSalesTotal)}
                 {accounting.status === 'provisional' ? ' (ประมาณการบางส่วน)' : ''}
               </p>
-              <p>ข้อมูลประกอบคนละเกณฑ์กับยอดขายยืนยันแล้วด้านบน ห้ามใช้แทนกัน</p>
-              <p>คำนวณค่าสินค้า − โค้ดส่วนลดผู้ขาย + ส่วนลดจาก Shopee โดยนับหนึ่งครั้งต่อร้านและเลขออเดอร์ ไม่ใช่ยอดรับเงินสุทธิจาก Income</p>
-              {accounting.provisionalOrderCount > 0 ? (
-                <p role="alert">
-                  ยังไม่ยืนยันจากไฟล์คำสั่งซื้อ {accounting.provisionalOrderCount} ออเดอร์:
-                  ใช้ค่าสินค้าจากอีเมลเป็นประมาณการ ส่วนลดยังไม่ทราบ ไม่ใช่ศูนย์
-                </p>
-              ) : null}
-              <p>มีไฟล์คำสั่งซื้อรองรับ {accounting.sourceBackedOrderCount} ออเดอร์ ยังต้องตรวจความครบถ้วนของทั้งช่วงกับรายงาน Shopee</p>
               {accounting.quantityReviewOrderCount > 0 ? <p role="alert">จำนวนสินค้าจากอีเมลไม่ตรงกับไฟล์คำสั่งซื้อ {accounting.quantityReviewOrderCount} ออเดอร์ ต้องตรวจสอบก่อนคีย์สินค้า</p> : null}
             </section>
           ) : null}

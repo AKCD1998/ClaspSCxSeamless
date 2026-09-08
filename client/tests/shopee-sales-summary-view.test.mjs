@@ -80,8 +80,6 @@ test('renders totals and keeps order rows collapsed initially', async () => {
   assert.match(html, /IC-001849/);
   assert.match(html, /จำนวนหน่วยสินค้ารวม/);
   assert.match(html, /Export Excel/);
-  assert.match(html, /ชีต “พร้อมคีย์”/u);
-  assert.match(html, /ชีต “ต้องตรวจสอบ”/u);
   assert.match(html, /aria-expanded="false"/);
   assert.doesNotMatch(html, /260901TEST001/);
 });
@@ -161,7 +159,7 @@ test('does not highlight an ordinary product as a bundle', async () => {
   assert.doesNotMatch(html, /BUNDLE/u);
 });
 
-test('shows provisional financial coverage without treating unknown discounts as zero', async () => {
+test('shows the provisional total without long calculation notes', async () => {
   const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
   const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
     filters: { endDate: '2026-08-31', shopCode: 'sc-drug-store', startDate: '2026-08-01' },
@@ -173,10 +171,9 @@ test('shows provisional financial coverage without treating unknown discounts as
   }));
   assert.match(html, /146,548/);
   assert.match(html, /ประมาณการบางส่วน/);
-  assert.match(html, /60/);
-  assert.match(html, /ส่วนลดยังไม่ทราบ ไม่ใช่ศูนย์/);
-  assert.match(html, /ยังต้องตรวจความครบถ้วนของทั้งช่วง/);
-  assert.match(html, /ยอดขายรายออเดอร์/);
+  assert.doesNotMatch(html, /ส่วนลดยังไม่ทราบ ไม่ใช่ศูนย์/);
+  assert.doesNotMatch(html, /ยังต้องตรวจความครบถ้วนของทั้งช่วง/);
+  assert.doesNotMatch(html, /ยอดขายรายออเดอร์/);
 });
 
 test('does not present missing monetary data as a zero total', async () => {
@@ -208,8 +205,8 @@ test('primary confirmed gross is separate from net orders and follows report dat
   assert.match(html, /154,026/); assert.match(html, /17,891/);
   assert.match(html, /613/); assert.match(html, /36/);
   assert.match(html, /วันที่ในรายงานยืนยันแล้ว/);
-  assert.match(html, /ไม่หักยอดยกเลิกออกจากยอดหลัก/);
-  assert.match(html, /คนละเกณฑ์/);
+  assert.doesNotMatch(html, /ไม่หักยอดยกเลิกออกจากยอดหลัก/);
+  assert.doesNotMatch(html, /คนละเกณฑ์/);
   assert.ok(html.indexOf('154,026') < html.indexOf('164,089'));
 });
 
@@ -227,6 +224,6 @@ test('missing official source is unavailable while explicit zero remains zero', 
     } },
   }));
   assert.match(html, /ยังสรุปยอดยืนยันแล้วไม่ได้ รายงานต้นทางไม่ครบ/);
-  assert.match(html, /ไม่มีการใช้ยอดจากอีเมลหรือยอดหลังยกเลิกแทน/);
+  assert.match(html, /รายงานต้นทางไม่ครบ[\s\S]*1[\s\S]*วัน-ร้าน/);
   assert.match(html, /฿0/);
 });
