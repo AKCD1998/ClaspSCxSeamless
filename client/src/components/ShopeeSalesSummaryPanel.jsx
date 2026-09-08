@@ -30,6 +30,11 @@ export function formatSalesOrderDate(value) {
   }).format(date);
 }
 
+export function formatShopeeReportDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(value || '')) return value || '-';
+  return `${value.slice(8, 10)}-${value.slice(5, 7)}-${value.slice(0, 4)}`;
+}
+
 function SummaryMetric({ label, value }) {
   return (
     <div className="shopee-sales-summary-metric">
@@ -61,7 +66,7 @@ export function ShopeeSalesSummaryView({
         <div>
           <p className="panel-eyebrow">Shopee Product Sales Summary</p>
           <p className="panel-copy">
-            เลือกช่วงวันที่เพื่อดูยอดขายยืนยันแล้วและรายละเอียดสินค้า
+            เลือกช่วงวันที่เพื่อดูรายงาน Shopee และรายละเอียดสินค้า
           </p>
         </div>
       </div>
@@ -108,18 +113,19 @@ export function ShopeeSalesSummaryView({
       {summary ? (
         <>
           {confirmed ? (
-            <section className="status-panel history-status-panel" aria-label="ยอดขายยืนยันแล้วจาก Shopee">
-              <h3>ยอดขายยืนยันแล้ว — ก่อนหักยกเลิก</h3>
-              <p>วันที่ในรายงานยืนยันแล้ว: {confirmed.startDate} ถึง {confirmed.endDate}</p>
-              <p><strong>{confirmed.salesTotal == null ? 'ยังสรุปยอดยืนยันแล้วไม่ได้ รายงานต้นทางไม่ครบ' : formatShopeeMoney(confirmed.salesTotal)}</strong></p>
+            <section className="status-panel history-status-panel" aria-label="รายงาน Shopee ชีตยืนยันแล้ว">
+              <h3>รายงาน Shopee — ชีต “ยืนยันแล้ว”</h3>
+              <p>วันที่: {formatShopeeReportDate(confirmed.startDate)} ถึง {formatShopeeReportDate(confirmed.endDate)}</p>
+              <p><strong>ยอดขายทั้งหมด (THB): {confirmed.salesTotal == null ? 'ยังสรุปไม่ได้ รายงานต้นทางไม่ครบ' : formatShopeeMoney(confirmed.salesTotal)}</strong></p>
               {confirmed.status === 'incomplete' ? <p role="alert">รายงานต้นทางไม่ครบ {confirmed.missingDays.length} วัน-ร้าน</p> : null}
               <div className="history-table-wrap">
                 <table className="history-table">
-                  <thead><tr><th>ร้าน</th><th>ยอดขายยืนยันแล้ว (บาท)</th><th>ออเดอร์ยืนยันแล้ว</th><th>ยอดยกเลิกในกลุ่มนี้ (บาท)</th><th>ข้อมูลต้นทาง</th></tr></thead>
+                  <thead><tr><th>ร้าน</th><th>ยอดขายทั้งหมด (THB)</th><th>คำสั่งซื้อทั้งหมด</th><th>คำสั่งซื้อที่ยกเลิก</th><th>ยอดขายที่ยกเลิก</th><th>วันที่มีข้อมูล</th></tr></thead>
                   <tbody>{confirmed.shops.map(shop => <tr key={shop.shopCode}>
                     <td>{SHOP_LABELS[shop.shopCode]}</td>
                     <td><strong>{shop.salesTotal == null ? 'ยังสรุปไม่ได้' : formatShopeeMoney(shop.salesTotal)}</strong></td>
                     <td>{shop.orderCount == null ? 'ยังสรุปไม่ได้' : new Intl.NumberFormat('th-TH').format(shop.orderCount)}</td>
+                    <td>{shop.cancelledOrderCount == null ? 'ยังสรุปไม่ได้' : new Intl.NumberFormat('th-TH').format(shop.cancelledOrderCount)}</td>
                     <td>{shop.cancelledSales == null ? 'ยังสรุปไม่ได้' : formatShopeeMoney(shop.cancelledSales)}</td>
                     <td>{shop.coveredDays}/{shop.expectedDays} วัน</td>
                   </tr>)}</tbody>
@@ -127,16 +133,16 @@ export function ShopeeSalesSummaryView({
               </div>
             </section>
           ) : null}
-          <h3>รายละเอียดสินค้าและออเดอร์หลังตัดยกเลิก/พัสดุตีกลับ</h3>
+          <h3>รายละเอียดสินค้าและคำสั่งซื้อจากไฟล์คำสั่งซื้อ</h3>
           <div className="shopee-sales-summary-metrics">
             <SummaryMetric label="ชนิดสินค้า" value={summary.productCount} />
-            <SummaryMetric label="จำนวนออเดอร์" value={summary.orderCount} />
+            <SummaryMetric label="คำสั่งซื้อในรายละเอียด" value={summary.orderCount} />
             <SummaryMetric label="จำนวนหน่วยสินค้ารวม" value={summary.totalQuantity} />
           </div>
           {accounting ? (
             <section className="status-panel history-status-panel" aria-label="ยอดขายและความครบถ้วนของหลักฐาน">
               <p>
-                <strong>ยอดขายหลังตัดออเดอร์ยกเลิกและพัสดุตีกลับ: </strong>
+                <strong>ยอดขายจากรายละเอียดคำสั่งซื้อหลังตัดรายการยกเลิก/พัสดุตีกลับ: </strong>
                 {accounting.calculatedSalesTotal === null
                   ? 'ยังรวมยอดไม่ได้ มีออเดอร์ขาดยอดเงิน'
                   : formatShopeeMoney(accounting.calculatedSalesTotal)}

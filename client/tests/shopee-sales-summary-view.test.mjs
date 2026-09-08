@@ -197,14 +197,20 @@ test('primary confirmed gross is separate from net orders and follows report dat
     status: { state: 'success', message: 'พร้อม' },
     summary: { ...summary, confirmedSales: { startDate: '2026-08-01', endDate: '2026-08-31',
       status: 'source_backed', salesTotal: 171917, shops: [
-        { shopCode: 'sc-drug-store', salesTotal: 154026, orderCount: 613, cancelledSales: 7478, coveredDays: 31, expectedDays: 31 },
-        { shopCode: 'dr-morepen', salesTotal: 17891, orderCount: 36, cancelledSales: 350, coveredDays: 31, expectedDays: 31 },
+        { shopCode: 'sc-drug-store', salesTotal: 154026, orderCount: 613, cancelledOrderCount: 33, cancelledSales: 7478, coveredDays: 31, expectedDays: 31 },
+        { shopCode: 'dr-morepen', salesTotal: 17891, orderCount: 36, cancelledOrderCount: 1, cancelledSales: 350, coveredDays: 31, expectedDays: 31 },
       ] }, accounting: { calculatedSalesTotal: 164089, status: 'provisional', sourceBackedOrderCount: 554, provisionalOrderCount: 61 } },
   }));
-  assert.match(html, /ยอดขายยืนยันแล้ว — ก่อนหักยกเลิก/);
+  assert.match(html, /รายงาน Shopee — ชีต “ยืนยันแล้ว”/);
+  assert.match(html, /ยอดขายทั้งหมด \(THB\)/);
+  assert.match(html, /คำสั่งซื้อทั้งหมด/);
+  assert.match(html, /คำสั่งซื้อที่ยกเลิก/);
+  assert.match(html, /ยอดขายที่ยกเลิก/);
   assert.match(html, /154,026/); assert.match(html, /17,891/);
   assert.match(html, /613/); assert.match(html, /36/);
-  assert.match(html, /วันที่ในรายงานยืนยันแล้ว/);
+  assert.match(html, /154,026[\s\S]*613[\s\S]*33[\s\S]*7,478/);
+  assert.match(html, /17,891[\s\S]*36[\s\S]*>1<[\s\S]*350/);
+  assert.match(html, /วันที่:[\s\S]*01-08-2026[\s\S]*31-08-2026/);
   assert.doesNotMatch(html, /ไม่หักยอดยกเลิกออกจากยอดหลัก/);
   assert.doesNotMatch(html, /คนละเกณฑ์/);
   assert.ok(html.indexOf('154,026') < html.indexOf('164,089'));
@@ -218,12 +224,12 @@ test('missing official source is unavailable while explicit zero remains zero', 
     status: { state: 'success', message: 'พร้อม' }, summary: { ...summary, confirmedSales: {
       startDate: '2026-08-01', endDate: '2026-08-01', status: 'incomplete', salesTotal: null,
       missingDays: [{ shopCode: 'dr-morepen', date: '2026-08-01' }], shops: [
-        { shopCode: 'sc-drug-store', salesTotal: 0, orderCount: 0, cancelledSales: 0, coveredDays: 1, expectedDays: 1 },
-        { shopCode: 'dr-morepen', salesTotal: null, orderCount: null, cancelledSales: null, coveredDays: 0, expectedDays: 1 },
+        { shopCode: 'sc-drug-store', salesTotal: 0, orderCount: 0, cancelledOrderCount: 0, cancelledSales: 0, coveredDays: 1, expectedDays: 1 },
+        { shopCode: 'dr-morepen', salesTotal: null, orderCount: null, cancelledOrderCount: null, cancelledSales: null, coveredDays: 0, expectedDays: 1 },
       ],
     } },
   }));
-  assert.match(html, /ยังสรุปยอดยืนยันแล้วไม่ได้ รายงานต้นทางไม่ครบ/);
+  assert.match(html, /ยอดขายทั้งหมด \(THB\):[\s\S]*ยังสรุปไม่ได้ รายงานต้นทางไม่ครบ/);
   assert.match(html, /รายงานต้นทางไม่ครบ[\s\S]*1[\s\S]*วัน-ร้าน/);
   assert.match(html, /฿0/);
 });
