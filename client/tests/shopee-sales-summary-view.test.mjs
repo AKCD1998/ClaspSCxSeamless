@@ -216,6 +216,29 @@ test('primary confirmed gross is separate from net orders and follows report dat
   assert.ok(html.indexOf('154,026') < html.indexOf('164,089'));
 });
 
+test('shows original source filename, freshness, import time and shortened SHA for audit', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const sha = 'abcdef1234567890'.padEnd(64, '0');
+  const source = { sourceFilename: '142wuxqhgi.shopee-shop-stats.20260801-20260831.xlsx',
+    sourceSha256: sha, observedAt: '2026-09-09T02:00:00.000Z', importedAt: '2026-09-09T02:05:00.000Z',
+    coveredStartDate: '2026-08-01', coveredEndDate: '2026-08-31', coveredDays: 31 };
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-08-31', shopCode: 'sc-drug-store', startDate: '2026-08-01' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, confirmedSales: { startDate: '2026-08-01', endDate: '2026-08-31',
+      status: 'source_backed', salesTotal: 154026, missingDays: [], shops: [{ shopCode: 'sc-drug-store',
+        salesTotal: 154026, orderCount: 613, cancelledOrderCount: 33, cancelledSales: 7478,
+        coveredDays: 31, expectedDays: 31, latestDataDate: '2026-08-31', sources: [source] }] } },
+  }));
+  assert.match(html, /หลักฐานไฟล์ต้นทางและความสดของข้อมูล/u);
+  assert.match(html, /142wuxqhgi\.shopee-shop-stats\.20260801-20260831\.xlsx/u);
+  assert.match(html, /31-08-2026/u);
+  assert.match(html, /abcdef123456[\s\S]*…/u);
+  assert.match(html, /ตรวจพบไฟล์/u);
+  assert.match(html, /นำเข้าระบบ/u);
+});
+
 test('missing official source is unavailable while explicit zero remains zero', async () => {
   const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
   const html = renderToString(React.createElement(ShopeeSalesSummaryView, {

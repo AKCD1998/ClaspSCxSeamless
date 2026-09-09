@@ -35,6 +35,17 @@ export function formatShopeeReportDate(value) {
   return `${value.slice(8, 10)}-${value.slice(5, 7)}-${value.slice(0, 4)}`;
 }
 
+export function formatShopeeEvidenceTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return new Intl.DateTimeFormat('th-TH', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Bangkok',
+  }).format(date);
+}
+
 function SummaryMetric({ label, value }) {
   return (
     <div className="shopee-sales-summary-metric">
@@ -129,6 +140,28 @@ export function ShopeeSalesSummaryView({
                     <td>{shop.cancelledSales == null ? 'ยังสรุปไม่ได้' : formatShopeeMoney(shop.cancelledSales)}</td>
                     <td>{shop.coveredDays}/{shop.expectedDays} วัน</td>
                   </tr>)}</tbody>
+                </table>
+              </div>
+              <h4>หลักฐานไฟล์ต้นทางและความสดของข้อมูล</h4>
+              <div className="history-table-wrap">
+                <table className="history-table">
+                  <thead><tr><th>ร้าน</th><th>ข้อมูลล่าสุด</th><th>ไฟล์ต้นฉบับ</th><th>ตรวจพบไฟล์</th><th>นำเข้าระบบ</th><th>SHA-256</th></tr></thead>
+                  <tbody>{confirmed.shops.flatMap(shop => {
+                    const sources = shop.sources || [];
+                    if (!sources.length) return [<tr key={`${shop.shopCode}:missing`}>
+                      <td>{SHOP_LABELS[shop.shopCode]}</td>
+                      <td>{formatShopeeReportDate(shop.latestDataDate)}</td>
+                      <td colSpan="4">ยังไม่มีหลักฐานไฟล์ต้นทางในช่วงที่เลือก</td>
+                    </tr>];
+                    return sources.map(source => <tr key={`${shop.shopCode}:${source.sourceSha256}`}>
+                      <td>{SHOP_LABELS[shop.shopCode]}</td>
+                      <td>{formatShopeeReportDate(shop.latestDataDate)}</td>
+                      <td>{source.sourceFilename}<br /><small>{formatShopeeReportDate(source.coveredStartDate)} ถึง {formatShopeeReportDate(source.coveredEndDate)} ({source.coveredDays} วัน)</small></td>
+                      <td>{formatShopeeEvidenceTime(source.observedAt)}</td>
+                      <td>{formatShopeeEvidenceTime(source.importedAt)}</td>
+                      <td><code title={source.sourceSha256}>{source.sourceSha256.slice(0, 12)}…</code></td>
+                    </tr>);
+                  })}</tbody>
                 </table>
               </div>
             </section>
