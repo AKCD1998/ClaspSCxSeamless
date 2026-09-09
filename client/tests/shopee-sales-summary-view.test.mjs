@@ -201,9 +201,9 @@ test('primary confirmed gross is separate from net orders and follows report dat
         { shopCode: 'dr-morepen', salesTotal: 17891, orderCount: 36, cancelledOrderCount: 1, cancelledSales: 350, coveredDays: 31, expectedDays: 31 },
       ] }, accounting: { calculatedSalesTotal: 164089, status: 'provisional', sourceBackedOrderCount: 554, provisionalOrderCount: 61 } },
   }));
-  assert.match(html, /รายงาน Shopee — ชีต “ยืนยันแล้ว”/);
-  assert.match(html, /ยอดขายทั้งหมด \(THB\)/);
-  assert.match(html, /คำสั่งซื้อทั้งหมด/);
+  assert.match(html, /Business Insights — ภาพรวมยอดขาย/);
+  assert.match(html, /ยอดขาย \(คำสั่งซื้อที่ได้รับการยืนยัน\) \(THB\)/);
+  assert.match(html, /คำสั่งซื้อ\(ได้รับการยืนยัน\)/);
   assert.match(html, /คำสั่งซื้อที่ยกเลิก/);
   assert.match(html, /ยอดขายที่ยกเลิก/);
   assert.match(html, /154,026/); assert.match(html, /17,891/);
@@ -214,6 +214,22 @@ test('primary confirmed gross is separate from net orders and follows report dat
   assert.doesNotMatch(html, /ไม่หักยอดยกเลิกออกจากยอดหลัก/);
   assert.doesNotMatch(html, /คนละเกณฑ์/);
   assert.ok(html.indexOf('154,026') < html.indexOf('164,089'));
+});
+
+test('does not invent cancellation zeroes when the current Business Insights file omits them', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-09-08', shopCode: 'sc-drug-store', startDate: '2026-09-08' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, confirmedSales: { startDate: '2026-09-08', endDate: '2026-09-08',
+      status: 'source_backed', salesTotal: 17362, shops: [
+        { shopCode: 'sc-drug-store', status: 'source_backed', salesTotal: 17362, orderCount: 57,
+          cancelledOrderCount: null, cancelledSales: null, coveredDays: 1, expectedDays: 1 },
+      ] } },
+  }));
+  assert.match(html, /ไม่มีในไฟล์รูปแบบนี้/);
+  assert.match(html, /ระบบจึงเว้นข้อมูลไว้ ไม่ตีความเป็น 0/);
 });
 
 test('shows original source filename, freshness, import time and shortened SHA for audit', async () => {
@@ -252,7 +268,7 @@ test('missing official source is unavailable while explicit zero remains zero', 
       ],
     } },
   }));
-  assert.match(html, /ยอดขายทั้งหมด \(THB\):[\s\S]*ยังสรุปไม่ได้ รายงานต้นทางไม่ครบ/);
+  assert.match(html, /ยอดขาย \(คำสั่งซื้อที่ได้รับการยืนยัน\) \(THB\):[\s\S]*ยังสรุปไม่ได้ รายงานต้นทางไม่ครบ/);
   assert.match(html, /รายงานต้นทางไม่ครบ[\s\S]*1[\s\S]*วัน-ร้าน/);
   assert.match(html, /฿0/);
 });

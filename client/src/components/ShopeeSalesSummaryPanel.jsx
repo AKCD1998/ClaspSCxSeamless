@@ -124,24 +124,27 @@ export function ShopeeSalesSummaryView({
       {summary ? (
         <>
           {confirmed ? (
-            <section className="status-panel history-status-panel" aria-label="รายงาน Shopee ชีตยืนยันแล้ว">
-              <h3>รายงาน Shopee — ชีต “ยืนยันแล้ว”</h3>
+            <section className="status-panel history-status-panel" aria-label="Business Insights ของ Shopee">
+              <h3>Business Insights — ภาพรวมยอดขาย</h3>
               <p>วันที่: {formatShopeeReportDate(confirmed.startDate)} ถึง {formatShopeeReportDate(confirmed.endDate)}</p>
-              <p><strong>ยอดขายทั้งหมด (THB): {confirmed.salesTotal == null ? 'ยังสรุปไม่ได้ รายงานต้นทางไม่ครบ' : formatShopeeMoney(confirmed.salesTotal)}</strong></p>
+              <p><strong>ยอดขาย (คำสั่งซื้อที่ได้รับการยืนยัน) (THB): {confirmed.salesTotal == null ? 'ยังสรุปไม่ได้ รายงานต้นทางไม่ครบ' : formatShopeeMoney(confirmed.salesTotal)}</strong></p>
               {confirmed.status === 'incomplete' ? <p role="alert">รายงานต้นทางไม่ครบ {confirmed.missingDays.length} วัน-ร้าน</p> : null}
               <div className="history-table-wrap">
                 <table className="history-table">
-                  <thead><tr><th>ร้าน</th><th>ยอดขายทั้งหมด (THB)</th><th>คำสั่งซื้อทั้งหมด</th><th>คำสั่งซื้อที่ยกเลิก</th><th>ยอดขายที่ยกเลิก</th><th>วันที่มีข้อมูล</th></tr></thead>
+                  <thead><tr><th>ร้าน</th><th>ยอดขาย (คำสั่งซื้อที่ได้รับการยืนยัน) (THB)</th><th>คำสั่งซื้อ(ได้รับการยืนยัน)</th><th>คำสั่งซื้อที่ยกเลิก</th><th>ยอดขายที่ยกเลิก</th><th>วันที่มีข้อมูล</th></tr></thead>
                   <tbody>{confirmed.shops.map(shop => <tr key={shop.shopCode}>
                     <td>{SHOP_LABELS[shop.shopCode]}</td>
                     <td><strong>{shop.salesTotal == null ? 'ยังสรุปไม่ได้' : formatShopeeMoney(shop.salesTotal)}</strong></td>
                     <td>{shop.orderCount == null ? 'ยังสรุปไม่ได้' : new Intl.NumberFormat('th-TH').format(shop.orderCount)}</td>
-                    <td>{shop.cancelledOrderCount == null ? 'ยังสรุปไม่ได้' : new Intl.NumberFormat('th-TH').format(shop.cancelledOrderCount)}</td>
-                    <td>{shop.cancelledSales == null ? 'ยังสรุปไม่ได้' : formatShopeeMoney(shop.cancelledSales)}</td>
+                    <td>{shop.cancelledOrderCount == null ? (shop.status === 'source_backed' ? 'ไม่มีในไฟล์รูปแบบนี้' : 'ยังสรุปไม่ได้') : new Intl.NumberFormat('th-TH').format(shop.cancelledOrderCount)}</td>
+                    <td>{shop.cancelledSales == null ? (shop.status === 'source_backed' ? 'ไม่มีในไฟล์รูปแบบนี้' : 'ยังสรุปไม่ได้') : formatShopeeMoney(shop.cancelledSales)}</td>
                     <td>{shop.coveredDays}/{shop.expectedDays} วัน</td>
                   </tr>)}</tbody>
                 </table>
               </div>
+              {confirmed.status === 'source_backed' && confirmed.shops.some(shop => shop.cancelledSales == null) ? (
+                <p>ไฟล์ Business Insights รูปแบบปัจจุบันไม่มีคอลัมน์ “คำสั่งซื้อที่ยกเลิก” และ “ยอดขายที่ยกเลิก” ระบบจึงเว้นข้อมูลไว้ ไม่ตีความเป็น 0</p>
+              ) : null}
               <h4>หลักฐานไฟล์ต้นทางและความสดของข้อมูล</h4>
               <div className="history-table-wrap">
                 <table className="history-table">
