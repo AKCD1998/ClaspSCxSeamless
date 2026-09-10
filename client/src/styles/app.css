@@ -1392,6 +1392,40 @@ button:disabled {
 .shopee-sales-summary-table th:nth-child(5) { width: 8%; }
 .shopee-sales-summary-table th:nth-child(6) { width: 12%; }
 
+.shopee-reconciliation-table td {
+  vertical-align: top;
+}
+
+.shopee-reconciliation-table small,
+.shopee-reconciliation-reason {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.shopee-reconciliation details {
+  margin-top: 1rem;
+}
+
+.shopee-reconciliation summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.shopee-payout-bridge {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.shopee-income-bridge,
+.shopee-payout-bridge > details {
+  margin-top: 0.5rem;
+}
+
+.shopee-source-evidence code {
+  overflow-wrap: anywhere;
+}
+
 .shopee-sales-product-row {
   cursor: pointer;
   transition: background-color 150ms ease;
