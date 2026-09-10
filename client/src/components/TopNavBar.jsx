@@ -20,6 +20,7 @@ export const NAV_GROUPS = [
       { to: '/shopee/inbox', end: false, label: 'รายงานอีเมล์จาก Shopee' },
       { to: '/shopee/orders', end: false, label: 'ไทม์ไลน์คำสั่งซื้อ' },
       { to: '/shopee/sales-summary', end: false, label: 'สรุปยอดขายสินค้า' },
+      { to: '/shopee/document-sync-status', end: false, label: 'สถานะเอกสาร Shopee' },
       { to: '/accounting/print-bundle', end: false, label: 'ชุดเอกสารบัญชี/ปริ้น' },
       { to: '/shopee/history', end: false, label: 'ประวัติ' },
     ],

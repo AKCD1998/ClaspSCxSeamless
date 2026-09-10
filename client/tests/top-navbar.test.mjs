@@ -76,6 +76,7 @@ test('Shopee navigation includes the live email report route', async () => {
       '/shopee/inbox',
       '/shopee/orders',
       '/shopee/sales-summary',
+      '/shopee/document-sync-status',
       '/accounting/print-bundle',
       '/shopee/history',
     ],
@@ -83,5 +84,6 @@ test('Shopee navigation includes the live email report route', async () => {
   assert.equal(shopee.items[1].label, 'รายงานอีเมล์จาก Shopee');
   assert.equal(shopee.items[2].label, 'ไทม์ไลน์คำสั่งซื้อ');
   assert.equal(shopee.items[3].label, 'สรุปยอดขายสินค้า');
-  assert.equal(shopee.items[4].label, 'ชุดเอกสารบัญชี/ปริ้น');
+  assert.equal(shopee.items[4].label, 'สถานะเอกสาร Shopee');
+  assert.equal(shopee.items[5].label, 'ชุดเอกสารบัญชี/ปริ้น');
 });
