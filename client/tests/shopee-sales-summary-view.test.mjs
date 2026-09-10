@@ -272,3 +272,38 @@ test('missing official source is unavailable while explicit zero remains zero', 
   assert.match(html, /รายงานต้นทางไม่ครบ[\s\S]*1[\s\S]*วัน-ร้าน/);
   assert.match(html, /฿0/);
 });
+
+test('shows weekly finance reconciliation and exceptional-case evidence using Shopee labels', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-09-06', shopCode: 'all', startDate: '2026-08-31' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, officialDocuments: {
+      finance: [{
+        shopCode: 'sc-drug-store', startDate: '2026-08-31', endDate: '2026-09-06',
+        status: 'source_backed', statementTotal: 76618,
+        incomeTransferredTotal: 76618, incomeTransferredOrderCount: 417,
+        zeroPayoutOrderCount: 1, sellerBalanceOrderTotal: 76618,
+        sellerBalanceOrderCount: 416, sellerBalanceAdjustmentTotal: 0,
+        sellerBalanceAdjustmentCount: 0,
+      }],
+      returns: [{
+        shopCode: 'sc-drug-store', startDate: '2026-08-31', endDate: '2026-09-06',
+        status: 'source_backed', cancelledOrderCount: 5, cancelledNetSales: 1200,
+        failedDeliveryOrderCount: 1, failedDeliveryNetSales: 200,
+        returnRefundRequestCount: 2, totalRefundAmount: 497,
+        coveredDayCount: 7, expectedDayCount: 7,
+      }],
+    } },
+  }));
+  assert.match(html, /ตรวจเอกสารการเงินรายสัปดาห์/u);
+  assert.match(html, /รายงานการเงิน/u);
+  assert.match(html, /รายละเอียดรายรับของฉัน/u);
+  assert.match(html, /Seller Balance/u);
+  assert.match(html, /76,618/u);
+  assert.match(html, /ยอดโอน ฿0 จำนวน [\s\S]*1[\s\S]* รายการ/u);
+  assert.match(html, /คำสั่งซื้อที่ยกเลิก \/ คืนเงินหรือคืนสินค้า \/ จัดส่งไม่สำเร็จ/u);
+  assert.match(html, /ราคาขายสุทธิ/u);
+  assert.match(html, /จำนวนเงินคืนทั้งหมด/u);
+});

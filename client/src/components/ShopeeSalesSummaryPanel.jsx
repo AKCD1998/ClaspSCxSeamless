@@ -55,6 +55,96 @@ function SummaryMetric({ label, value }) {
   );
 }
 
+function financeStatusLabel(status) {
+  if (status === 'source_backed') return 'ตรงกัน';
+  if (status === 'mismatch') return 'ยอดหรือรายการไม่ตรงกัน';
+  return 'เอกสารยังไม่ครบ';
+}
+
+function OfficialFinanceEvidence({ periods = [] }) {
+  if (!periods.length) return null;
+  return (
+    <section className="status-panel history-status-panel" aria-label="ตรวจเอกสารการเงินรายสัปดาห์">
+      <h3>ตรวจเอกสารการเงินรายสัปดาห์</h3>
+      <div className="history-table-wrap">
+        <table className="history-table">
+          <thead>
+            <tr>
+              <th>ร้าน</th>
+              <th>รอบรายงานการเงิน</th>
+              <th>รายงานการเงิน<br />จำนวนเงินที่โอนแล้วทั้งหมด</th>
+              <th>รายละเอียดรายรับของฉัน<br />โอนเงินแล้ว</th>
+              <th>Seller Balance<br />รายการที่มีหมายเลขคำสั่งซื้อ</th>
+              <th>รายการปรับยอดใน Seller Balance</th>
+              <th>ผลตรวจ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {periods.map((period) => (
+              <tr key={`${period.shopCode}:${period.startDate}:${period.endDate}`}>
+                <td>{SHOP_LABELS[period.shopCode] || period.shopCode}</td>
+                <td>{formatShopeeReportDate(period.startDate)} ถึง {formatShopeeReportDate(period.endDate)}</td>
+                <td>{period.statementTotal == null ? '-' : formatShopeeMoney(period.statementTotal)}</td>
+                <td>
+                  {period.incomeTransferredTotal == null ? '-' : formatShopeeMoney(period.incomeTransferredTotal)}
+                  {period.incomeTransferredOrderCount == null ? null : <small>{period.incomeTransferredOrderCount} รายการ</small>}
+                  {period.zeroPayoutOrderCount > 0 ? <small>ยอดโอน ฿0 จำนวน {period.zeroPayoutOrderCount} รายการ</small> : null}
+                </td>
+                <td>
+                  {period.sellerBalanceOrderTotal == null ? '-' : formatShopeeMoney(period.sellerBalanceOrderTotal)}
+                  {period.sellerBalanceOrderCount == null ? null : <small>{period.sellerBalanceOrderCount} รายการ</small>}
+                </td>
+                <td>
+                  {period.sellerBalanceAdjustmentTotal == null ? '-' : formatShopeeMoney(period.sellerBalanceAdjustmentTotal)}
+                  {period.sellerBalanceAdjustmentCount == null ? null : <small>{period.sellerBalanceAdjustmentCount} รายการ</small>}
+                </td>
+                <td><strong>{financeStatusLabel(period.status)}</strong></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function OfficialReturnEvidence({ shops = [] }) {
+  if (!shops.length) return null;
+  return (
+    <section className="status-panel history-status-panel" aria-label="คำสั่งซื้อที่ยกเลิก คืนเงินหรือคืนสินค้า และจัดส่งไม่สำเร็จ">
+      <h3>คำสั่งซื้อที่ยกเลิก / คืนเงินหรือคืนสินค้า / จัดส่งไม่สำเร็จ</h3>
+      <div className="history-table-wrap">
+        <table className="history-table">
+          <thead>
+            <tr>
+              <th>ร้าน</th>
+              <th>ช่วงวันที่สร้างคำสั่งซื้อ</th>
+              <th>คำสั่งซื้อที่ยกเลิก<br />ราคาขายสุทธิ</th>
+              <th>จัดส่งไม่สำเร็จ<br />ราคาขายสุทธิ</th>
+              <th>คืนเงิน/คืนสินค้า<br />จำนวนเงินคืนทั้งหมด</th>
+              <th>วันที่มีข้อมูล</th>
+              <th>สถานะข้อมูล</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shops.map((shop) => (
+              <tr key={shop.shopCode}>
+                <td>{SHOP_LABELS[shop.shopCode] || shop.shopCode}</td>
+                <td>{formatShopeeReportDate(shop.startDate)} ถึง {formatShopeeReportDate(shop.endDate)}</td>
+                <td>{shop.coveredDayCount === 0 ? 'ยังสรุปไม่ได้' : <>{shop.cancelledOrderCount} คำสั่งซื้อ<br /><strong>{formatShopeeMoney(shop.cancelledNetSales)}</strong></>}</td>
+                <td>{shop.coveredDayCount === 0 ? 'ยังสรุปไม่ได้' : <>{shop.failedDeliveryOrderCount} คำสั่งซื้อ<br /><strong>{formatShopeeMoney(shop.failedDeliveryNetSales)}</strong></>}</td>
+                <td>{shop.coveredDayCount === 0 ? 'ยังสรุปไม่ได้' : <>{shop.returnRefundRequestCount} คำขอ<br /><strong>{formatShopeeMoney(shop.totalRefundAmount)}</strong></>}</td>
+                <td>{shop.coveredDayCount}/{shop.expectedDayCount} วัน</td>
+                <td><strong>{shop.status === 'source_backed' ? 'ครบ' : 'ไม่ครบ'}</strong></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function ShopeeSalesSummaryView({
   filters,
   isExporting,
@@ -70,6 +160,7 @@ export function ShopeeSalesSummaryView({
   const products = summary?.products || [];
   const accounting = summary?.accounting;
   const confirmed = summary?.confirmedSales;
+  const officialDocuments = summary?.officialDocuments;
   const hasBundleProducts = products.some((product) => product.isBundle === true);
   return (
     <section className="panel shopee-sales-summary-panel">
@@ -168,6 +259,12 @@ export function ShopeeSalesSummaryView({
                 </table>
               </div>
             </section>
+          ) : null}
+          {officialDocuments ? (
+            <>
+              <OfficialFinanceEvidence periods={officialDocuments.finance} />
+              <OfficialReturnEvidence shops={officialDocuments.returns} />
+            </>
           ) : null}
           <h3>รายละเอียดสินค้าและคำสั่งซื้อจากไฟล์คำสั่งซื้อ</h3>
           <div className="shopee-sales-summary-metrics">
