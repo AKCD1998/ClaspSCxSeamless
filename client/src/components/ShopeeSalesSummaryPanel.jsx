@@ -61,6 +61,210 @@ function financeStatusLabel(status) {
   return 'เอกสารยังไม่ครบ';
 }
 
+function reconciliationStatusLabel(status) {
+  if (status === 'reconciled') return 'ตรงกัน ส่วนต่าง ฿0.00';
+  if (status === 'unresolved') return 'ยังมีส่วนต่างที่ต้องสืบย้อน';
+  return 'หลักฐานยังไม่ครบ';
+}
+
+function ReconciliationAmount({ stage }) {
+  if (!stage) return '-';
+  return (
+    <>
+      <strong>{stage.officialAmount == null ? '-' : formatShopeeMoney(stage.officialAmount)}</strong>
+      <small>จากรายออเดอร์: {stage.reconstructedAmount == null ? '-' : formatShopeeMoney(stage.reconstructedAmount)}</small>
+      <small>ส่วนต่าง: {stage.variance == null ? '-' : formatShopeeMoney(stage.variance)}</small>
+      <small>{stage.officialOrderCount ?? '-'} / {stage.reconstructedOrderCount ?? '-'} คำสั่งซื้อ</small>
+    </>
+  );
+}
+
+function EvidenceRefs({ evidence = [] }) {
+  const unique = [...new Map(evidence.map((row) => [row.sourceSha256, row])).values()];
+  if (!unique.length) return <small>ยังไม่มีหลักฐานไฟล์ต้นฉบับ</small>;
+  return unique.map((row) => (
+    <small key={row.sourceSha256} className="shopee-source-evidence">
+      {row.sourceFilename} · SHA-256 <code title={row.sourceSha256}>{row.sourceSha256.slice(0, 12)}…</code>
+      {' · '}{row.observedAt}
+    </small>
+  ));
+}
+
+function IncomeStateBridge({ label, state }) {
+  if (!state?.factCount) return null;
+  const bridge = state.componentBridge;
+  const populated = (bridge?.components || []).filter((row) => row.amount != null && row.amount !== 0);
+  return (
+    <details className="shopee-income-bridge">
+      <summary>{label}: {formatShopeeMoney(state.payoutAmount)} ({state.linkedOrderCount} คำสั่งซื้อ)</summary>
+      <p>
+        ผลรวมองค์ประกอบที่มีเครื่องหมาย: {bridge.additiveComponentTotal == null ? '-' : formatShopeeMoney(bridge.additiveComponentTotal)}
+        {' · '}ส่วนที่ยังอธิบายไม่ได้: {bridge.unexplainedResidual == null ? '-' : formatShopeeMoney(bridge.unexplainedResidual)}
+      </p>
+      {populated.length ? (
+        <div className="history-table-wrap">
+          <table className="history-table">
+            <thead><tr><th>องค์ประกอบรายรับ</th><th>จำนวนเงิน</th><th>บทบาท</th></tr></thead>
+            <tbody>{populated.map((row) => (
+              <tr key={row.key}>
+                <td>{row.label}</td>
+                <td>{formatShopeeMoney(row.amount)}</td>
+                <td>{row.additive ? 'รวมในยอดโอน' : 'รายละเอียดเงินคืน (ไม่บวกซ้ำ)'}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      ) : null}
+      <EvidenceRefs evidence={bridge?.evidence} />
+    </details>
+  );
+}
+
+function PayoutAndDownstreamBridge({ shop }) {
+  const latest = shop.payoutBridge?.income?.latestState;
+  const downstream = shop.downstreamControls;
+  if (!latest && !downstream) return null;
+  return (
+    <section className="shopee-payout-bridge" aria-label={`สะพานรายรับและเงินโอน ${SHOP_LABELS[shop.shopCode] || shop.shopCode}`}>
+      <h4>{SHOP_LABELS[shop.shopCode] || shop.shopCode}: รายรับและเงินโอน</h4>
+      <p>สถานะรอดำเนินการและโอนสำเร็จแสดงแยกกัน และยอดสถานะล่าสุดไม่นับคำสั่งซื้อเดิมซ้ำ</p>
+      <IncomeStateBridge label="สถานะล่าสุด: รอดำเนินการ" state={latest?.pending} />
+      <IncomeStateBridge label="สถานะล่าสุด: โอนสำเร็จ" state={latest?.transferred} />
+      {downstream ? (
+        <details>
+          <summary>หลักฐานปลายทาง Financial Statement และ Seller Balance</summary>
+          <p>แสดงเป็นตัวควบคุมแยกตามรอบรายรับ และยังไม่อ้างว่าเท่ากันจนกว่าจะพิสูจน์การเชื่อมรอบครบ</p>
+          {(downstream.financialStatements || []).map((row) => (
+            <div key={row.evidence.sourceSha256}>
+              <strong>Financial Statement {row.periodStart}–{row.periodEnd}: </strong>
+              {row.transferredTotal == null ? '-' : formatShopeeMoney(row.transferredTotal)}
+              <EvidenceRefs evidence={[row.evidence]} />
+            </div>
+          ))}
+          {(downstream.sellerBalanceAdjustments || []).map((row) => (
+            <div key={row.evidence.sourceSha256}>
+              <strong>Seller Balance adjustments {row.periodStart}–{row.periodEnd}: </strong>
+              {row.adjustmentAmount == null ? '-' : formatShopeeMoney(row.adjustmentAmount)} ({row.adjustmentCount ?? '-'} รายการ)
+              <EvidenceRefs evidence={[row.evidence]} />
+            </div>
+          ))}
+          {(downstream.unlinkedSources || []).map((row) => (
+            <div key={row.evidence.sourceSha256}>
+              <strong>ยังไม่เชื่อมกับรอบ Income: {row.reportType} {row.periodStart}–{row.periodEnd}</strong>
+              <EvidenceRefs evidence={[row.evidence]} />
+            </div>
+          ))}
+          {!(downstream.financialStatements || []).length && !(downstream.sellerBalanceAdjustments || []).length
+            ? <p>ยังไม่มีเอกสารปลายทางที่เชื่อมกับรอบรายรับของคำสั่งซื้อในช่วงนี้</p> : null}
+        </details>
+      ) : null}
+    </section>
+  );
+}
+
+function SellerVoucherRestorationEvidence({ shop }) {
+  const restoration = shop.sellerVoucherRestoration;
+  if (!restoration?.restoredOrderCount) return null;
+  return (
+    <details className="shopee-income-bridge">
+      <summary>
+        {SHOP_LABELS[shop.shopCode] || shop.shopCode}: กู้คืนค่า “โค้ดส่วนลดชำระโดยผู้ขาย” จากหลักฐาน{' '}
+        {formatShopeeMoney(restoration.restoredAmount)} ({restoration.restoredOrderCount} คำสั่งซื้อ)
+      </summary>
+      <p>
+        คำนวณรายคำสั่งซื้อจาก voucher code ใน Order All และหลักฐาน campaign ที่ใช้ได้ ณ เวลาชำระสินค้า
+        ค่านี้นำไปหักจากยอดขายตั้งต้นและยอดขายที่ยกเลิก ไม่ใช่เงินคืนให้ลูกค้า
+      </p>
+      {(restoration.campaigns || []).map((campaign) => (
+        <div key={`${campaign.voucherId}:${campaign.validFrom}`}>
+          <strong>{campaign.voucherId} · {campaign.voucherName}</strong>
+          <p>
+            {campaign.discountRate * 100}% · สูงสุด {formatShopeeMoney(campaign.maxDiscount)} ·
+            ขั้นต่ำ {formatShopeeMoney(campaign.minSpend)} · {campaign.appliesToAllProducts ? 'สินค้าทั้งหมด' : 'สินค้าตามเงื่อนไข'}
+          </p>
+          <small>
+            ใช้ได้ {formatShopeeEvidenceTime(campaign.validFrom)} – {formatShopeeEvidenceTime(campaign.validTo)} ·
+            ตรวจหลักฐาน {formatSalesOrderDate(campaign.sourceObservedAt)} ({campaign.sourceObservedPrecision === 'date' ? 'ความละเอียดระดับวัน' : 'เวลาที่บันทึก'})
+          </small>
+          <small className="shopee-source-evidence">
+            <a href={campaign.sourceUrl} target="_blank" rel="noreferrer">เปิดหลักฐาน Seller Centre</a>
+            {' · '}{campaign.sourceNotes}
+          </small>
+        </div>
+      ))}
+      <p>คำสั่งซื้อ: {restoration.orderNumbers.join(', ')}</p>
+    </details>
+  );
+}
+
+function FinancialReconciliation({ reconciliation }) {
+  if (!reconciliation) return null;
+  const dailyExceptions = (reconciliation.aggregates?.daily || [])
+    .filter((row) => row.status !== 'reconciled');
+  return (
+    <section className="status-panel history-status-panel shopee-reconciliation" aria-label="การสืบย้อนยอดการเงิน Shopee">
+      <h3>การสืบย้อนยอดการเงิน</h3>
+      <p>
+        ใช้ <strong>เวลาการชำระสินค้า</strong> จัดวันให้ตรงกับ Business Insights;
+        คำสั่งซื้อที่ยกเลิกภายหลังยังอยู่ใน Sales batch ตั้งต้น และไปลดหนี้แยกในขั้นตอนถัดไป
+      </p>
+      <p className="status" data-state={reconciliation.status === 'reconciled' ? 'success' : 'error'}>
+        {reconciliationStatusLabel(reconciliation.status)}
+      </p>
+      <div className="history-table-wrap">
+        <table className="history-table shopee-reconciliation-table">
+          <thead><tr>
+            <th>ร้าน</th>
+            <th>ยอดขาย (คำสั่งซื้อที่ได้รับการยืนยัน)</th>
+            <th>ยอดขายที่ยกเลิก</th>
+            <th>ยอดขายที่คืนเงิน/คืนสินค้า</th>
+            <th>ยอดขายยืนยันแล้วสุทธิ</th>
+            <th>ผลตรวจ</th>
+          </tr></thead>
+          <tbody>{reconciliation.shops.map((shop) => (
+            <tr key={shop.shopCode}>
+              <td>{SHOP_LABELS[shop.shopCode] || shop.shopCode}</td>
+              <td><ReconciliationAmount stage={shop.salesBatch} /></td>
+              <td><ReconciliationAmount stage={shop.creditNotes} /></td>
+              <td><ReconciliationAmount stage={shop.returns} /></td>
+              <td><ReconciliationAmount stage={shop.confirmedNet} /></td>
+              <td><strong>{reconciliationStatusLabel(shop.status)}</strong></td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      {reconciliation.shops.map((shop) => <SellerVoucherRestorationEvidence key={shop.shopCode} shop={shop} />)}
+      {reconciliation.shops.map((shop) => <PayoutAndDownstreamBridge key={shop.shopCode} shop={shop} />)}
+      <p>
+        รายรับ Income, ค่าธรรมเนียม, รายการปรับยอด, Seller Balance และรายงานการเงิน
+        เป็นสะพานอธิบายเงินที่ Shopee โอน ไม่ได้ถูกบังคับให้เท่ากับยอดขาย
+      </p>
+      {dailyExceptions.length ? (
+        <details>
+          <summary>ดูวันที่ยังไม่ตรง/หลักฐานไม่ครบ ({dailyExceptions.length} วัน-ร้าน)</summary>
+          <div className="history-table-wrap">
+            <table className="history-table">
+              <thead><tr><th>ร้าน</th><th>วันที่</th><th>ส่วนต่าง Sales batch</th><th>สาเหตุ/เลขคำสั่งซื้อที่ต้องตรวจ</th></tr></thead>
+              <tbody>{dailyExceptions.map((row) => (
+                <tr key={`${row.shopCode}:${row.date}`}>
+                  <td>{SHOP_LABELS[row.shopCode] || row.shopCode}</td>
+                  <td>{formatShopeeReportDate(row.date)}</td>
+                  <td>{row.salesBatch.variance == null ? '-' : formatShopeeMoney(row.salesBatch.variance)}</td>
+                  <td>{row.unresolved.length ? row.unresolved.map((item) => (
+                    <span className="shopee-reconciliation-reason" key={item.reasonCode}>
+                      {item.message}{item.orderNumbers?.length ? `: ${item.orderNumbers.join(', ')}` : ''}
+                    </span>
+                  )) : reconciliationStatusLabel(row.status)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </details>
+      ) : <p><strong>รายวันตรงกันครบทุกวันในช่วงที่เลือก</strong></p>}
+    </section>
+  );
+}
+
 function OfficialFinanceEvidence({ periods = [] }) {
   if (!periods.length) return null;
   return (
@@ -161,6 +365,7 @@ export function ShopeeSalesSummaryView({
   const accounting = summary?.accounting;
   const confirmed = summary?.confirmedSales;
   const officialDocuments = summary?.officialDocuments;
+  const reconciliation = summary?.reconciliation;
   const hasBundleProducts = products.some((product) => product.isBundle === true);
   return (
     <section className="panel shopee-sales-summary-panel">
@@ -266,6 +471,7 @@ export function ShopeeSalesSummaryView({
               <OfficialReturnEvidence shops={officialDocuments.returns} />
             </>
           ) : null}
+          <FinancialReconciliation reconciliation={reconciliation} />
           <h3>รายละเอียดสินค้าและคำสั่งซื้อจากไฟล์คำสั่งซื้อ</h3>
           <div className="shopee-sales-summary-metrics">
             <SummaryMetric label="ชนิดสินค้า" value={summary.productCount} />
@@ -275,7 +481,7 @@ export function ShopeeSalesSummaryView({
           {accounting ? (
             <section className="status-panel history-status-panel" aria-label="ยอดขายและความครบถ้วนของหลักฐาน">
               <p>
-                <strong>ยอดขายจากรายละเอียดคำสั่งซื้อหลังตัดรายการยกเลิก/พัสดุตีกลับ: </strong>
+                <strong>ยอดรายละเอียดสินค้าตามวันที่สร้างคำสั่งซื้อ หลังตัดรายการยกเลิก/พัสดุตีกลับ: </strong>
                 {accounting.calculatedSalesTotal === null
                   ? 'ยังรวมยอดไม่ได้ มีออเดอร์ขาดยอดเงิน'
                   : formatShopeeMoney(accounting.calculatedSalesTotal)}

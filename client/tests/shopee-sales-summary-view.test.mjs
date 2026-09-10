@@ -307,3 +307,118 @@ test('shows weekly finance reconciliation and exceptional-case evidence using Sh
   assert.match(html, /ราคาขายสุทธิ/u);
   assert.match(html, /จำนวนเงินคืนทั้งหมด/u);
 });
+
+test('shows separate cancellations and returns plus a deduplicated payout/downstream bridge', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const stage = (officialAmount, reconstructedAmount, variance, status = 'unresolved') => ({
+    officialAmount, reconstructedAmount, variance, officialOrderCount: 2,
+    reconstructedOrderCount: 2, status,
+  });
+  const daily = {
+    shopCode: 'sc-drug-store', date: '2026-08-25', status: 'unresolved',
+    salesBatch: stage(100, 120, 20),
+    creditNotes: stage(20, 40, 20),
+    returns: stage(0, 0, 0, 'reconciled'),
+    confirmedNet: stage(80, 80, 0, 'reconciled'),
+    unresolved: [{ reasonCode: 'gross_snapshot_variance',
+      message: 'ยอด snapshot เดิมไม่ครบ', orderNumbers: ['260825TEST001'] }],
+  };
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-08-25', shopCode: 'sc-drug-store', startDate: '2026-08-25' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, reconciliation: {
+      status: 'unresolved', shops: [{ shopCode: 'sc-drug-store', status: 'unresolved',
+        salesBatch: daily.salesBatch, creditNotes: daily.creditNotes, returns: daily.returns,
+        confirmedNet: daily.confirmedNet,
+        sellerVoucherRestoration: { restoredAmount: 20, restoredOrderCount: 2,
+          orderNumbers: ['2608259QFHDAH8', '260825ASAD4CXS'], campaigns: [{
+            voucherId: 'SVC-1489610191827020', voucherName: 'VCMT BAU 24-30 Aug',
+            validFrom: '2026-08-23T17:00:00.000Z', validTo: '2026-08-30T16:59:59.999Z',
+            discountRate: 0.05, maxDiscount: 10, minSpend: 110, appliesToAllProducts: true,
+            sourceUrl: 'https://seller.shopee.co.th/portal/marketing/vouchers/view?edit=1489610191827020',
+            sourceObservedAt: '2026-09-09T17:00:00.000Z', sourceObservedPrecision: 'date',
+            sourceNotes: 'Seller Centre voucher detail.',
+          }] },
+        payoutBridge: { income: { latestState: {
+          pending: { factCount: 0, linkedOrderCount: 0, payoutAmount: 0 },
+          transferred: { factCount: 1, linkedOrderCount: 1, payoutAmount: 80,
+            componentBridge: { additiveComponentTotal: 78, unexplainedResidual: 2,
+              components: [{ key: 'commissionFee', label: 'ค่าคอมมิชชั่น', amount: -20, additive: true }],
+              evidence: [{ sourceFilename: 'income-sep.xlsx', sourceSha256: 'a'.repeat(64),
+                observedAt: '2026-09-10T08:00:00.000Z' }] } },
+        } } },
+        downstreamControls: { financialStatements: [{ periodStart: '2026-09-01', periodEnd: '2026-09-07',
+          transferredTotal: 80, evidence: { sourceFilename: 'statement-sep.pdf',
+            sourceSha256: 'b'.repeat(64), observedAt: '2026-09-10T08:00:00.000Z' } }],
+          sellerBalanceAdjustments: [], unlinkedSources: [{ reportType: 'seller-balance',
+            periodStart: '2026-08-25', periodEnd: '2026-08-31', evidence: {
+              sourceFilename: 'balance-unlinked.xlsx', sourceSha256: 'c'.repeat(64),
+              observedAt: '2026-09-10T08:00:00.000Z' } }] },
+      }],
+      aggregates: { daily: [daily] },
+    } },
+  }));
+  assert.match(html, /การสืบย้อนยอดการเงิน/u);
+  assert.match(html, /เวลาการชำระสินค้า/u);
+  assert.match(html, /ยอดขายที่ยกเลิก/u);
+  assert.match(html, /ยอดขายที่คืนเงิน\/คืนสินค้า/u);
+  assert.match(html, /ยอดขายยืนยันแล้วสุทธิ/u);
+  assert.match(html, /กู้คืนค่า “โค้ดส่วนลดชำระโดยผู้ขาย” จากหลักฐาน/u);
+  assert.match(html, /SVC-1489610191827020[\s\S]*VCMT BAU 24-30 Aug/u);
+  assert.match(html, /5[\s\S]*%[\s\S]*สูงสุด[\s\S]*฿10[\s\S]*ขั้นต่ำ[\s\S]*฿110/u);
+  assert.match(html, /2608259QFHDAH8[\s\S]*260825ASAD4CXS/u);
+  assert.match(html, /ไม่ใช่เงินคืนให้ลูกค้า/u);
+  assert.match(html, /เปิดหลักฐาน Seller Centre/u);
+  assert.match(html, /สถานะล่าสุด: โอนสำเร็จ/u);
+  assert.match(html, /ค่าคอมมิชชั่น/u);
+  assert.match(html, /ส่วนที่ยังอธิบายไม่ได้:[\s\S]*฿2/u);
+  assert.match(html, /income-sep\.xlsx[\s\S]*aaaaaaaaaaaa/u);
+  assert.match(html, /Financial Statement[\s\S]*2026-09-01[\s\S]*2026-09-07/u);
+  assert.match(html, /ยังไม่เชื่อมกับรอบ Income:[\s\S]*balance-unlinked\.xlsx/u);
+  assert.doesNotMatch(html, /สถานะล่าสุด: รอดำเนินการ/u);
+  assert.match(html, /ไม่ได้ถูกบังคับให้เท่ากับยอดขาย/u);
+  assert.match(html, /260825TEST001/u);
+  assert.match(html, /ส่วนต่าง:[\s\S]*฿20/u);
+});
+
+test('shows an exact reconciliation after evidence-backed seller-voucher restoration', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const stage = (amount, count) => ({
+    officialAmount: amount, reconstructedAmount: amount, variance: 0,
+    officialOrderCount: count, reconstructedOrderCount: count, status: 'reconciled',
+  });
+  const restoration = {
+    restoredAmount: 110, restoredOrderCount: 11,
+    orderNumbers: ['2608259QFHDAH8', '260825ASAD4CXS', '260828G1PS9JAG'],
+    campaigns: [{
+      voucherId: 'SVC-1489610191827020', voucherName: 'VCMT BAU 24-30 Aug',
+      validFrom: '2026-08-23T17:00:00.000Z', validTo: '2026-08-30T16:59:59.999Z',
+      discountRate: 0.05, maxDiscount: 10, minSpend: 110, appliesToAllProducts: true,
+      sourceUrl: 'https://seller.shopee.co.th/portal/marketing/vouchers/view?edit=1489610191827020',
+      sourceObservedAt: '2026-09-09T17:00:00.000Z', sourceObservedPrecision: 'date',
+      sourceNotes: 'Seller Centre voucher detail.',
+    }],
+  };
+  const shop = {
+    shopCode: 'sc-drug-store', status: 'reconciled',
+    salesBatch: stage(154026, 613), creditNotes: stage(7478, 33),
+    returns: stage(0, 0), confirmedNet: stage(146548, 580),
+    sellerVoucherRestoration: restoration,
+  };
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { endDate: '2026-08-31', shopCode: 'sc-drug-store', startDate: '2026-08-01' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, reconciliation: {
+      status: 'reconciled', shops: [shop],
+      aggregates: { daily: [{ ...shop, date: '2026-08-25', unresolved: [],
+        sellerVoucherRestoration: restoration }] },
+    } },
+  }));
+  assert.match(html, /ตรงกัน ส่วนต่าง ฿0\.00/u);
+  assert.match(html, /รายวันตรงกันครบทุกวันในช่วงที่เลือก/u);
+  assert.match(html, /กู้คืนค่า “โค้ดส่วนลดชำระโดยผู้ขาย” จากหลักฐาน[\s\S]*฿110/u);
+  assert.match(html, /154,026[\s\S]*7,478[\s\S]*146,548/u);
+  assert.doesNotMatch(html, /ยังมีส่วนต่างที่ต้องสืบย้อน/u);
+});
