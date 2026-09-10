@@ -12,6 +12,7 @@ import ShopeeHistoryPage from './pages/ShopeeHistoryPage.jsx';
 import ShopeeOrdersPage from './pages/ShopeeOrdersPage.jsx';
 import ShopeeReportsPage from './pages/ShopeeReportsPage.jsx';
 import ShopeeSalesSummaryPage from './pages/ShopeeSalesSummaryPage.jsx';
+import ShopeeDocumentSyncStatusPage from './pages/ShopeeDocumentSyncStatusPage.jsx';
 import ShopeeUploadPage from './pages/ShopeeUploadPage.jsx';
 import UploadPage from './pages/UploadPage.jsx';
 import { getSession, logout } from './services/api.js';
@@ -70,6 +71,7 @@ function AuthenticatedApp({ onLogout }) {
         <Route path="shopee/inbox" element={<ShopeeReportsPage />} />
         <Route path="shopee/orders" element={<ShopeeOrdersPage />} />
         <Route path="shopee/sales-summary" element={<ShopeeSalesSummaryPage />} />
+        <Route path="shopee/document-sync-status" element={<ShopeeDocumentSyncStatusPage />} />
         <Route path="shopee/history" element={<ShopeeHistoryPage />} />
         <Route path="pharmcare" element={<Navigate to="/pharmcare/inbox" replace />} />
         <Route path="pharmcare/upload" element={<PharmCareUploadPage />} />

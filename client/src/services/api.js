@@ -259,6 +259,11 @@ export async function getShopeeSalesSummary(filters = {}) {
   return requestJson(`/app/shopee/orders/sales-summary${query ? `?${query}` : ''}`);
 }
 
+export async function getShopeeDocumentSyncStatus(days = 14) {
+  const params = new URLSearchParams({ days: String(days) });
+  return requestJson(`/app/shopee/document-sync-status?${params.toString()}`);
+}
+
 export async function getShopeeSalesSummaryExcel(filters = {}) {
   const params = new URLSearchParams();
   Object.entries(filters || {}).forEach(([key, value]) => {

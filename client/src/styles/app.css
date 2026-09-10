@@ -2322,3 +2322,195 @@ a.history-view-button.secondary:hover {
 .accounting-approval input[type="checkbox"] { width: auto; }
 .accounting-line-history pre { font-family: inherit; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; padding: 16px; background: rgba(128,128,128,.08); }
 
+.shopee-document-sync-shell {
+  width: min(2200px, 100%);
+}
+
+.shopee-sync-panel {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.shopee-sync-heading,
+.shopee-sync-toolbar,
+.shopee-sync-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.shopee-sync-asof {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.shopee-sync-asof span,
+.shopee-sync-toolbar label > span,
+.shopee-sync-shop-cards small,
+.shopee-sync-row-summary small,
+.shopee-sync-note {
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.shopee-sync-toolbar {
+  justify-content: flex-start;
+  margin: 22px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(238, 77, 45, .045);
+}
+
+.shopee-sync-toolbar label {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.shopee-sync-toolbar select {
+  min-height: 42px;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.shopee-sync-shop-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.shopee-sync-shop-cards article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--success);
+  border-radius: 16px;
+  background: rgba(10, 95, 67, .06);
+}
+
+.shopee-sync-shop-cards article[data-state="incomplete"] {
+  border-left-color: var(--error);
+  background: rgba(163, 49, 36, .06);
+}
+
+.shopee-sync-shop-cards article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.shopee-sync-table-wrap {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.shopee-sync-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: .86rem;
+}
+
+.shopee-sync-table th,
+.shopee-sync-table td {
+  min-width: 54px;
+  padding: 10px 8px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.shopee-sync-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: var(--muted);
+  background: var(--panel);
+  white-space: nowrap;
+}
+
+.shopee-sync-table tr:last-child > * {
+  border-bottom: 0;
+}
+
+.shopee-sync-table tr > *:last-child {
+  border-right: 0;
+}
+
+.shopee-sync-table thead th:first-child,
+.shopee-sync-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: 310px;
+  min-width: 310px;
+  text-align: left;
+  background: var(--panel);
+}
+
+.shopee-sync-table tbody th span,
+.shopee-sync-table tbody th strong {
+  display: block;
+}
+
+.shopee-sync-table tbody th span {
+  color: var(--accent-strong);
+  font-size: .75rem;
+}
+
+.shopee-sync-row-summary {
+  width: 126px;
+  min-width: 126px !important;
+  white-space: nowrap;
+}
+
+.shopee-sync-row-summary strong,
+.shopee-sync-row-summary small {
+  display: block;
+}
+
+.shopee-sync-row-summary[data-state="complete"] strong { color: var(--success); }
+.shopee-sync-row-summary[data-state="incomplete"] strong { color: var(--error); }
+.shopee-sync-row-summary[data-state="unavailable"] strong,
+.shopee-sync-row-summary[data-state="not_due"] strong { color: var(--muted); }
+
+.shopee-sync-cell {
+  font-size: 1.05rem;
+  cursor: help;
+}
+
+.shopee-sync-cell[data-state="ingested"] { background: rgba(10, 95, 67, .12); }
+.shopee-sync-cell[data-state="missing"] { background: rgba(163, 49, 36, .1); }
+.shopee-sync-cell[data-state="not_due"] { background: rgba(17, 51, 102, .07); }
+.shopee-sync-cell[data-state="unavailable"] { background: rgba(95, 107, 102, .07); }
+
+.shopee-sync-legend {
+  justify-content: flex-start;
+  margin-top: 16px;
+  font-size: .88rem;
+}
+
+.shopee-sync-note {
+  margin: 10px 0 0;
+}
+
+@media (max-width: 720px) {
+  .shopee-sync-shop-cards { grid-template-columns: 1fr; }
+  .shopee-sync-asof { text-align: left; }
+  .shopee-sync-table thead th:first-child,
+  .shopee-sync-table tbody th { width: 230px; min-width: 230px; }
+}
+
