@@ -197,8 +197,8 @@ test('primary confirmed gross is separate from net orders and follows report dat
     status: { state: 'success', message: 'พร้อม' },
     summary: { ...summary, confirmedSales: { startDate: '2026-08-01', endDate: '2026-08-31',
       status: 'source_backed', salesTotal: 171917, shops: [
-        { shopCode: 'sc-drug-store', salesTotal: 154026, orderCount: 613, cancelledOrderCount: 33, cancelledSales: 7478, coveredDays: 31, expectedDays: 31 },
-        { shopCode: 'dr-morepen', salesTotal: 17891, orderCount: 36, cancelledOrderCount: 1, cancelledSales: 350, coveredDays: 31, expectedDays: 31 },
+        { shopCode: 'sc-drug-store', salesTotal: 154026, orderCount: 613, cancelledOrderCount: 33, cancelledSales: 7478, returnedOrderCount: 0, returnedSales: 0, coveredDays: 31, expectedDays: 31 },
+        { shopCode: 'dr-morepen', salesTotal: 17891, orderCount: 36, cancelledOrderCount: 1, cancelledSales: 350, returnedOrderCount: 0, returnedSales: 0, coveredDays: 31, expectedDays: 31 },
       ] }, accounting: { calculatedSalesTotal: 164089, status: 'provisional', sourceBackedOrderCount: 554, provisionalOrderCount: 61 } },
   }));
   assert.match(html, /Business Insights — ภาพรวมยอดขาย/);
@@ -206,6 +206,8 @@ test('primary confirmed gross is separate from net orders and follows report dat
   assert.match(html, /คำสั่งซื้อ\(ได้รับการยืนยัน\)/);
   assert.match(html, /คำสั่งซื้อที่ยกเลิก/);
   assert.match(html, /ยอดขายที่ยกเลิก/);
+  assert.match(html, /คำสั่งซื้อที่คืนเงิน\/คืนสินค้า/);
+  assert.match(html, /ยอดขายที่คืนเงิน\/คืนสินค้า/);
   assert.match(html, /154,026/); assert.match(html, /17,891/);
   assert.match(html, /613/); assert.match(html, /36/);
   assert.match(html, /154,026[\s\S]*613[\s\S]*33[\s\S]*7,478/);
@@ -228,7 +230,8 @@ test('does not invent cancellation zeroes when the current Business Insights fil
           cancelledOrderCount: null, cancelledSales: null, coveredDays: 1, expectedDays: 1 },
       ] } },
   }));
-  assert.match(html, /ไม่มีในไฟล์รูปแบบนี้/);
+  assert.match(html, /ไม่มีในไฟล์แบบย่อ/);
+  assert.match(html, /Sales Overview แบบย่อ/);
   assert.match(html, /ระบบจึงเว้นข้อมูลไว้ ไม่ตีความเป็น 0/);
 });
 
