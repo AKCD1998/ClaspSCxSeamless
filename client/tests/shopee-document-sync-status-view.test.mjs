@@ -75,3 +75,23 @@ test('shows not-due and Shopee-unavailable states without calling them failures'
   assert.match(html, /Shopee ยังไม่เปิดให้ดาวน์โหลด/u);
   assert.doesNotMatch(html, /ทำงานล้มเหลว/u);
 });
+
+test('shows waiting and processing states before the daily SLA instead of a red failure', async () => {
+  const { ShopeeDocumentSyncStatusView } = await vite.ssrLoadModule('/src/components/ShopeeDocumentSyncStatusPanel.jsx');
+  const pendingRows = [
+    { ...row, status: 'waiting', scheduleTime: '09:15', missingCount: 0, pendingCount: 1,
+      cells: [{ date: '2026-09-09', status: 'waiting' }] },
+    { ...row, reportType: 'orders', status: 'processing', missingCount: 0, pendingCount: 1,
+      cells: [{ date: '2026-09-09', status: 'processing' }] },
+  ];
+  const html = renderToString(React.createElement(ShopeeDocumentSyncStatusView, {
+    data: { ...data, dailyScheduleTime: '09:15', dailySlaTime: '11:00', dates: ['2026-09-09'],
+      shops: [{ ...data.shops[0], incompleteRowCount: 0, pendingRowCount: 2, rows: pendingRows }] },
+    days: 14, error: '', groupFilter: 'all', isLoading: false,
+    onDaysChange: () => {}, onGroupFilterChange: () => {}, onRefresh: () => {},
+    onShopFilterChange: () => {}, shopFilter: 'all',
+  }));
+  assert.match(html, /รอรอบดาวน์โหลดตามเวลาของร้าน/u);
+  assert.match(html, /อยู่ในรอบดาวน์โหลดหรือนำเข้า/u);
+  assert.match(html, /จะแสดงว่าขาดเมื่อเลย 11:00 น\./u);
+});

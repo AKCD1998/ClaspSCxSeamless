@@ -16,6 +16,8 @@ const GROUP_OPTIONS = [
 const STATUS_META = {
   ingested: { icon: '✅', label: 'ดาวน์โหลดและนำเข้าแล้ว' },
   missing: { icon: '❌', label: 'ยังไม่มีข้อมูลในเว็บ' },
+  waiting: { icon: '🕘', label: 'รอรอบดาวน์โหลดตามเวลาของร้าน' },
+  processing: { icon: '🔄', label: 'อยู่ในรอบดาวน์โหลดหรือนำเข้า' },
   not_due: { icon: '💤', label: 'ยังไม่ถึงรอบที่ Shopee ออกรายงาน' },
   unavailable: { icon: '⚪', label: 'Shopee ยังไม่เปิดให้ดาวน์โหลด' },
 };
@@ -44,6 +46,8 @@ function formatTime(value) {
 
 function rowStatusLabel(row) {
   if (row.status === 'complete') return 'ครบ';
+  if (row.status === 'waiting') return `รอรอบ ${row.scheduleTime || ''} น.`;
+  if (row.status === 'processing') return 'กำลังดาวน์โหลด/นำเข้า';
   if (row.status === 'unavailable') return 'Shopee ยังไม่เปิดให้ดาวน์โหลด';
   if (row.status === 'not_due') return 'ยังไม่ถึงรอบ';
   return `ขาด ${row.missingCount} วัน`;
@@ -137,10 +141,14 @@ export function ShopeeDocumentSyncStatusView({
         <>
           <div className="shopee-sync-shop-cards">
             {data.shops.map((shop) => (
-              <article key={shop.shopCode} data-state={shop.incompleteRowCount ? 'incomplete' : 'complete'}>
+              <article key={shop.shopCode} data-state={shop.incompleteRowCount ? 'incomplete' : shop.pendingRowCount ? 'processing' : 'complete'}>
                 <div>
                   <span>{shop.shopName}</span>
-                  <strong>{shop.incompleteRowCount ? `ยังขาด ${shop.incompleteRowCount} ประเภท` : 'ข้อมูลครบตามรอบ'}</strong>
+                  <strong>{shop.incompleteRowCount
+                    ? `ยังขาด ${shop.incompleteRowCount} ประเภท`
+                    : shop.pendingRowCount
+                      ? `อยู่ในรอบทำงาน ${shop.pendingRowCount} ประเภท`
+                      : 'ข้อมูลครบตามรอบ'}</strong>
                 </div>
                 <small>นำเข้าล่าสุด {formatTime(shop.latestImportedAt)}</small>
               </article>
@@ -181,6 +189,9 @@ export function ShopeeDocumentSyncStatusView({
           </div>
           <p className="shopee-sync-note">
             วางเมาส์ที่แต่ละช่องเพื่อดูชื่อไฟล์ ช่วงวันที่ เวลานำเข้า และ SHA-256
+            {data.dailyScheduleTime && data.dailySlaTime
+              ? ` · รายงานรายวันเริ่มเวลา ${data.dailyScheduleTime} น. และจะแสดงว่าขาดเมื่อเลย ${data.dailySlaTime} น.`
+              : ''}
           </p>
         </>
       ) : null}

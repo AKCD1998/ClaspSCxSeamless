@@ -2437,6 +2437,9 @@ a.history-view-button.secondary:hover {
   border-left-color: var(--error);
   background: rgba(163, 49, 36, .06);
 }
+.shopee-sync-shop-cards article[data-state="processing"] {
+  border-color: rgba(194, 123, 0, .45);
+}
 
 .shopee-sync-shop-cards article > div {
   display: grid;
@@ -2518,6 +2521,8 @@ a.history-view-button.secondary:hover {
 
 .shopee-sync-row-summary[data-state="complete"] strong { color: var(--success); }
 .shopee-sync-row-summary[data-state="incomplete"] strong { color: var(--error); }
+.shopee-sync-row-summary[data-state="waiting"] strong,
+.shopee-sync-row-summary[data-state="processing"] strong { color: #b56a00; }
 .shopee-sync-row-summary[data-state="unavailable"] strong,
 .shopee-sync-row-summary[data-state="not_due"] strong { color: var(--muted); }
 
@@ -2528,6 +2533,8 @@ a.history-view-button.secondary:hover {
 
 .shopee-sync-cell[data-state="ingested"] { background: rgba(10, 95, 67, .12); }
 .shopee-sync-cell[data-state="missing"] { background: rgba(163, 49, 36, .1); }
+.shopee-sync-cell[data-state="waiting"] { background: rgba(88, 101, 120, .08); }
+.shopee-sync-cell[data-state="processing"] { background: rgba(194, 123, 0, .12); }
 .shopee-sync-cell[data-state="not_due"] { background: rgba(17, 51, 102, .07); }
 .shopee-sync-cell[data-state="unavailable"] { background: rgba(95, 107, 102, .07); }
 
