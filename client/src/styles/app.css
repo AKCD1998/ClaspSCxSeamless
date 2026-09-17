@@ -2356,6 +2356,47 @@ a.history-view-button.secondary:hover {
 .accounting-approval input[type="checkbox"] { width: auto; }
 .accounting-line-history pre { font-family: inherit; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; padding: 16px; background: rgba(128,128,128,.08); }
 
+.accounting-income-panel { display: grid; gap: 18px; min-width: 0; }
+.accounting-income-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.accounting-income-heading h2, .accounting-income-heading p { margin: 0; }
+.accounting-income-heading p { margin-top: 6px; }
+.accounting-income-count { padding: 8px 12px; border-radius: 999px; background: rgba(29,78,216,.1); color: var(--accent-strong); font-weight: 700; white-space: nowrap; }
+.accounting-income-filters { display: grid; grid-template-columns: minmax(220px,2fr) minmax(190px,1fr) minmax(150px,1fr) minmax(150px,1fr); gap: 14px; align-items: end; }
+.accounting-income-filters .field { margin: 0; min-width: 0; }
+.accounting-income-filters input, .accounting-income-filters select { width: 100%; }
+.accounting-income-message { min-height: 1.3em; margin: 0; }
+.accounting-income-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
+.accounting-income-table { width: 100%; min-width: 680px; border-collapse: collapse; }
+.accounting-income-table th, .accounting-income-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.accounting-income-table thead th { background: rgba(29,78,216,.08); white-space: nowrap; }
+.accounting-income-table tbody tr:last-child td { border-bottom: 0; }
+.accounting-income-order-number { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 700; white-space: nowrap; }
+.accounting-income-amount { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.accounting-income-empty { padding: 28px !important; color: var(--muted); text-align: center !important; }
+.accounting-income-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.accounting-income-pagination button { padding: 9px 14px; }
+[data-color-mode="dark"] .accounting-income-count { background: rgba(90,133,255,.14); }
+[data-color-mode="dark"] .accounting-income-table thead th { background: rgba(90,133,255,.12); }
+
+@media (max-width: 900px) {
+  .accounting-income-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 620px) {
+  .accounting-income-filters { grid-template-columns: 1fr; }
+  .accounting-income-table-wrap { overflow: visible; border: 0; }
+  .accounting-income-table { display: block; min-width: 0; }
+  .accounting-income-table thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .accounting-income-table tbody, .accounting-income-table tr { display: grid; gap: 6px; }
+  .accounting-income-table tbody { gap: 12px; }
+  .accounting-income-table tr { padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+  .accounting-income-table td { display: grid; grid-template-columns: minmax(132px,42%) minmax(0,1fr); gap: 10px; padding: 4px 0; border: 0; text-align: left !important; white-space: normal; overflow-wrap: anywhere; }
+  .accounting-income-table td::before { content: attr(data-label); color: var(--muted); font-weight: 600; }
+  .accounting-income-table td[colspan] { display: block; }
+  .accounting-income-table td[colspan]::before { content: none; }
+  .accounting-income-pagination { justify-content: space-between; }
+}
+
 .shopee-document-sync-shell {
   width: min(2200px, 100%);
 }

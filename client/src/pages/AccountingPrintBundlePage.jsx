@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Hero from "../components/Hero.jsx";
+import AccountingIncomeOrdersTable from "../components/AccountingIncomeOrdersTable.jsx";
 import {
   uploadAccountingOriginals,
   listAccountingPrintBatches,
@@ -422,10 +423,7 @@ export default function AccountingPrintBundlePage() {
           </label>
         )}
       </section>
-      <section
-        className="panel accounting-bundle-panel accounting-bundle-placeholder-card"
-        aria-hidden="true"
-      />
+      <AccountingIncomeOrdersTable />
       {batch && (
         <BatchDetails
           batch={batch}

@@ -79,7 +79,14 @@ test('accounting bundle route separates upload from the final print request', as
   assert.match(html, /ตรวจไฟล์และสร้างตัวอย่าง/);
   assert.match(html, /ยังไม่สั่งปริ้น/);
   assert.match(html, /type="file"/);
-  assert.match(html, /accounting-bundle-placeholder-card/);
+  assert.match(html, /รายการรายรับจาก Income/);
+  assert.match(html, /ค้นหาเลขคำสั่งซื้อ/);
+  assert.match(html, /คอลัมน์วันที่ที่ต้องการหา/);
+  assert.match(html, /หมายเลขคำสั่งซื้อ/);
+  assert.match(html, /วันที่ทำการสั่งซื้อ/);
+  assert.match(html, /วันที่โอนชำระเงิน/);
+  assert.match(html, /จำนวนเงินทั้งหมด/);
+  assert.doesNotMatch(html, /accounting-bundle-placeholder-card/);
 });
 
 function reviewFixture(status = 'review') {

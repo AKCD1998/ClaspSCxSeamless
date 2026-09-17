@@ -209,6 +209,34 @@ test('accounting approval sends only the selected batch and reviewed digest', as
   assert.deepEqual(JSON.parse(calls[0].options.body),{digest:'reviewed-digest'});
 });
 
+test('listAccountingIncomeOrders sends one combined server-side filter and page query', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ orders: [], page: 2, totalCount: 0, totalPages: 1 }));
+  };
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  await api.listAccountingIncomeOrders({
+    orderNumber: '260901TEST',
+    dateColumn: 'orderedAt',
+    dateFrom: '2026-08-30',
+    dateTo: '2026-08-31',
+    page: 2,
+    pageSize: 10,
+  });
+  const url = new URL(calls[0].url);
+  assert.equal(url.pathname, '/api/app/accounting-print-bundles/income-orders');
+  assert.deepEqual(Object.fromEntries(url.searchParams), {
+    orderNumber: '260901TEST',
+    dateColumn: 'orderedAt',
+    dateFrom: '2026-08-30',
+    dateTo: '2026-08-31',
+    page: '2',
+    pageSize: '10',
+  });
+  assert.equal(calls[0].options.credentials, 'include');
+});
+
 test('processWorkbookPayload surfaces duplicate-upload failures from backend payloads', async () => {
   if (typeof File === 'undefined') {
     return;

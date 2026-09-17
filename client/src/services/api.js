@@ -131,6 +131,16 @@ export async function uploadAccountingOriginals(shopFiles) {
 export function listAccountingPrintBatches() {
   return requestJson('/app/accounting-print-bundles');
 }
+export function listAccountingIncomeOrders(filters = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  }
+  const query = params.toString();
+  return requestJson(`/app/accounting-print-bundles/income-orders${query ? `?${query}` : ''}`);
+}
 export function getAccountingPrintBatch(id) {
   return requestJson('/app/accounting-print-bundles/' + encodeURIComponent(id));
 }
