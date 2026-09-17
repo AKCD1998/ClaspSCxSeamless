@@ -422,6 +422,10 @@ export default function AccountingPrintBundlePage() {
           </label>
         )}
       </section>
+      <section
+        className="panel accounting-bundle-panel accounting-bundle-placeholder-card"
+        aria-hidden="true"
+      />
       {batch && (
         <BatchDetails
           batch={batch}

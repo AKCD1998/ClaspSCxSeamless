@@ -79,6 +79,7 @@ test('accounting bundle route separates upload from the final print request', as
   assert.match(html, /ตรวจไฟล์และสร้างตัวอย่าง/);
   assert.match(html, /ยังไม่สั่งปริ้น/);
   assert.match(html, /type="file"/);
+  assert.match(html, /accounting-bundle-placeholder-card/);
 });
 
 function reviewFixture(status = 'review') {
