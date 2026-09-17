@@ -165,6 +165,10 @@ export default function AccountingIncomeOrdersTable() {
       </p>
       <div className="accounting-income-table-wrap">
         <table className="accounting-income-table">
+          <colgroup>
+            <col /><col /><col /><col /><col /><col />
+            <col className="accounting-income-balance-net-col" />
+          </colgroup>
           <thead>
             <tr>
               <th>หมายเลขคำสั่งซื้อ</th>
@@ -172,8 +176,8 @@ export default function AccountingIncomeOrdersTable() {
               <th>วันที่โอนชำระเงิน</th>
               <th>จำนวนเงินทั้งหมด</th>
               <th>สถานะ Seller Balance</th>
-              <th>วันที่ทำรายการ Seller Balance</th>
-              <th>ยอดสุทธิของออเดอร์ใน Seller Balance</th>
+              <th>วันที่เงินเข้า Seller Balance</th>
+              <th className="accounting-income-balance-net-heading">ยอดสุทธิ Seller Balance</th>
             </tr>
           </thead>
           <tbody>
@@ -196,10 +200,10 @@ export default function AccountingIncomeOrdersTable() {
                 <td data-label="สถานะ Seller Balance">
                   <SellerBalanceStatusBadge status={order.sellerBalanceStatus} />
                 </td>
-                <td data-label="วันที่ทำรายการ Seller Balance">
-                  {formatIncomeDate(order.sellerBalanceTransactionDate)}
+                <td data-label="วันที่เงินเข้า Seller Balance">
+                  {formatIncomeDate(order.sellerBalanceInflowDate)}
                 </td>
-                <td data-label="ยอดสุทธิของออเดอร์ใน Seller Balance" className="accounting-income-amount">
+                <td data-label="ยอดสุทธิ Seller Balance" className="accounting-income-amount">
                   {order.sellerBalanceNetAmount === null
                     || order.sellerBalanceNetAmount === undefined
                     ? "-"

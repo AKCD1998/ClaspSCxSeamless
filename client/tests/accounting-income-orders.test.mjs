@@ -29,7 +29,7 @@ test('Income table renders requested fields, Seller Balance evidence, shared dat
   );
   assert.equal(PAGE_SIZE, 10);
   const html = renderToString(React.createElement(Table));
-  assert.equal((html.match(/<th>/g) || []).length, 7);
+  assert.equal((html.match(/<th(?:>|\s)/g) || []).length, 7);
   assert.match(html, /type="search"/);
   assert.equal((html.match(/type="date"/g) || []).length, 2);
   assert.match(html, /value="orderedAt"/);
@@ -38,8 +38,9 @@ test('Income table renders requested fields, Seller Balance evidence, shared dat
   assert.match(html, /ก่อนหน้า/);
   assert.match(html, /ถัดไป/);
   assert.match(html, /สถานะ Seller Balance/u);
-  assert.match(html, /วันที่ทำรายการ Seller Balance/u);
-  assert.match(html, /ยอดสุทธิของออเดอร์ใน Seller Balance/u);
+  assert.match(html, /วันที่เงินเข้า Seller Balance/u);
+  assert.match(html, /ยอดสุทธิ Seller Balance/u);
+  assert.match(html, /accounting-income-balance-net-col/u);
   assert.match(html, /ไม่ใช่หลักฐานการชำระของลูกค้าโดยตรง/u);
   assert.match(html, /Order All/u);
 });

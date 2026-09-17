@@ -2367,9 +2367,16 @@ a.history-view-button.secondary:hover {
 .accounting-income-filters input, .accounting-income-filters select { width: 100%; }
 .accounting-income-message { min-height: 1.3em; margin: 0; }
 .accounting-income-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
-.accounting-income-table { width: 100%; min-width: 1120px; border-collapse: collapse; }
+.accounting-income-table { width: 100%; min-width: 1040px; border-collapse: collapse; table-layout: fixed; }
+.accounting-income-table col:nth-child(1) { width: 16%; }
+.accounting-income-table col:nth-child(2), .accounting-income-table col:nth-child(3) { width: 12%; }
+.accounting-income-table col:nth-child(4) { width: 11%; }
+.accounting-income-table col:nth-child(5) { width: 18%; }
+.accounting-income-table col:nth-child(6) { width: 17%; }
+.accounting-income-table .accounting-income-balance-net-col { width: 14%; }
 .accounting-income-table th, .accounting-income-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
 .accounting-income-table thead th { background: rgba(29,78,216,.08); white-space: nowrap; }
+.accounting-income-table .accounting-income-balance-net-heading { white-space: normal; }
 .accounting-income-table tbody tr:last-child td { border-bottom: 0; }
 .accounting-income-order-number { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 700; white-space: nowrap; }
 .accounting-income-amount { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
