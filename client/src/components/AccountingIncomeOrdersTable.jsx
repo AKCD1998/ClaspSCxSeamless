@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { listAccountingIncomeOrders } from "../services/api.js";
 
 export const PAGE_SIZE = 10;
+export const SELLER_BALANCE_STATUS = Object.freeze({
+  amount_mismatch: { label: "พบข้อมูลแต่ยอดไม่ตรง", tone: "warning" },
+  credited: { label: "เงินเข้าแล้ว", tone: "success" },
+  not_covered: { label: "ยังไม่มีรายงานครอบคลุม", tone: "neutral" },
+  not_found_in_covered_report: { label: "รายงานครอบคลุม แต่ไม่พบ", tone: "warning" },
+  outflow_or_reversed: { label: "มีเงินออกหรือย้อนรายการ", tone: "error" },
+});
 const DATE_FORMATTER = new Intl.DateTimeFormat("th-TH", {
   day: "2-digit",
   month: "2-digit",
@@ -22,6 +29,16 @@ export function formatIncomeDate(value) {
 
 export function formatIncomeAmount(value) {
   return Number.isFinite(Number(value)) ? MONEY_FORMATTER.format(Number(value)) : "-";
+}
+
+export function SellerBalanceStatusBadge({ status }) {
+  const presentation = SELLER_BALANCE_STATUS[status]
+    || { label: "ไม่ทราบสถานะ", tone: "neutral" };
+  return (
+    <span className="accounting-balance-status" data-state={presentation.tone}>
+      {presentation.label}
+    </span>
+  );
 }
 
 export default function AccountingIncomeOrdersTable() {
@@ -91,6 +108,10 @@ export default function AccountingIncomeOrdersTable() {
           <p className="panel-copy">
             รวมข้อมูลจากไฟล์ Income ที่อัปโหลด โดยวันที่อ้างอิงเขตเวลา Asia/Bangkok
           </p>
+          <p className="accounting-income-evidence-note">
+            สถานะ Seller Balance ยืนยันว่าเงินของออเดอร์เข้าหรือเคลื่อนไหวในยอดคงเหลือร้านแล้ว
+            ไม่ใช่หลักฐานการชำระของลูกค้าโดยตรง ซึ่งต้องตรวจจากรายงาน Order All
+          </p>
         </div>
         <span className="accounting-income-count">
           {result.totalCount.toLocaleString("th-TH")} รายการ
@@ -150,14 +171,17 @@ export default function AccountingIncomeOrdersTable() {
               <th>วันที่ทำการสั่งซื้อ</th>
               <th>วันที่โอนชำระเงิน</th>
               <th>จำนวนเงินทั้งหมด</th>
+              <th>สถานะ Seller Balance</th>
+              <th>วันที่ทำรายการ Seller Balance</th>
+              <th>ยอดสุทธิของออเดอร์ใน Seller Balance</th>
             </tr>
           </thead>
           <tbody>
             {loading && !result.orders.length && (
-              <tr><td colSpan="4" className="accounting-income-empty">กำลังโหลดข้อมูล...</td></tr>
+              <tr><td colSpan="7" className="accounting-income-empty">กำลังโหลดข้อมูล...</td></tr>
             )}
             {!loading && !result.orders.length && !message && (
-              <tr><td colSpan="4" className="accounting-income-empty">ไม่พบรายการตามเงื่อนไข</td></tr>
+              <tr><td colSpan="7" className="accounting-income-empty">ไม่พบรายการตามเงื่อนไข</td></tr>
             )}
             {result.orders.map((order, index) => (
               <tr key={`${order.orderNumber}-${order.transferDate}-${order.amount}-${index}`}>
@@ -168,6 +192,18 @@ export default function AccountingIncomeOrdersTable() {
                 <td data-label="วันที่โอนชำระเงิน">{formatIncomeDate(order.transferDate)}</td>
                 <td data-label="จำนวนเงินทั้งหมด" className="accounting-income-amount">
                   {formatIncomeAmount(order.amount)}
+                </td>
+                <td data-label="สถานะ Seller Balance">
+                  <SellerBalanceStatusBadge status={order.sellerBalanceStatus} />
+                </td>
+                <td data-label="วันที่ทำรายการ Seller Balance">
+                  {formatIncomeDate(order.sellerBalanceTransactionDate)}
+                </td>
+                <td data-label="ยอดสุทธิของออเดอร์ใน Seller Balance" className="accounting-income-amount">
+                  {order.sellerBalanceNetAmount === null
+                    || order.sellerBalanceNetAmount === undefined
+                    ? "-"
+                    : formatIncomeAmount(order.sellerBalanceNetAmount)}
                 </td>
               </tr>
             ))}

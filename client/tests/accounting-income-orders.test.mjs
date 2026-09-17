@@ -23,13 +23,13 @@ test.after(async () => {
   if (vite) await vite.close();
 });
 
-test('Income table renders only the requested columns with shared date controls and pagination', async () => {
+test('Income table renders requested fields, Seller Balance evidence, shared date controls, and pagination', async () => {
   const { default: Table, PAGE_SIZE } = await vite.ssrLoadModule(
     '/src/components/AccountingIncomeOrdersTable.jsx',
   );
   assert.equal(PAGE_SIZE, 10);
   const html = renderToString(React.createElement(Table));
-  assert.equal((html.match(/<th>/g) || []).length, 4);
+  assert.equal((html.match(/<th>/g) || []).length, 7);
   assert.match(html, /type="search"/);
   assert.equal((html.match(/type="date"/g) || []).length, 2);
   assert.match(html, /value="orderedAt"/);
@@ -37,6 +37,11 @@ test('Income table renders only the requested columns with shared date controls 
   assert.match(html, /aria-label="หน้ารายการ Income"/);
   assert.match(html, /ก่อนหน้า/);
   assert.match(html, /ถัดไป/);
+  assert.match(html, /สถานะ Seller Balance/u);
+  assert.match(html, /วันที่ทำรายการ Seller Balance/u);
+  assert.match(html, /ยอดสุทธิของออเดอร์ใน Seller Balance/u);
+  assert.match(html, /ไม่ใช่หลักฐานการชำระของลูกค้าโดยตรง/u);
+  assert.match(html, /Order All/u);
 });
 
 test('Income formatters preserve local dates and numeric two-decimal currency', async () => {
@@ -46,4 +51,22 @@ test('Income formatters preserve local dates and numeric two-decimal currency', 
   assert.match(formatIncomeDate('2026-09-01'), /01\/09\/2569/u);
   assert.match(formatIncomeAmount(125.5), /125\.50/u);
   assert.equal(formatIncomeAmount('not-a-number'), '-');
+});
+
+test('Seller Balance status badges render every safe reconciliation label', async () => {
+  const { SellerBalanceStatusBadge } = await vite.ssrLoadModule(
+    '/src/components/AccountingIncomeOrdersTable.jsx',
+  );
+  const cases = [
+    ['credited', 'เงินเข้าแล้ว', 'success'],
+    ['outflow_or_reversed', 'มีเงินออกหรือย้อนรายการ', 'error'],
+    ['amount_mismatch', 'พบข้อมูลแต่ยอดไม่ตรง', 'warning'],
+    ['not_found_in_covered_report', 'รายงานครอบคลุม แต่ไม่พบ', 'warning'],
+    ['not_covered', 'ยังไม่มีรายงานครอบคลุม', 'neutral'],
+  ];
+  for (const [status, label, tone] of cases) {
+    const html = renderToString(React.createElement(SellerBalanceStatusBadge, { status }));
+    assert.match(html, new RegExp(label, 'u'));
+    assert.match(html, new RegExp(`data-state="${tone}"`, 'u'));
+  }
 });
