@@ -2590,6 +2590,7 @@ a.history-view-button.secondary:hover {
 .shopee-sync-cell[data-state="processing"] { background: rgba(194, 123, 0, .12); }
 .shopee-sync-cell[data-state="not_due"] { background: rgba(17, 51, 102, .07); }
 .shopee-sync-cell[data-state="unavailable"] { background: rgba(95, 107, 102, .07); }
+.shopee-sync-cell[data-state="no_file"] { background: rgba(105, 150, 190, .12); color: #8cb7d4; }
 
 .shopee-sync-legend {
   justify-content: flex-start;

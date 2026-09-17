@@ -49,7 +49,7 @@ test('renders shop-document-date grid with exact sync meanings and evidence', as
     onDaysChange: () => {}, onGroupFilterChange: () => {}, onRefresh: () => {},
     onShopFilterChange: () => {}, shopFilter: 'all',
   }));
-  assert.match(html, /สถานะอ้างอิงจากไฟล์ต้นฉบับ/u);
+  assert.match(html, /แสดงไฟล์ที่นำเข้าแล้ว/u);
   assert.match(html, /SC Drug Store/u);
   assert.match(html, /DR\.Morepen/u);
   assert.match(html, /Business Insights — ภาพรวมยอดขาย/u);
@@ -57,6 +57,21 @@ test('renders shop-document-date grid with exact sync meanings and evidence', as
   assert.match(html, /ยังไม่มีข้อมูลในเว็บ/u);
   assert.match(html, /sales_overview_20260909-20260909\.xlsx/u);
   assert.match(html, /ขาด 1 วัน/u);
+});
+
+test('verified empty e-Tax dates show observation provenance without inventing a file', async () => {
+  const { ShopeeDocumentSyncStatusView } = await vite.ssrLoadModule('/src/components/ShopeeDocumentSyncStatusPanel.jsx');
+  const empty = { ...row, reportType: 'etax-receipt-invoice', noFileCount: 1, status: 'complete',
+    cells: [{ date: '2026-09-09', status: 'no_file', evidence: {
+      jobId: 'dr-etax-empty-test', observedAt: '2026-09-10T02:00:00Z', importedAt: '2026-09-10T02:01:00Z',
+    } }] };
+  const html = renderToString(React.createElement(ShopeeDocumentSyncStatusView, {
+    data: { ...data, shops: [{ ...data.shops[0], rows: [empty] }] }, days: 14, groupFilter: 'all', shopFilter: 'all',
+  }));
+  assert.match(html, /ตรวจแล้ว: Shopee ไม่มีเอกสารวันที่นี้/u);
+  assert.match(html, /ตรวจครบ · ไม่มีเอกสาร 1 วัน/u);
+  assert.match(html, /dr-etax-empty-test/u);
+  assert.doesNotMatch(html, /ไฟล์: undefined|SHA-256: undefined/u);
 });
 
 test('shows not-due and Shopee-unavailable states without calling them failures', async () => {

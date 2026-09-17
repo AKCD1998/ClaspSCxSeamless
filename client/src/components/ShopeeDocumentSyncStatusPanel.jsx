@@ -15,6 +15,7 @@ const GROUP_OPTIONS = [
 
 const STATUS_META = {
   ingested: { icon: '✅', label: 'ดาวน์โหลดและนำเข้าแล้ว' },
+  no_file: { icon: '○', label: 'ตรวจแล้ว: Shopee ไม่มีเอกสารวันที่นี้' },
   missing: { icon: '❌', label: 'ยังไม่มีข้อมูลในเว็บ' },
   waiting: { icon: '🕘', label: 'รอรอบดาวน์โหลดตามเวลาของร้าน' },
   processing: { icon: '🔄', label: 'อยู่ในรอบดาวน์โหลดหรือนำเข้า' },
@@ -45,7 +46,7 @@ function formatTime(value) {
 }
 
 function rowStatusLabel(row) {
-  if (row.status === 'complete') return 'ครบ';
+  if (row.status === 'complete') return row.noFileCount ? `ตรวจครบ · ไม่มีเอกสาร ${row.noFileCount} วัน` : 'ครบ';
   if (row.status === 'waiting') return `รอรอบ ${row.scheduleTime || ''} น.`;
   if (row.status === 'processing') return 'กำลังดาวน์โหลด/นำเข้า';
   if (row.status === 'unavailable') return 'Shopee ยังไม่เปิดให้ดาวน์โหลด';
@@ -56,6 +57,12 @@ function rowStatusLabel(row) {
 function evidenceTitle(cell) {
   const meta = STATUS_META[cell.status] || STATUS_META.missing;
   if (!cell.evidence) return `${formatDate(cell.date, { long: true, year: true })}: ${meta.label}`;
+  if (cell.status === 'no_file') return [
+    `${formatDate(cell.date, { long: true, year: true })}: ${meta.label}`,
+    `ตรวจเมื่อ: ${formatTime(cell.evidence.observedAt)}`,
+    `บันทึกหลักฐาน: ${formatTime(cell.evidence.importedAt)}`,
+    `งาน: ${cell.evidence.jobId}`,
+  ].join('\n');
   return [
     `${formatDate(cell.date, { long: true, year: true })}: ${meta.label}`,
     `ไฟล์: ${cell.evidence.sourceFilename}`,
@@ -102,7 +109,7 @@ export function ShopeeDocumentSyncStatusView({
         <div>
           <p className="panel-eyebrow">ประวัติการดาวน์โหลดและนำเข้า</p>
           <p className="panel-copy">
-            สถานะอ้างอิงจากไฟล์ต้นฉบับที่ backend ตรวจ SHA-256 และนำเข้าแล้วเท่านั้น
+            แสดงไฟล์ที่นำเข้าแล้ว และวันที่ตรวจจาก Shopee แล้วว่าไม่มีเอกสาร
           </p>
         </div>
         <div className="shopee-sync-asof">
@@ -150,7 +157,7 @@ export function ShopeeDocumentSyncStatusView({
                       ? `อยู่ในรอบทำงาน ${shop.pendingRowCount} ประเภท`
                       : 'ข้อมูลครบตามรอบ'}</strong>
                 </div>
-                <small>นำเข้าล่าสุด {formatTime(shop.latestImportedAt)}</small>
+                <small>หลักฐานล่าสุด {formatTime(shop.latestImportedAt)}</small>
               </article>
             ))}
           </div>
