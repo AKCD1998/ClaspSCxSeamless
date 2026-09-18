@@ -2395,11 +2395,17 @@ a.history-view-button.secondary:hover {
 .accounting-income-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
 .accounting-income-pagination button { padding: 9px 14px; }
 .accounting-income-preview-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 18px; background: rgba(7,12,22,.72); }
-.accounting-income-preview-dialog { display: grid; grid-template-rows: auto minmax(0,1fr); width: min(1600px,100%); max-height: calc(100vh - 36px); overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: var(--panel); box-shadow: 0 28px 80px rgba(0,0,0,.32); }
+.accounting-income-preview-dialog { display: grid; grid-template-rows: auto auto minmax(0,1fr); width: min(1600px,100%); height: calc(100vh - 36px); max-height: calc(100vh - 36px); overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: var(--panel); box-shadow: 0 28px 80px rgba(0,0,0,.32); }
 .accounting-income-preview-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 18px 22px; border-bottom: 1px solid var(--border); }
 .accounting-income-preview-toolbar h2, .accounting-income-preview-toolbar p { margin: 0; }
 .accounting-income-preview-toolbar p { margin-top: 5px; color: var(--muted); }
 .accounting-income-preview-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.accounting-income-preview-tabs { display: flex; gap: 10px; padding: 10px 22px; border-bottom: 1px solid var(--border); background: rgba(128,128,128,.045); }
+.accounting-income-preview-tabs button { min-height: 38px; }
+.accounting-income-preview-pdf { min-height: 0; padding: 12px; background: #59636f; }
+.accounting-income-preview-pdf[hidden], .accounting-income-preview-scroll[hidden] { display: none !important; }
+.accounting-income-preview-pdf iframe { display: block; width: 100%; height: 100%; min-height: 520px; border: 0; border-radius: 8px; background: #fff; }
+.accounting-income-preview-pdf > p { margin: 0; padding: 30px; color: #fff; text-align: center; }
 .accounting-income-preview-scroll { overflow: auto; padding: 22px; background: rgba(128,128,128,.08); }
 .accounting-income-preview-document { display: grid; gap: 22px; width: min(1420px,100%); margin: 0 auto; }
 .accounting-income-preview-sheet { padding: 28px; color: #1f2937; background: #fff; border: 1px solid #d8dee8; border-radius: 12px; box-shadow: 0 8px 24px rgba(15,23,42,.08); }
@@ -2453,7 +2459,9 @@ a.history-view-button.secondary:hover {
   .accounting-income-table td[colspan]::before { content: none; }
   .accounting-income-pagination { justify-content: space-between; }
   .accounting-income-preview-backdrop { padding: 0; }
-  .accounting-income-preview-dialog { max-height: 100vh; border-radius: 0; }
+  .accounting-income-preview-dialog { height: 100vh; max-height: 100vh; border-radius: 0; }
+  .accounting-income-preview-tabs { overflow-x: auto; padding: 8px 10px; }
+  .accounting-income-preview-pdf { padding: 6px; }
   .accounting-income-preview-scroll { padding: 10px; }
   .accounting-income-preview-sheet { padding: 18px; }
 }

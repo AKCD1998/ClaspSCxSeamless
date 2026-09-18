@@ -62,6 +62,7 @@ test('Income export preview shows sources and rows before offering print or down
     onClose() {},
     onDownload() {},
     onPrint() {},
+    pdfUrl: 'blob:https://app.example.test/combined-pdf',
     preview: {
       documents: [{
         endDate: '2026-08-31',
@@ -107,8 +108,12 @@ test('Income export preview shows sources and rows before offering print or down
   }));
 
   assert.match(html, /role="dialog"/u);
-  assert.match(html, /ตัวอย่างเอกสารรายรับสำหรับบัญชี/u);
-  assert.match(html, /พิมพ์เอกสาร/u);
+  assert.match(html, /พรีวิวเอกสารรวมพร้อมภาคผนวก/u);
+  assert.match(html, /เปิด PDF เพื่อพิมพ์/u);
+  assert.match(html, /PDF รวมพร้อมภาคผนวก/u);
+  assert.match(html, /ข้อมูลสรุปและลิงก์เดิม/u);
+  assert.match(html, /<iframe/u);
+  assert.match(html, /PDF รายรับพร้อมภาคผนวกเอกสาร Shopee ต้นฉบับ/u);
   assert.match(html, /ดาวน์โหลดชุดเอกสาร \(\.zip\)/u);
   assert.match(html, /Income\.transferred\.xlsx/u);
   assert.match(html, /เปิดดูต้นฉบับ/u);

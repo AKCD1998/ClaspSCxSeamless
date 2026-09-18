@@ -289,6 +289,33 @@ test('getAccountingIncomeOrdersPreview requests the selected shop without downlo
   assert.equal(result.filters.shopLabel, 'DR.Morepen');
 });
 
+test('getAccountingIncomeOrdersPdf fetches one combined inline-preview PDF with credentials', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response('combined-pdf-bytes', {
+      headers: { 'Content-Type': 'application/pdf' },
+      status: 200,
+    });
+  };
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const result = await api.getAccountingIncomeOrdersPdf({
+    dateColumn: 'transferredAt',
+    dateFrom: '2026-08-01',
+    dateTo: '2026-08-31',
+    shopCode: 'sc-drug-store',
+  });
+  const url = new URL(calls[0].url);
+
+  assert.equal(url.pathname, '/api/app/accounting-print-bundles/income-orders/preview.pdf');
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(await result.blob.text(), 'combined-pdf-bytes');
+  assert.equal(
+    result.filename,
+    'shopee-income-accounting-sc-drug-store-2026-08-01-to-2026-08-31-with-shopee-appendix.pdf',
+  );
+});
+
 test('getAccountingIncomeOrdersExcel downloads the transferred-date range with credentials', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {

@@ -161,6 +161,35 @@ export function getAccountingIncomeOrdersPreview(filters = {}) {
     `/app/accounting-print-bundles/income-orders/preview${query ? `?${query}` : ''}`,
   );
 }
+export async function getAccountingIncomeOrdersPdf(filters = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  }
+  const query = params.toString();
+  const response = await fetch(
+    `${API_BASE_URL}/app/accounting-print-bundles/income-orders/preview.pdf${query ? `?${query}` : ''}`,
+    { credentials: 'include' },
+  );
+  if (!response.ok) {
+    let message = `Request failed with HTTP ${response.status}`;
+    try {
+      const payload = await response.json();
+      message = payload?.error?.message || payload?.message || message;
+    } catch (error) {
+      // Keep the HTTP status when the error response is not JSON.
+    }
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+  return {
+    blob: await response.blob(),
+    filename: `shopee-income-accounting${filters.shopCode ? `-${filters.shopCode}` : ''}-${filters.dateFrom}-to-${filters.dateTo}-with-shopee-appendix.pdf`,
+  };
+}
 export async function getAccountingIncomeOrdersExcel(filters = {}) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {

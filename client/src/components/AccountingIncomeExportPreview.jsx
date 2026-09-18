@@ -25,8 +25,10 @@ export default function AccountingIncomeExportPreview({
   onClose,
   onDownload,
   onPrint,
+  pdfUrl,
   preview,
 }) {
+  const [viewMode, setViewMode] = useState("pdf");
   if (!preview) return null;
 
   return (
@@ -39,19 +41,49 @@ export default function AccountingIncomeExportPreview({
       >
         <header className="accounting-income-preview-toolbar">
           <div>
-            <h2 id="accounting-income-preview-title">ตัวอย่างเอกสารรายรับสำหรับบัญชี</h2>
-            <p>ตรวจสอบร้าน ช่วงวันที่ รายการต้นฉบับ และยอดรวมก่อนดาวน์โหลดหรือสั่งพิมพ์</p>
+            <h2 id="accounting-income-preview-title">พรีวิวเอกสารรวมพร้อมภาคผนวก</h2>
+            <p>PDF รวมมีตารางรายรับและสำเนาทุกหน้าของเอกสาร Shopee ต้นฉบับสำหรับพิมพ์ในชุดเดียว</p>
           </div>
           <div className="accounting-income-preview-actions">
             <button type="button" className="secondary" onClick={onClose}>ปิด</button>
-            <button type="button" className="secondary" onClick={onPrint}>พิมพ์เอกสาร</button>
+            <button type="button" className="secondary" onClick={onPrint}>เปิด PDF เพื่อพิมพ์</button>
             <button type="button" disabled={downloadLoading} onClick={onDownload}>
               {downloadLoading ? "กำลังสร้างชุดเอกสาร..." : "ดาวน์โหลดชุดเอกสาร (.zip)"}
             </button>
           </div>
         </header>
 
-        <div className="accounting-income-preview-scroll">
+        <nav className="accounting-income-preview-tabs" aria-label="รูปแบบพรีวิว">
+          <button
+            type="button"
+            className={viewMode === "pdf" ? "" : "secondary"}
+            aria-pressed={viewMode === "pdf"}
+            onClick={() => setViewMode("pdf")}
+          >
+            PDF รวมพร้อมภาคผนวก
+          </button>
+          <button
+            type="button"
+            className={viewMode === "summary" ? "" : "secondary"}
+            aria-pressed={viewMode === "summary"}
+            onClick={() => setViewMode("summary")}
+          >
+            ข้อมูลสรุปและลิงก์เดิม
+          </button>
+        </nav>
+
+        <div className="accounting-income-preview-pdf" hidden={viewMode !== "pdf"}>
+          {pdfUrl ? (
+            <iframe
+              src={`${pdfUrl}#toolbar=1&navpanes=0&view=FitH`}
+              title="PDF รายรับพร้อมภาคผนวกเอกสาร Shopee ต้นฉบับ"
+            />
+          ) : (
+            <p>กำลังเตรียม PDF รวมพร้อมภาคผนวก...</p>
+          )}
+        </div>
+
+        <div className="accounting-income-preview-scroll" hidden={viewMode !== "summary"}>
           <article className="accounting-income-preview-document">
             <section className="accounting-income-preview-sheet accounting-income-preview-cover">
               <h3>ชุดข้อมูลรายรับสำหรับบัญชี</h3>
@@ -177,3 +209,4 @@ export default function AccountingIncomeExportPreview({
     </div>
   );
 }
+import { useState } from "react";

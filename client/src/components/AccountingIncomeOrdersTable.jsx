@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getAccountingIncomeOrdersPreview,
   getAccountingIncomeOrdersBundle,
+  getAccountingIncomeOrdersPdf,
   listAccountingIncomeOrders,
 } from "../services/api.js";
 import AccountingIncomeExportPreview from "./AccountingIncomeExportPreview.jsx";
@@ -72,6 +73,7 @@ export default function AccountingIncomeOrdersTable() {
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [message, setMessage] = useState("");
   const invalidRange = filters.dateFrom && filters.dateTo
@@ -80,6 +82,10 @@ export default function AccountingIncomeOrdersTable() {
     && filters.dateFrom
     && filters.dateTo
     && !invalidRange;
+
+  useEffect(() => () => {
+    if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
+  }, [previewPdfUrl]);
 
   useEffect(() => {
     if (invalidRange) {
@@ -119,6 +125,7 @@ export default function AccountingIncomeOrdersTable() {
   function updateFilter(name, value) {
     setPage(1);
     setPreview(null);
+    setPreviewPdfUrl("");
     setResult({ orders: [], page: 1, totalCount: 0, totalPages: 1 });
     setFilters((previous) => ({ ...previous, [name]: value }));
   }
@@ -128,7 +135,11 @@ export default function AccountingIncomeOrdersTable() {
     setPreviewLoading(true);
     setMessage("กำลังเตรียมตัวอย่างเอกสาร...");
     try {
-      const payload = await getAccountingIncomeOrdersPreview(filters);
+      const [payload, pdf] = await Promise.all([
+        getAccountingIncomeOrdersPreview(filters),
+        getAccountingIncomeOrdersPdf(filters),
+      ]);
+      setPreviewPdfUrl(URL.createObjectURL(pdf.blob));
       setPreview(payload);
       setMessage("");
     } catch (error) {
@@ -161,7 +172,18 @@ export default function AccountingIncomeOrdersTable() {
   }
 
   function printPreview() {
-    if (preview) window.print();
+    if (!previewPdfUrl) return;
+    const printWindow = window.open(previewPdfUrl, "_blank");
+    if (!printWindow) {
+      setMessage("เบราว์เซอร์บล็อกหน้าต่าง PDF กรุณาอนุญาต pop-up แล้วลองอีกครั้ง");
+    } else {
+      printWindow.opener = null;
+    }
+  }
+
+  function closePreview() {
+    setPreview(null);
+    setPreviewPdfUrl("");
   }
 
   return (
@@ -247,7 +269,7 @@ export default function AccountingIncomeOrdersTable() {
 
       <p className="accounting-income-export-note">
         เอกสารสำหรับบัญชีใช้ช่วง “วันที่โอนชำระเงินสำเร็จ” เท่านั้น เลือกร้านและช่วงวันที่ให้ครบแล้วกดดูตัวอย่าง
-        ระบบจะยังไม่ดาวน์โหลดไฟล์จนกว่าจะกด “ดาวน์โหลด Excel” ภายในหน้าพรีวิว
+        พรีวิว PDF จะรวมตารางและเอกสาร Shopee ต้นฉบับไว้ในภาคผนวก ระบบจะยังไม่ดาวน์โหลดไฟล์ลงเครื่อง
       </p>
 
       <p className="accounting-warning accounting-income-message" role="status" aria-live="polite">
@@ -328,9 +350,10 @@ export default function AccountingIncomeOrdersTable() {
       </nav>
       <AccountingIncomeExportPreview
         downloadLoading={exportLoading}
-        onClose={() => setPreview(null)}
+        onClose={closePreview}
         onDownload={downloadBundle}
         onPrint={printPreview}
+        pdfUrl={previewPdfUrl}
         preview={preview}
       />
     </section>
