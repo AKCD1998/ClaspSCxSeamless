@@ -73,6 +73,24 @@ test('verified empty e-Tax dates show observation provenance without inventing a
   assert.match(html, /dr-etax-empty-test/u);
   assert.doesNotMatch(html, /ไฟล์: undefined|SHA-256: undefined/u);
 });
+test('outside-window evidence has its own label and bound without changing generic unavailable', async () => {
+  const { ShopeeDocumentSyncStatusView } = await vite.ssrLoadModule('/src/components/ShopeeDocumentSyncStatusPanel.jsx');
+  const windowRow = { ...row, reportType: 'etax-receipt-invoice', outsideWindowCount: 1, status: 'complete',
+    cells: [{ date: '2026-09-09', status: 'unavailable', evidence: {
+      jobId: 'outside-window-test', reasonCode: 'SHOPEE_ETAX_DATE_OUTSIDE_AVAILABLE_WINDOW', earliestAvailableDate: '2026-09-10',
+      observedAt: '2026-09-10T02:00:00Z', importedAt: '2026-09-10T02:01:00Z',
+    } }] };
+  const html = renderToString(React.createElement(ShopeeDocumentSyncStatusView, {
+    data: { ...data, shops: [{ ...data.shops[0], rows: [windowRow, { ...row, reportType: 'income-pending', status: 'unavailable',
+      cells: [{ date: '2026-09-09', status: 'unavailable' }] }] }] }, days: 14, groupFilter: 'all', shopFilter: 'all',
+  }));
+  assert.match(html, /ตรวจแล้ว: Shopee ไม่เปิดให้เลือกวันที่นี้ \(นอกช่วงย้อนหลัง\)/u);
+  assert.match(html, /ตรวจครบ · นอกช่วงย้อนหลัง 1 วัน/u);
+  assert.match(html, /เลือกย้อนหลังได้ตั้งแต่:/u);
+  assert.match(html, /outside-window-test/u);
+  assert.match(html, /Shopee ยังไม่เปิดให้ดาวน์โหลด/u);
+  assert.doesNotMatch(html, /ไฟล์: undefined|SHA-256: undefined/u);
+});
 
 test('shows not-due and Shopee-unavailable states without calling them failures', async () => {
   const { ShopeeDocumentSyncStatusView } = await vite.ssrLoadModule('/src/components/ShopeeDocumentSyncStatusPanel.jsx');
