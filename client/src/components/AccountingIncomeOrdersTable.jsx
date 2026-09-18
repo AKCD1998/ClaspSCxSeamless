@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import {
+  getAccountingIncomeOrdersPreview,
   getAccountingIncomeOrdersExcel,
   listAccountingIncomeOrders,
 } from "../services/api.js";
+import AccountingIncomeExportPreview from "./AccountingIncomeExportPreview.jsx";
 
 export const PAGE_SIZE = 10;
+export const SHOP_LABELS = Object.freeze({
+  "dr-morepen": "DR.Morepen",
+  "sc-drug-store": "SC Drug Store",
+});
 export const SELLER_BALANCE_STATUS = Object.freeze({
   amount_mismatch: { label: "พบข้อมูลแต่ยอดไม่ตรง", tone: "warning" },
   credited: { label: "เงินเข้าแล้ว", tone: "success" },
@@ -34,6 +40,10 @@ export function formatIncomeAmount(value) {
   return Number.isFinite(Number(value)) ? MONEY_FORMATTER.format(Number(value)) : "-";
 }
 
+export function formatIncomeShop(shopCode) {
+  return SHOP_LABELS[shopCode] || "ไม่ทราบร้าน";
+}
+
 export function SellerBalanceStatusBadge({ status }) {
   const presentation = SELLER_BALANCE_STATUS[status]
     || { label: "ไม่ทราบสถานะ", tone: "neutral" };
@@ -50,6 +60,7 @@ export default function AccountingIncomeOrdersTable() {
     dateFrom: "",
     dateTo: "",
     orderNumber: "",
+    shopCode: "",
   });
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({
@@ -60,6 +71,8 @@ export default function AccountingIncomeOrdersTable() {
   });
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [message, setMessage] = useState("");
   const invalidRange = filters.dateFrom && filters.dateTo
     && filters.dateFrom > filters.dateTo;
@@ -98,22 +111,39 @@ export default function AccountingIncomeOrdersTable() {
     filters.dateFrom,
     filters.dateTo,
     filters.orderNumber,
+    filters.shopCode,
     invalidRange,
     page,
   ]);
 
   function updateFilter(name, value) {
     setPage(1);
+    setPreview(null);
     setResult({ orders: [], page: 1, totalCount: 0, totalPages: 1 });
     setFilters((previous) => ({ ...previous, [name]: value }));
   }
 
+  async function openPreview() {
+    if (!exportReady || previewLoading) return;
+    setPreviewLoading(true);
+    setMessage("กำลังเตรียมตัวอย่างเอกสาร...");
+    try {
+      const payload = await getAccountingIncomeOrdersPreview(filters);
+      setPreview(payload);
+      setMessage("");
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   async function downloadExcel() {
-    if (!exportReady || exportLoading) return;
+    if (!preview || exportLoading) return;
     setExportLoading(true);
     setMessage("กำลังสร้างไฟล์ Excel สำหรับบัญชี...");
     try {
-      const exported = await getAccountingIncomeOrdersExcel(filters);
+      const exported = await getAccountingIncomeOrdersExcel(preview.filters);
       const url = URL.createObjectURL(exported.blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -128,6 +158,10 @@ export default function AccountingIncomeOrdersTable() {
     } finally {
       setExportLoading(false);
     }
+  }
+
+  function printPreview() {
+    if (preview) window.print();
   }
 
   return (
@@ -147,10 +181,10 @@ export default function AccountingIncomeOrdersTable() {
           <button
             type="button"
             className="secondary accounting-income-export"
-            disabled={!exportReady || exportLoading}
-            onClick={downloadExcel}
+            disabled={!exportReady || previewLoading}
+            onClick={openPreview}
           >
-            {exportLoading ? "กำลังสร้าง Excel..." : "ดาวน์โหลด Excel สำหรับบัญชี"}
+            {previewLoading ? "กำลังเตรียมตัวอย่าง..." : "ดูตัวอย่างก่อนดาวน์โหลดหรือพิมพ์"}
           </button>
           <span className="accounting-income-count">
             {result.totalCount.toLocaleString("th-TH")} รายการ
@@ -169,6 +203,17 @@ export default function AccountingIncomeOrdersTable() {
             placeholder="เช่น 260829JNKSJXFW"
             onChange={(event) => updateFilter("orderNumber", event.target.value)}
           />
+        </label>
+        <label className="field">
+          <span>ร้าน</span>
+          <select
+            value={filters.shopCode}
+            onChange={(event) => updateFilter("shopCode", event.target.value)}
+          >
+            <option value="">ทุกร้าน</option>
+            <option value="sc-drug-store">SC Drug Store</option>
+            <option value="dr-morepen">DR.Morepen</option>
+          </select>
         </label>
         <label className="field">
           <span>คอลัมน์วันที่ที่ต้องการหา</span>
@@ -201,8 +246,8 @@ export default function AccountingIncomeOrdersTable() {
       </div>
 
       <p className="accounting-income-export-note">
-        ไฟล์สำหรับบัญชีใช้ช่วง “วันที่โอนชำระเงินสำเร็จ” เท่านั้น กรุณาเลือกวันเริ่มต้นและวันสิ้นสุดให้ครบ
-        ชีตแรกจะแสดงเอกสาร Shopee ต้นฉบับที่ครอบคลุมช่วงดังกล่าว
+        เอกสารสำหรับบัญชีใช้ช่วง “วันที่โอนชำระเงินสำเร็จ” เท่านั้น เลือกร้านและช่วงวันที่ให้ครบแล้วกดดูตัวอย่าง
+        ระบบจะยังไม่ดาวน์โหลดไฟล์จนกว่าจะกด “ดาวน์โหลด Excel” ภายในหน้าพรีวิว
       </p>
 
       <p className="accounting-warning accounting-income-message" role="status" aria-live="polite">
@@ -211,12 +256,13 @@ export default function AccountingIncomeOrdersTable() {
       <div className="accounting-income-table-wrap">
         <table className="accounting-income-table">
           <colgroup>
-            <col /><col /><col /><col /><col /><col />
+            <col /><col /><col /><col /><col /><col /><col />
             <col className="accounting-income-balance-net-col" />
           </colgroup>
           <thead>
             <tr>
               <th>หมายเลขคำสั่งซื้อ</th>
+              <th>ร้าน</th>
               <th>วันที่ทำการสั่งซื้อ</th>
               <th>วันที่โอนชำระเงิน</th>
               <th>จำนวนเงินทั้งหมด</th>
@@ -227,16 +273,17 @@ export default function AccountingIncomeOrdersTable() {
           </thead>
           <tbody>
             {loading && !result.orders.length && (
-              <tr><td colSpan="7" className="accounting-income-empty">กำลังโหลดข้อมูล...</td></tr>
+              <tr><td colSpan="8" className="accounting-income-empty">กำลังโหลดข้อมูล...</td></tr>
             )}
             {!loading && !result.orders.length && !message && (
-              <tr><td colSpan="7" className="accounting-income-empty">ไม่พบรายการตามเงื่อนไข</td></tr>
+              <tr><td colSpan="8" className="accounting-income-empty">ไม่พบรายการตามเงื่อนไข</td></tr>
             )}
             {result.orders.map((order, index) => (
               <tr key={`${order.orderNumber}-${order.transferDate}-${order.amount}-${index}`}>
                 <td data-label="หมายเลขคำสั่งซื้อ" className="accounting-income-order-number">
                   {order.orderNumber}
                 </td>
+                <td data-label="ร้าน">{formatIncomeShop(order.shopCode)}</td>
                 <td data-label="วันที่ทำการสั่งซื้อ">{formatIncomeDate(order.orderDate)}</td>
                 <td data-label="วันที่โอนชำระเงิน">{formatIncomeDate(order.transferDate)}</td>
                 <td data-label="จำนวนเงินทั้งหมด" className="accounting-income-amount">
@@ -279,6 +326,13 @@ export default function AccountingIncomeOrdersTable() {
           ถัดไป
         </button>
       </nav>
+      <AccountingIncomeExportPreview
+        downloadLoading={exportLoading}
+        onClose={() => setPreview(null)}
+        onDownload={downloadExcel}
+        onPrint={printPreview}
+        preview={preview}
+      />
     </section>
   );
 }

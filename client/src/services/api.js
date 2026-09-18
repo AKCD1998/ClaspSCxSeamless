@@ -141,6 +141,18 @@ export function listAccountingIncomeOrders(filters = {}) {
   const query = params.toString();
   return requestJson(`/app/accounting-print-bundles/income-orders${query ? `?${query}` : ''}`);
 }
+export function getAccountingIncomeOrdersPreview(filters = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  }
+  const query = params.toString();
+  return requestJson(
+    `/app/accounting-print-bundles/income-orders/preview${query ? `?${query}` : ''}`,
+  );
+}
 export async function getAccountingIncomeOrdersExcel(filters = {}) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
@@ -167,7 +179,7 @@ export async function getAccountingIncomeOrdersExcel(filters = {}) {
   }
   return {
     blob: await response.blob(),
-    filename: `shopee-income-accounting-${filters.dateFrom}-to-${filters.dateTo}.xlsx`,
+    filename: `shopee-income-accounting${filters.shopCode ? `-${filters.shopCode}` : ''}-${filters.dateFrom}-to-${filters.dateTo}.xlsx`,
   };
 }
 export function getAccountingPrintBatch(id) {

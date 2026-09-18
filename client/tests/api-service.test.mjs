@@ -223,6 +223,7 @@ test('listAccountingIncomeOrders sends one combined server-side filter and page 
     dateTo: '2026-08-31',
     page: 2,
     pageSize: 10,
+    shopCode: 'sc-drug-store',
   });
   const url = new URL(calls[0].url);
   assert.equal(url.pathname, '/api/app/accounting-print-bundles/income-orders');
@@ -233,8 +234,39 @@ test('listAccountingIncomeOrders sends one combined server-side filter and page 
     dateTo: '2026-08-31',
     page: '2',
     pageSize: '10',
+    shopCode: 'sc-drug-store',
   });
   assert.equal(calls[0].options.credentials, 'include');
+});
+
+test('getAccountingIncomeOrdersPreview requests the selected shop without downloading a blob', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({
+      documents: [],
+      filters: { shopCode: 'dr-morepen', shopLabel: 'DR.Morepen' },
+      orders: [],
+      summary: { creditedCount: 0, orderCount: 0, totalIncome: 0 },
+    }));
+  };
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const result = await api.getAccountingIncomeOrdersPreview({
+    dateColumn: 'transferredAt',
+    dateFrom: '2026-08-01',
+    dateTo: '2026-08-31',
+    shopCode: 'dr-morepen',
+  });
+  const url = new URL(calls[0].url);
+  assert.equal(url.pathname, '/api/app/accounting-print-bundles/income-orders/preview');
+  assert.deepEqual(Object.fromEntries(url.searchParams), {
+    dateColumn: 'transferredAt',
+    dateFrom: '2026-08-01',
+    dateTo: '2026-08-31',
+    shopCode: 'dr-morepen',
+  });
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(result.filters.shopLabel, 'DR.Morepen');
 });
 
 test('getAccountingIncomeOrdersExcel downloads the transferred-date range with credentials', async () => {
@@ -254,6 +286,7 @@ test('getAccountingIncomeOrdersExcel downloads the transferred-date range with c
     dateFrom: '2026-08-01',
     dateTo: '2026-08-31',
     orderNumber: '2608TEST',
+    shopCode: 'dr-morepen',
   });
   const url = new URL(calls[0].url);
   assert.equal(url.pathname, '/api/app/accounting-print-bundles/income-orders/export.xlsx');
@@ -262,12 +295,13 @@ test('getAccountingIncomeOrdersExcel downloads the transferred-date range with c
     dateFrom: '2026-08-01',
     dateTo: '2026-08-31',
     orderNumber: '2608TEST',
+    shopCode: 'dr-morepen',
   });
   assert.equal(calls[0].options.credentials, 'include');
   assert.equal(await result.blob.text(), 'income-xlsx-bytes');
   assert.equal(
     result.filename,
-    'shopee-income-accounting-2026-08-01-to-2026-08-31.xlsx',
+    'shopee-income-accounting-dr-morepen-2026-08-01-to-2026-08-31.xlsx',
   );
 });
 
