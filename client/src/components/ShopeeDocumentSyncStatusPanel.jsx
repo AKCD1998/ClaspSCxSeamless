@@ -22,6 +22,11 @@ const STATUS_META = {
   not_due: { icon: '💤', label: 'ยังไม่ถึงรอบที่ Shopee ออกรายงาน' },
   unavailable: { icon: '⚪', label: 'Shopee ยังไม่เปิดให้ดาวน์โหลด' },
 };
+const OUTSIDE_WINDOW_META = { icon: '◷', label: 'ตรวจแล้ว: Shopee ไม่เปิดให้เลือกวันที่นี้ (นอกช่วงย้อนหลัง)' };
+function cellMeta(cell) {
+  return cell.status === 'unavailable' && cell.evidence?.reasonCode === 'SHOPEE_ETAX_DATE_OUTSIDE_AVAILABLE_WINDOW'
+    ? OUTSIDE_WINDOW_META : STATUS_META[cell.status] || STATUS_META.missing;
+}
 
 function formatDate(value, options = {}) {
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(value || '')) return '-';
@@ -46,7 +51,9 @@ function formatTime(value) {
 }
 
 function rowStatusLabel(row) {
-  if (row.status === 'complete') return row.noFileCount ? `ตรวจครบ · ไม่มีเอกสาร ${row.noFileCount} วัน` : 'ครบ';
+  if (row.status === 'complete') return row.outsideWindowCount
+    ? `ตรวจครบ · นอกช่วงย้อนหลัง ${row.outsideWindowCount} วัน${row.noFileCount ? ` · ไม่มีเอกสาร ${row.noFileCount} วัน` : ''}`
+    : row.noFileCount ? `ตรวจครบ · ไม่มีเอกสาร ${row.noFileCount} วัน` : 'ครบ';
   if (row.status === 'waiting') return `รอรอบ ${row.scheduleTime || ''} น.`;
   if (row.status === 'processing') return 'กำลังดาวน์โหลด/นำเข้า';
   if (row.status === 'unavailable') return 'Shopee ยังไม่เปิดให้ดาวน์โหลด';
@@ -55,13 +62,14 @@ function rowStatusLabel(row) {
 }
 
 function evidenceTitle(cell) {
-  const meta = STATUS_META[cell.status] || STATUS_META.missing;
+  const meta = cellMeta(cell);
   if (!cell.evidence) return `${formatDate(cell.date, { long: true, year: true })}: ${meta.label}`;
-  if (cell.status === 'no_file') return [
+  if (cell.status === 'no_file' || (cell.status === 'unavailable' && cell.evidence.reasonCode === 'SHOPEE_ETAX_DATE_OUTSIDE_AVAILABLE_WINDOW')) return [
     `${formatDate(cell.date, { long: true, year: true })}: ${meta.label}`,
     `ตรวจเมื่อ: ${formatTime(cell.evidence.observedAt)}`,
     `บันทึกหลักฐาน: ${formatTime(cell.evidence.importedAt)}`,
     `งาน: ${cell.evidence.jobId}`,
+    ...(cell.evidence.earliestAvailableDate ? [`เลือกย้อนหลังได้ตั้งแต่: ${formatDate(cell.evidence.earliestAvailableDate, { long: true, year: true })}`] : []),
   ].join('\n');
   return [
     `${formatDate(cell.date, { long: true, year: true })}: ${meta.label}`,
@@ -73,7 +81,7 @@ function evidenceTitle(cell) {
 }
 
 function StatusCell({ cell }) {
-  const meta = STATUS_META[cell.status] || STATUS_META.missing;
+  const meta = cellMeta(cell);
   return (
     <td className="shopee-sync-cell" data-state={cell.status} title={evidenceTitle(cell)}>
       <span aria-label={`${formatDate(cell.date, { long: true, year: true })} ${meta.label}`} role="img">
@@ -155,7 +163,9 @@ export function ShopeeDocumentSyncStatusView({
                     ? `ยังขาด ${shop.incompleteRowCount} ประเภท`
                     : shop.pendingRowCount
                       ? `อยู่ในรอบทำงาน ${shop.pendingRowCount} ประเภท`
-                      : 'ข้อมูลครบตามรอบ'}</strong>
+                      : shop.rows.some((item) => item.outsideWindowCount)
+                        ? 'ตรวจครบ · มีวันนอกช่วงย้อนหลัง'
+                        : 'ข้อมูลครบตามรอบ'}</strong>
                 </div>
                 <small>หลักฐานล่าสุด {formatTime(shop.latestImportedAt)}</small>
               </article>
@@ -193,6 +203,7 @@ export function ShopeeDocumentSyncStatusView({
             {Object.entries(STATUS_META).map(([key, meta]) => (
               <span key={key}><b>{meta.icon}</b> {meta.label}</span>
             ))}
+            <span><b>{OUTSIDE_WINDOW_META.icon}</b> {OUTSIDE_WINDOW_META.label}</span>
           </div>
           <p className="shopee-sync-note">
             วางเมาส์ที่แต่ละช่องเพื่อดูชื่อไฟล์ ช่วงวันที่ เวลานำเข้า และ SHA-256
