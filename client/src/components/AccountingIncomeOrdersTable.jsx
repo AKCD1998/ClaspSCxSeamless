@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   getAccountingIncomeOrdersPreview,
-  getAccountingIncomeOrdersExcel,
+  getAccountingIncomeOrdersBundle,
   listAccountingIncomeOrders,
 } from "../services/api.js";
 import AccountingIncomeExportPreview from "./AccountingIncomeExportPreview.jsx";
@@ -138,12 +138,12 @@ export default function AccountingIncomeOrdersTable() {
     }
   }
 
-  async function downloadExcel() {
+  async function downloadBundle() {
     if (!preview || exportLoading) return;
     setExportLoading(true);
-    setMessage("กำลังสร้างไฟล์ Excel สำหรับบัญชี...");
+    setMessage("กำลังสร้างชุดเอกสารสำหรับบัญชี...");
     try {
-      const exported = await getAccountingIncomeOrdersExcel(preview.filters);
+      const exported = await getAccountingIncomeOrdersBundle(preview.filters);
       const url = URL.createObjectURL(exported.blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -152,7 +152,7 @@ export default function AccountingIncomeOrdersTable() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      setMessage("สร้างไฟล์ Excel เรียบร้อยแล้ว");
+      setMessage("สร้างชุดเอกสาร ZIP เรียบร้อยแล้ว");
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -329,7 +329,7 @@ export default function AccountingIncomeOrdersTable() {
       <AccountingIncomeExportPreview
         downloadLoading={exportLoading}
         onClose={() => setPreview(null)}
-        onDownload={downloadExcel}
+        onDownload={downloadBundle}
         onPrint={printPreview}
         preview={preview}
       />

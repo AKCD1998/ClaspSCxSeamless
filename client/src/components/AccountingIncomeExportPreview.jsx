@@ -40,13 +40,13 @@ export default function AccountingIncomeExportPreview({
         <header className="accounting-income-preview-toolbar">
           <div>
             <h2 id="accounting-income-preview-title">ตัวอย่างเอกสารรายรับสำหรับบัญชี</h2>
-            <p>ตรวจสอบร้าน ช่วงวันที่ และยอดรวมก่อนดาวน์โหลดหรือสั่งพิมพ์</p>
+            <p>ตรวจสอบร้าน ช่วงวันที่ รายการต้นฉบับ และยอดรวมก่อนดาวน์โหลดหรือสั่งพิมพ์</p>
           </div>
           <div className="accounting-income-preview-actions">
             <button type="button" className="secondary" onClick={onClose}>ปิด</button>
             <button type="button" className="secondary" onClick={onPrint}>พิมพ์เอกสาร</button>
             <button type="button" disabled={downloadLoading} onClick={onDownload}>
-              {downloadLoading ? "กำลังสร้าง Excel..." : "ดาวน์โหลด Excel"}
+              {downloadLoading ? "กำลังสร้างชุดเอกสาร..." : "ดาวน์โหลดชุดเอกสาร (.zip)"}
             </button>
           </div>
         </header>
@@ -71,6 +71,15 @@ export default function AccountingIncomeExportPreview({
                 <div><span>เงินเข้า Seller Balance แล้ว</span><strong>{preview.summary.creditedCount.toLocaleString("th-TH")}</strong></div>
               </div>
 
+              <p className="accounting-income-preview-policy">
+                {preview.sourcePolicy?.fullCalendarMonth
+                  ? "ช่วงนี้เป็นเดือนเต็ม: ชุดดาวน์โหลดจะมี Excel ที่ระบบสร้าง + รายงานการเงินรายเดือนที่ตรงทั้งเดือน + รายงานรายสัปดาห์ทุกสัปดาห์ที่ทับซ้อน"
+                  : "ช่วงนี้ไม่ครบเดือน: ชุดดาวน์โหลดจะมี Excel ที่ระบบสร้าง + รายงานรายสัปดาห์ทุกสัปดาห์ที่ทับซ้อน โดยไม่ใส่รายงานรายเดือน"}
+                {preview.summary.missingOriginalCount > 0
+                  ? ` · ยังขาดไฟล์ต้นฉบับ ${preview.summary.missingOriginalCount.toLocaleString("th-TH")} รายการ`
+                  : " · ไฟล์ต้นฉบับครบ"}
+              </p>
+
               <h4>เอกสาร Shopee ต้นฉบับที่อ้างอิง</h4>
               <div className="accounting-income-preview-table-wrap">
                 <table>
@@ -88,12 +97,23 @@ export default function AccountingIncomeExportPreview({
                       <tr><td colSpan="5" className="accounting-income-preview-empty">ไม่พบเอกสารอ้างอิงในช่วงนี้</td></tr>
                     )}
                     {preview.documents.map((document) => (
-                      <tr key={`${document.shopCode}-${document.kind}-${document.filename}`}>
+                      <tr
+                        key={`${document.shopCode}-${document.kind}-${document.periodType}-${document.startDate}-${document.filename}`}
+                        data-original-status={document.originalAvailable ? "available" : "missing"}
+                      >
                         <td>{document.kindLabel}</td>
                         <td>{document.shopLabel}</td>
                         <td>{formatDate(document.startDate)} ถึง {formatDate(document.endDate)}</td>
                         <td>{document.filename}</td>
-                        <td>{document.originalAvailable ? "มีไฟล์ต้นฉบับในเว็บ" : "ระบบเก็บเฉพาะข้อมูลที่อ่านได้"}</td>
+                        <td>
+                          {document.originalAvailable && document.originalUrl ? (
+                            <a href={document.originalUrl} target="_blank" rel="noreferrer">
+                              เปิดดูต้นฉบับ
+                            </a>
+                          ) : document.isRequiredPlaceholder
+                            ? "ยังไม่มีไฟล์ต้นฉบับตามรอบที่ต้องใช้"
+                            : "มีข้อมูลอ้างอิง แต่ยังไม่มีไฟล์ต้นฉบับ"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -131,7 +151,14 @@ export default function AccountingIncomeExportPreview({
                         <td>{formatDate(order.orderDate)}</td>
                         <td>{formatDate(order.transferDate)}</td>
                         <td className="accounting-income-preview-number">{formatMoney(order.amount)}</td>
-                        <td>{order.sellerBalanceStatusLabel}</td>
+                        <td>
+                          <span
+                            className="accounting-income-preview-status"
+                            data-status={order.sellerBalanceStatus}
+                          >
+                            {order.sellerBalanceStatusLabel}
+                          </span>
+                        </td>
                         <td>{formatDate(order.sellerBalanceInflowDate)}</td>
                         <td className="accounting-income-preview-number">
                           {order.sellerBalanceNetAmount === null || order.sellerBalanceNetAmount === undefined

@@ -2341,6 +2341,9 @@ a.history-view-button.secondary:hover {
 }
 
 .accounting-shop-inputs { display: grid; grid-template-columns: repeat(auto-fit,minmax(250px,1fr)); gap: 24px; margin: 20px 0; }
+.accounting-source-original-upload { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.accounting-source-original-upload h3 { margin: 0; }
+.accounting-source-original-upload form { display: grid; align-content: start; gap: 10px; }
 .accounting-table-scroll { overflow-x: auto; margin: 20px 0; }
 .accounting-original-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 .accounting-original-table caption { text-align: left; padding: 10px 0; font-weight: 600; }
@@ -2411,11 +2414,20 @@ a.history-view-button.secondary:hover {
 .accounting-income-preview-summary div { display: grid; gap: 5px; padding: 14px; border: 1px solid #cdd9e8; border-radius: 10px; background: #eef5fb; }
 .accounting-income-preview-summary span { color: #475569; font-size: .85rem; }
 .accounting-income-preview-summary strong { color: #17365d; font-size: 1.1rem; }
+.accounting-income-preview-policy { margin: 18px 0 0; padding: 12px 14px; border-left: 4px solid #1f4e78; color: #334155; background: #eef5fb; }
 .accounting-income-preview-table-wrap { max-width: 100%; overflow: auto; }
 .accounting-income-preview-sheet table { width: 100%; min-width: 920px; border-collapse: collapse; font-size: .82rem; }
 .accounting-income-preview-sheet th, .accounting-income-preview-sheet td { padding: 9px 10px; border-bottom: 1px solid #d8dee8; text-align: left; vertical-align: top; }
 .accounting-income-preview-sheet th { color: #fff; background: #1f4e78; text-align: center; }
+.accounting-income-preview-sheet tr[data-original-status="missing"] td { color: #9c6500; background: #fff4cc; }
+.accounting-income-preview-sheet tr[data-original-status="available"] td:last-child { color: #006100; background: #e8f5e9; }
 .accounting-income-preview-number { text-align: right !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.accounting-income-preview-status { display: inline-flex; align-items: center; min-height: 26px; padding: 4px 9px; border: 1px solid transparent; border-radius: 999px; font-weight: 700; line-height: 1.2; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+.accounting-income-preview-status[data-status="credited"] { border-color: #8fca9b; color: #006100; background: #c6efce; }
+.accounting-income-preview-status[data-status="amount_mismatch"],
+.accounting-income-preview-status[data-status="not_found_in_covered_report"] { border-color: #e7bf58; color: #9c6500; background: #ffeb9c; }
+.accounting-income-preview-status[data-status="outflow_or_reversed"] { border-color: #e99a9f; color: #9c0006; background: #ffc7ce; }
+.accounting-income-preview-status[data-status="not_covered"] { border-color: #aebfd1; color: #44546a; background: #ddebf7; }
 .accounting-income-preview-empty { padding: 24px !important; color: #64748b; text-align: center !important; }
 [data-color-mode="dark"] .accounting-income-count { background: rgba(90,133,255,.14); }
 [data-color-mode="dark"] .accounting-income-table thead th { background: rgba(90,133,255,.12); }

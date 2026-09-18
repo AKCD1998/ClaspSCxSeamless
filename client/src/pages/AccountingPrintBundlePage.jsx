@@ -4,6 +4,7 @@ import Hero from "../components/Hero.jsx";
 import AccountingIncomeOrdersTable from "../components/AccountingIncomeOrdersTable.jsx";
 import {
   uploadAccountingOriginals,
+  uploadAccountingSourceOriginals,
   listAccountingPrintBatches,
   getAccountingPrintBatch,
   approveAccountingPrintBatch,
@@ -268,11 +269,13 @@ export default function AccountingPrintBundlePage() {
   const [search, setSearch] = useSearchParams();
   const id = search.get("batch");
   const [shopFiles, setShopFiles] = useState({});
+  const [sourceFiles, setSourceFiles] = useState({});
   const [batches, setBatches] = useState([]);
   const [batch, setBatch] = useState(null);
   const [capabilities, setCapabilities] = useState(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sourceBusy, setSourceBusy] = useState("");
   useEffect(() => {
     let cancelled = false;
     listAccountingPrintBatches()
@@ -332,6 +335,31 @@ export default function AccountingPrintBundlePage() {
       return;
     }
     await run(() => uploadAccountingOriginals(shopFiles));
+  }
+  async function uploadSourceOriginals(event, shopCode) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const files = sourceFiles[shopCode] || [];
+    if (!files.length) {
+      setMessage("กรุณาเลือก PDF รายงานการเงินต้นฉบับ");
+      return;
+    }
+    if (files.some((file) => !/\.pdf$/iu.test(file.name))) {
+      setMessage("ช่องนี้รองรับเฉพาะ PDF รายงานการเงินต้นฉบับ");
+      return;
+    }
+    setSourceBusy(shopCode);
+    setMessage("");
+    try {
+      const result = await uploadAccountingSourceOriginals(shopCode, files);
+      setSourceFiles((previous) => ({ ...previous, [shopCode]: [] }));
+      form.reset();
+      setMessage(`เก็บไฟล์ต้นฉบับแล้ว ${result.sources.length} ไฟล์`);
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSourceBusy("");
+    }
   }
   return (
     <main className="shell shell-single-column accounting-bundle-shell">
@@ -398,6 +426,40 @@ export default function AccountingPrintBundlePage() {
             {capabilities.lineConfigured ? "ตั้งค่าแล้ว" : "ยังไม่ได้ตั้งค่า"}
           </p>
         )}
+        <div className="accounting-source-original-upload">
+          <h3>เก็บ PDF รายงานการเงินต้นฉบับสำหรับชุดดาวน์โหลด</h3>
+          <p className="panel-copy">
+            อัปโหลด weekly_report หรือ monthly_report แยกตามร้าน ระบบอ่านรหัสผู้ขายและช่วงวันที่จาก PDF
+            ก่อนเก็บไฟล์เดิมไว้ โดยไฟล์รายเดือนจะถูกเลือกเฉพาะเมื่อช่วงวันที่เป็นเดือนปฏิทินเต็มเท่านั้น
+          </p>
+          <div className="accounting-shop-inputs">
+            {SHOPS.map((shop) => (
+              <form key={`source-${shop.code}`} onSubmit={(event) => uploadSourceOriginals(event, shop.code)}>
+                <label className="field">
+                  <span>{shop.name}</span>
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    multiple
+                    disabled={sourceBusy === shop.code || capabilities?.localReviewOnly}
+                    onChange={(event) => setSourceFiles((previous) => ({
+                      ...previous,
+                      [shop.code]: Array.from(event.target.files || []),
+                    }))}
+                  />
+                  <small>เลือกแล้ว {sourceFiles[shop.code]?.length || 0} ไฟล์</small>
+                </label>
+                <button
+                  type="submit"
+                  className="secondary"
+                  disabled={sourceBusy === shop.code || capabilities?.localReviewOnly}
+                >
+                  {sourceBusy === shop.code ? "กำลังเก็บไฟล์..." : "เก็บต้นฉบับของร้านนี้"}
+                </button>
+              </form>
+            ))}
+          </div>
+        </div>
         <p role="alert" className="accounting-warning">
           {message}
         </p>

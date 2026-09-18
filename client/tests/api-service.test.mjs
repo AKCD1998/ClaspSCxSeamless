@@ -209,6 +209,26 @@ test('accounting approval sends only the selected batch and reviewed digest', as
   assert.deepEqual(JSON.parse(calls[0].options.body),{digest:'reviewed-digest'});
 });
 
+test('uploadAccountingSourceOriginals stores statement PDFs under one explicit shop', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response(JSON.stringify({ sources: [{ id: 'source-1' }] }), { status: 201 });
+  };
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const payload = await api.uploadAccountingSourceOriginals('sc-drug-store', [
+    new File(['monthly PDF'], 'monthly_report_20260801.pdf'),
+  ]);
+
+  assert.equal(
+    calls[0].url,
+    'http://api.test.local/api/app/accounting-print-bundles/source-originals/sc-drug-store',
+  );
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(calls[0].options.body.get('files').name, 'monthly_report_20260801.pdf');
+  assert.equal(payload.sources[0].id, 'source-1');
+});
+
 test('listAccountingIncomeOrders sends one combined server-side filter and page query', async () => {
   const calls = [];
   globalThis.fetch = async (url, options) => {
@@ -302,6 +322,33 @@ test('getAccountingIncomeOrdersExcel downloads the transferred-date range with c
   assert.equal(
     result.filename,
     'shopee-income-accounting-dr-morepen-2026-08-01-to-2026-08-31.xlsx',
+  );
+});
+
+test('getAccountingIncomeOrdersBundle downloads the reviewed range as a ZIP', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response('zip-bytes', {
+      headers: { 'Content-Type': 'application/zip' },
+      status: 200,
+    });
+  };
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const result = await api.getAccountingIncomeOrdersBundle({
+    dateColumn: 'transferredAt',
+    dateFrom: '2026-08-01',
+    dateTo: '2026-08-31',
+    shopCode: 'sc-drug-store',
+  });
+  const url = new URL(calls[0].url);
+
+  assert.equal(url.pathname, '/api/app/accounting-print-bundles/income-orders/export.zip');
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(await result.blob.text(), 'zip-bytes');
+  assert.equal(
+    result.filename,
+    'shopee-income-accounting-sc-drug-store-2026-08-01-to-2026-08-31.zip',
   );
 });
 

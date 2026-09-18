@@ -69,6 +69,9 @@ test('Income export preview shows sources and rows before offering print or down
         kind: 'income',
         kindLabel: 'รายงานรายรับของฉัน',
         originalAvailable: true,
+        originalUrl: 'https://api.example.test/original.xlsx',
+        periodType: 'income',
+        periodTypeLabel: 'รายงาน Income',
         shopCode: 'sc-drug-store',
         shopLabel: 'SC Drug Store',
         startDate: '2026-08-01',
@@ -85,12 +88,20 @@ test('Income export preview shows sources and rows before offering print or down
         orderNumber: '260730TEST001',
         sellerBalanceInflowDate: '2026-08-02',
         sellerBalanceNetAmount: 125.5,
+        sellerBalanceStatus: 'credited',
         sellerBalanceStatusLabel: 'เงินเข้าแล้ว',
         shopCode: 'sc-drug-store',
         shopLabel: 'SC Drug Store',
         transferDate: '2026-08-01',
       }],
-      summary: { creditedCount: 1, orderCount: 1, totalIncome: 125.5 },
+      sourcePolicy: { fullCalendarMonth: true, monthlyIncluded: true },
+      summary: {
+        availableOriginalCount: 1,
+        creditedCount: 1,
+        missingOriginalCount: 0,
+        orderCount: 1,
+        totalIncome: 125.5,
+      },
       timezone: 'Asia/Bangkok',
     },
   }));
@@ -98,9 +109,13 @@ test('Income export preview shows sources and rows before offering print or down
   assert.match(html, /role="dialog"/u);
   assert.match(html, /ตัวอย่างเอกสารรายรับสำหรับบัญชี/u);
   assert.match(html, /พิมพ์เอกสาร/u);
-  assert.match(html, /ดาวน์โหลด Excel/u);
+  assert.match(html, /ดาวน์โหลดชุดเอกสาร \(\.zip\)/u);
   assert.match(html, /Income\.transferred\.xlsx/u);
+  assert.match(html, /เปิดดูต้นฉบับ/u);
+  assert.match(html, /รายงานการเงินรายเดือนที่ตรงทั้งเดือน/u);
   assert.match(html, /260730TEST001/u);
+  assert.match(html, /accounting-income-preview-status/u);
+  assert.match(html, /data-status="credited"/u);
 });
 
 test('Income formatters preserve local dates and numeric two-decimal currency', async () => {

@@ -131,6 +131,14 @@ export async function uploadAccountingOriginals(shopFiles) {
 export function listAccountingPrintBatches() {
   return requestJson('/app/accounting-print-bundles');
 }
+export async function uploadAccountingSourceOriginals(shopCode, files) {
+  const form = new FormData();
+  for (const file of files || []) form.append('files', file, file.name);
+  return requestJson(
+    `/app/accounting-print-bundles/source-originals/${encodeURIComponent(shopCode)}`,
+    { method: 'POST', body: form },
+  );
+}
 export function listAccountingIncomeOrders(filters = {}) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
@@ -180,6 +188,35 @@ export async function getAccountingIncomeOrdersExcel(filters = {}) {
   return {
     blob: await response.blob(),
     filename: `shopee-income-accounting${filters.shopCode ? `-${filters.shopCode}` : ''}-${filters.dateFrom}-to-${filters.dateTo}.xlsx`,
+  };
+}
+export async function getAccountingIncomeOrdersBundle(filters = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== null && typeof value !== 'undefined' && value !== '') {
+      params.set(key, String(value));
+    }
+  }
+  const query = params.toString();
+  const response = await fetch(
+    `${API_BASE_URL}/app/accounting-print-bundles/income-orders/export.zip${query ? `?${query}` : ''}`,
+    { credentials: 'include' },
+  );
+  if (!response.ok) {
+    let message = `Request failed with HTTP ${response.status}`;
+    try {
+      const payload = await response.json();
+      message = payload?.error?.message || payload?.message || message;
+    } catch (error) {
+      // Keep the HTTP status when the error response is not JSON.
+    }
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+  return {
+    blob: await response.blob(),
+    filename: `shopee-income-accounting${filters.shopCode ? `-${filters.shopCode}` : ''}-${filters.dateFrom}-to-${filters.dateTo}.zip`,
   };
 }
 export function getAccountingPrintBatch(id) {
