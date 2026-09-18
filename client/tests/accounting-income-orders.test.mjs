@@ -41,6 +41,10 @@ test('Income table renders requested fields, Seller Balance evidence, shared dat
   assert.match(html, /วันที่เงินเข้า Seller Balance/u);
   assert.match(html, /ยอดสุทธิ Seller Balance/u);
   assert.match(html, /accounting-income-balance-net-col/u);
+  assert.match(html, /ดาวน์โหลด Excel สำหรับบัญชี/u);
+  assert.match(html, /ไฟล์สำหรับบัญชีใช้ช่วง “วันที่โอนชำระเงินสำเร็จ” เท่านั้น/u);
+  assert.match(html, /ชีตแรกจะแสดงเอกสาร Shopee ต้นฉบับ/u);
+  assert.match(html, /accounting-income-export" disabled=""/u);
   assert.match(html, /ไม่ใช่หลักฐานการชำระของลูกค้าโดยตรง/u);
   assert.match(html, /Order All/u);
 });

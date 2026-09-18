@@ -2361,10 +2361,13 @@ a.history-view-button.secondary:hover {
 .accounting-income-heading h2, .accounting-income-heading p { margin: 0; }
 .accounting-income-heading p { margin-top: 6px; }
 .accounting-income-evidence-note { max-width: 72rem; color: var(--muted); font-size: .9rem; line-height: 1.55; }
+.accounting-income-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.accounting-income-export { white-space: nowrap; }
 .accounting-income-count { padding: 8px 12px; border-radius: 999px; background: rgba(29,78,216,.1); color: var(--accent-strong); font-weight: 700; white-space: nowrap; }
 .accounting-income-filters { display: grid; grid-template-columns: minmax(220px,2fr) minmax(190px,1fr) minmax(150px,1fr) minmax(150px,1fr); gap: 14px; align-items: end; }
 .accounting-income-filters .field { margin: 0; min-width: 0; }
 .accounting-income-filters input, .accounting-income-filters select { width: 100%; }
+.accounting-income-export-note { margin: -6px 0 0; color: var(--muted); font-size: .88rem; line-height: 1.5; }
 .accounting-income-message { min-height: 1.3em; margin: 0; }
 .accounting-income-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
 .accounting-income-table { width: 100%; min-width: 1040px; border-collapse: collapse; table-layout: fixed; }

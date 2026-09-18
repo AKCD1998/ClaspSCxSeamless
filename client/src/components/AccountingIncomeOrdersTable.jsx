@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { listAccountingIncomeOrders } from "../services/api.js";
+import {
+  getAccountingIncomeOrdersExcel,
+  listAccountingIncomeOrders,
+} from "../services/api.js";
 
 export const PAGE_SIZE = 10;
 export const SELLER_BALANCE_STATUS = Object.freeze({
@@ -56,9 +59,14 @@ export default function AccountingIncomeOrdersTable() {
     totalPages: 1,
   });
   const [loading, setLoading] = useState(true);
+  const [exportLoading, setExportLoading] = useState(false);
   const [message, setMessage] = useState("");
   const invalidRange = filters.dateFrom && filters.dateTo
     && filters.dateFrom > filters.dateTo;
+  const exportReady = filters.dateColumn === "transferredAt"
+    && filters.dateFrom
+    && filters.dateTo
+    && !invalidRange;
 
   useEffect(() => {
     if (invalidRange) {
@@ -100,6 +108,28 @@ export default function AccountingIncomeOrdersTable() {
     setFilters((previous) => ({ ...previous, [name]: value }));
   }
 
+  async function downloadExcel() {
+    if (!exportReady || exportLoading) return;
+    setExportLoading(true);
+    setMessage("กำลังสร้างไฟล์ Excel สำหรับบัญชี...");
+    try {
+      const exported = await getAccountingIncomeOrdersExcel(filters);
+      const url = URL.createObjectURL(exported.blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = exported.filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setMessage("สร้างไฟล์ Excel เรียบร้อยแล้ว");
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setExportLoading(false);
+    }
+  }
+
   return (
     <section className="panel accounting-bundle-panel accounting-income-panel">
       <div className="accounting-income-heading">
@@ -113,9 +143,19 @@ export default function AccountingIncomeOrdersTable() {
             ไม่ใช่หลักฐานการชำระของลูกค้าโดยตรง ซึ่งต้องตรวจจากรายงาน Order All
           </p>
         </div>
-        <span className="accounting-income-count">
-          {result.totalCount.toLocaleString("th-TH")} รายการ
-        </span>
+        <div className="accounting-income-actions">
+          <button
+            type="button"
+            className="secondary accounting-income-export"
+            disabled={!exportReady || exportLoading}
+            onClick={downloadExcel}
+          >
+            {exportLoading ? "กำลังสร้าง Excel..." : "ดาวน์โหลด Excel สำหรับบัญชี"}
+          </button>
+          <span className="accounting-income-count">
+            {result.totalCount.toLocaleString("th-TH")} รายการ
+          </span>
+        </div>
       </div>
 
       <div className="accounting-income-filters" role="search">
@@ -159,6 +199,11 @@ export default function AccountingIncomeOrdersTable() {
           />
         </label>
       </div>
+
+      <p className="accounting-income-export-note">
+        ไฟล์สำหรับบัญชีใช้ช่วง “วันที่โอนชำระเงินสำเร็จ” เท่านั้น กรุณาเลือกวันเริ่มต้นและวันสิ้นสุดให้ครบ
+        ชีตแรกจะแสดงเอกสาร Shopee ต้นฉบับที่ครอบคลุมช่วงดังกล่าว
+      </p>
 
       <p className="accounting-warning accounting-income-message" role="status" aria-live="polite">
         {message}

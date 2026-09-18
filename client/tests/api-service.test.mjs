@@ -237,6 +237,40 @@ test('listAccountingIncomeOrders sends one combined server-side filter and page 
   assert.equal(calls[0].options.credentials, 'include');
 });
 
+test('getAccountingIncomeOrdersExcel downloads the transferred-date range with credentials', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    return new Response('income-xlsx-bytes', {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+      status: 200,
+    });
+  };
+  const api = await vite.ssrLoadModule('/src/services/api.js');
+  const result = await api.getAccountingIncomeOrdersExcel({
+    dateColumn: 'transferredAt',
+    dateFrom: '2026-08-01',
+    dateTo: '2026-08-31',
+    orderNumber: '2608TEST',
+  });
+  const url = new URL(calls[0].url);
+  assert.equal(url.pathname, '/api/app/accounting-print-bundles/income-orders/export.xlsx');
+  assert.deepEqual(Object.fromEntries(url.searchParams), {
+    dateColumn: 'transferredAt',
+    dateFrom: '2026-08-01',
+    dateTo: '2026-08-31',
+    orderNumber: '2608TEST',
+  });
+  assert.equal(calls[0].options.credentials, 'include');
+  assert.equal(await result.blob.text(), 'income-xlsx-bytes');
+  assert.equal(
+    result.filename,
+    'shopee-income-accounting-2026-08-01-to-2026-08-31.xlsx',
+  );
+});
+
 test('processWorkbookPayload surfaces duplicate-upload failures from backend payloads', async () => {
   if (typeof File === 'undefined') {
     return;
