@@ -16,6 +16,7 @@ const GROUP_OPTIONS = [
 const STATUS_META = {
   ingested: { icon: '✅', label: 'ดาวน์โหลดและนำเข้าแล้ว' },
   no_file: { icon: '○', label: 'ตรวจแล้ว: Shopee ไม่มีเอกสารวันที่นี้' },
+  not_ready: { icon: '⏳', label: 'ตรวจแล้ว: Shopee มีรายการ แต่เอกสารยังไม่พร้อมดาวน์โหลด' },
   missing: { icon: '❌', label: 'ยังไม่มีข้อมูลในเว็บ' },
   waiting: { icon: '🕘', label: 'รอรอบดาวน์โหลดตามเวลาของร้าน' },
   processing: { icon: '🔄', label: 'อยู่ในรอบดาวน์โหลดหรือนำเข้า' },
@@ -56,6 +57,7 @@ function rowStatusLabel(row) {
     : row.noFileCount ? `ตรวจครบ · ไม่มีเอกสาร ${row.noFileCount} วัน` : 'ครบ';
   if (row.status === 'waiting') return `รอรอบ ${row.scheduleTime || ''} น.`;
   if (row.status === 'processing') return 'กำลังดาวน์โหลด/นำเข้า';
+  if (row.status === 'not_ready') return `รอ Shopee ออกเอกสาร ${row.notReadyCount || 0} วัน`;
   if (row.status === 'unavailable') return 'Shopee ยังไม่เปิดให้ดาวน์โหลด';
   if (row.status === 'not_due') return 'ยังไม่ถึงรอบ';
   return `ขาด ${row.missingCount} วัน`;
@@ -64,11 +66,12 @@ function rowStatusLabel(row) {
 function evidenceTitle(cell) {
   const meta = cellMeta(cell);
   if (!cell.evidence) return `${formatDate(cell.date, { long: true, year: true })}: ${meta.label}`;
-  if (cell.status === 'no_file' || (cell.status === 'unavailable' && cell.evidence.reasonCode === 'SHOPEE_ETAX_DATE_OUTSIDE_AVAILABLE_WINDOW')) return [
+  if (cell.status === 'no_file' || cell.status === 'not_ready' || (cell.status === 'unavailable' && cell.evidence.reasonCode === 'SHOPEE_ETAX_DATE_OUTSIDE_AVAILABLE_WINDOW')) return [
     `${formatDate(cell.date, { long: true, year: true })}: ${meta.label}`,
     `ตรวจเมื่อ: ${formatTime(cell.evidence.observedAt)}`,
     `บันทึกหลักฐาน: ${formatTime(cell.evidence.importedAt)}`,
     `งาน: ${cell.evidence.jobId}`,
+    ...(cell.evidence.documentStatusText ? [`สถานะจาก Shopee: ${cell.evidence.documentStatusText}`] : []),
     ...(cell.evidence.earliestAvailableDate ? [`เลือกย้อนหลังได้ตั้งแต่: ${formatDate(cell.evidence.earliestAvailableDate, { long: true, year: true })}`] : []),
   ].join('\n');
   return [

@@ -73,6 +73,23 @@ test('verified empty e-Tax dates show observation provenance without inventing a
   assert.match(html, /dr-etax-empty-test/u);
   assert.doesNotMatch(html, /ไฟล์: undefined|SHA-256: undefined/u);
 });
+test('verified e-Tax not-ready dates are pending instead of failed and show Shopee status', async () => {
+  const { ShopeeDocumentSyncStatusView } = await vite.ssrLoadModule('/src/components/ShopeeDocumentSyncStatusPanel.jsx');
+  const notReady = { ...row, reportType: 'etax-receipt-invoice', notReadyCount: 1, pendingCount: 1,
+    missingCount: 0, status: 'not_ready', cells: [{ date: '2026-09-09', status: 'not_ready', evidence: {
+      jobId: 'dr-etax-not-ready-test', reasonCode: 'SHOPEE_ETAX_DOCUMENT_NOT_READY',
+      documentStatusText: 'กำลังดำเนินการ', observedAt: '2026-09-10T02:00:00Z', importedAt: '2026-09-10T02:01:00Z',
+    } }] };
+  const html = renderToString(React.createElement(ShopeeDocumentSyncStatusView, {
+    data: { ...data, shops: [{ ...data.shops[0], incompleteRowCount: 0, pendingRowCount: 1, rows: [notReady] }] },
+    days: 14, groupFilter: 'all', shopFilter: 'all',
+  }));
+  assert.match(html, /ตรวจแล้ว: Shopee มีรายการ แต่เอกสารยังไม่พร้อมดาวน์โหลด/u);
+  assert.match(html, /รอ Shopee ออกเอกสาร 1 วัน/u);
+  assert.match(html, /สถานะจาก Shopee: กำลังดำเนินการ/u);
+  assert.match(html, /dr-etax-not-ready-test/u);
+  assert.doesNotMatch(html, /ไฟล์: undefined|SHA-256: undefined/u);
+});
 test('outside-window evidence has its own label and bound without changing generic unavailable', async () => {
   const { ShopeeDocumentSyncStatusView } = await vite.ssrLoadModule('/src/components/ShopeeDocumentSyncStatusPanel.jsx');
   const windowRow = { ...row, reportType: 'etax-receipt-invoice', outsideWindowCount: 1, status: 'complete',
