@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import { getShopeeSalesSummary, getShopeeSalesSummaryExcel } from '../services/api.js';
+import { useEffect, useRef, useState } from 'react';
+import { getShopeeAdaSmartCopy, getShopeeSalesSummary, getShopeeSalesSummaryExcel } from '../services/api.js';
+import ShopeeAdaSmartCopyTable from './ShopeeAdaSmartCopyTable.jsx';
+import { copyFiltersMatch, copyScopeIsValid } from './shopeeAdaSmartCopy.js';
 import { formatShopeeMoney } from './shopeeEmailLabels.js';
 
 const SHOP_OPTIONS = [
@@ -360,6 +362,11 @@ export function ShopeeSalesSummaryView({
   openProductId,
   status,
   summary,
+  viewMode = 'products',
+  onViewModeChange,
+  copyPlan,
+  copyError,
+  isStale = false,
 }) {
   const products = summary?.products || [];
   const accounting = summary?.accounting;
@@ -376,6 +383,11 @@ export function ShopeeSalesSummaryView({
             เลือกช่วงวันที่เพื่อดูรายงาน Shopee และรายละเอียดสินค้า
           </p>
         </div>
+      </div>
+
+      <div className="shopee-sales-view-switch" role="group" aria-label="รูปแบบตาราง">
+        <button type="button" className="secondary" aria-pressed={viewMode === 'products'} onClick={() => onViewModeChange?.('products')}>ตารางสินค้าเดิม</button>
+        <button type="button" className="secondary" aria-pressed={viewMode === 'adasmart'} onClick={() => onViewModeChange?.('adasmart')}>คัดลอกเข้า AdaSmart</button>
       </div>
 
       <form className="history-filters shopee-sales-summary-filters" onSubmit={onSubmit}>
@@ -406,7 +418,7 @@ export function ShopeeSalesSummaryView({
         </button>
         <button
           className="secondary"
-          disabled={isLoading || isExporting || !summary}
+          disabled={isLoading || isExporting || !summary || isStale || viewMode === 'adasmart'}
           onClick={onExport}
           type="button"
         >
@@ -417,7 +429,8 @@ export function ShopeeSalesSummaryView({
         <p className="status" data-state={status.state}>{status.message}</p>
       </section>
 
-      {summary ? (
+      {viewMode === 'adasmart' ? <ShopeeAdaSmartCopyTable filters={filters} plan={copyPlan}
+        isLoading={isLoading} error={copyError} isStale={isStale} /> : summary ? (
         <>
           {confirmed ? (
             <section className="status-panel history-status-panel" aria-label="Business Insights ของ Shopee">
@@ -636,6 +649,12 @@ export function ShopeeSalesSummaryView({
 export default function ShopeeSalesSummaryPanel() {
   const today = getBangkokTodayString();
   const [filters, setFilters] = useState({ endDate: today, shopCode: 'all', startDate: today });
+  const [submittedFilters, setSubmittedFilters] = useState(filters);
+  const [viewMode, setViewMode] = useState('products');
+  const [refresh, setRefresh] = useState(0);
+  const [copyPlan, setCopyPlan] = useState(null);
+  const [copyError, setCopyError] = useState('');
+  const requestId = useRef(0);
   const [summary, setSummary] = useState(null);
   const [openProductId, setOpenProductId] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -643,29 +662,57 @@ export default function ShopeeSalesSummaryPanel() {
   const [status, setStatus] = useState({ state: 'working', message: 'กำลังสรุปยอดขาย...' });
 
   async function loadSummary(nextFilters) {
+    const id = ++requestId.current;
     setIsLoading(true);
     setStatus({ state: 'working', message: 'กำลังสรุปยอดขาย...' });
     setOpenProductId('');
     try {
       const payload = await getShopeeSalesSummary(nextFilters);
+      if (id !== requestId.current) return;
       setSummary(payload);
       setStatus({
         state: 'success',
         message: `พบสินค้า ${payload.productCount || 0} รายการ จาก ${payload.orderCount || 0} ออเดอร์`,
       });
     } catch (error) {
+      if (id !== requestId.current) return;
       setSummary(null);
       setStatus({ state: 'error', message: error.message || 'โหลดสรุปยอดขายไม่สำเร็จ' });
     } finally {
-      setIsLoading(false);
+      if (id === requestId.current) setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadSummary(filters);
-    // Initial load intentionally uses today's Bangkok date captured for this mounted page.
+    if (viewMode === 'products') {
+      loadSummary(submittedFilters);
+    } else {
+      const id = ++requestId.current;
+      setCopyPlan(null);
+      setCopyError('');
+      if (!copyScopeIsValid(submittedFilters)) {
+        setIsLoading(false);
+        setStatus({ state: 'working', message: 'เลือกหนึ่งร้านและวันเดียวเพื่อเตรียมคอลัมน์ AdaSmart' });
+      } else {
+        setIsLoading(true);
+        setStatus({ state: 'working', message: 'กำลังเตรียมคอลัมน์ AdaSmart...' });
+        getShopeeAdaSmartCopy(submittedFilters).then(payload => {
+          if (id !== requestId.current) return;
+          setCopyPlan(payload);
+          setStatus({ state: payload.status === 'ready' ? 'success' : 'error',
+            message: payload.status === 'ready'
+              ? payload.rowCount ? `พร้อมคัดลอก ${payload.rowCount} แถว จาก ${payload.orderCount} ออเดอร์` : 'ไม่มีออเดอร์ที่ชำระสินค้าในวันนี้ ยอดตรงกับ Business Insights'
+              : 'มีรายการที่ต้องตรวจสอบก่อนคัดลอก' });
+        }).catch(error => {
+          if (id !== requestId.current) return;
+          setCopyError(error.message || 'โหลดตาราง AdaSmart ไม่สำเร็จ');
+          setStatus({ state: 'error', message: 'โหลดตาราง AdaSmart ไม่สำเร็จ' });
+        }).finally(() => { if (id === requestId.current) setIsLoading(false); });
+      }
+    }
+    return () => { requestId.current += 1; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [submittedFilters, viewMode, refresh]);
 
   function handleFilterChange(event) {
     const { name, value } = event.target;
@@ -681,7 +728,8 @@ export default function ShopeeSalesSummaryPanel() {
     }
     const effectiveFilters = { ...filters, endDate };
     setFilters(effectiveFilters);
-    loadSummary(effectiveFilters);
+    setSubmittedFilters(effectiveFilters);
+    setRefresh(value => value + 1);
   }
 
   async function handleExport() {
@@ -728,6 +776,11 @@ export default function ShopeeSalesSummaryPanel() {
       openProductId={openProductId}
       status={status}
       summary={summary}
+      viewMode={viewMode}
+      onViewModeChange={setViewMode}
+      copyPlan={copyPlan}
+      copyError={copyError}
+      isStale={!copyFiltersMatch(filters, submittedFilters)}
     />
   );
 }
