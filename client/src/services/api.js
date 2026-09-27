@@ -310,6 +310,11 @@ export async function getShopeeSalesSummary(filters = {}) {
   return requestJson(`/app/shopee/orders/sales-summary${query ? `?${query}` : ''}`);
 }
 
+export async function getShopeeAdaSmartCopy(filters = {}) {
+  const params = new URLSearchParams(filters);
+  return requestJson(`/app/shopee/orders/sales-summary/adasmart-copy?${params.toString()}`);
+}
+
 export async function getShopeeDocumentSyncStatus(days = 14) {
   const params = new URLSearchParams({ days: String(days) });
   return requestJson(`/app/shopee/document-sync-status?${params.toString()}`);

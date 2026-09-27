@@ -1363,6 +1363,35 @@ button:disabled {
   min-width: 980px;
 }
 
+.shopee-sales-view-switch { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+.shopee-sales-view-switch button[aria-pressed="false"] { background: transparent; color: var(--ink); border: 1px solid var(--accent); box-shadow: none; }
+.shopee-sales-view-switch button[aria-pressed="true"] { background: var(--accent, #f65a3c); color: #fff; border-color: transparent; }
+.shopee-copy-context { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }
+.shopee-copy-context span { color: var(--muted); }
+.shopee-copy-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.shopee-copy-totals > div { padding: 18px; border: 1px solid var(--border); border-radius: 12px; }
+.shopee-copy-totals span { display: block; color: var(--muted); font-size: .85rem; }
+.shopee-copy-totals strong { display: block; font-size: 1.5rem; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.shopee-copy-table { min-width: 880px; }
+.shopee-copy-table caption { text-align: left; padding: 12px 0; color: var(--muted); }
+.shopee-copy-table th { vertical-align: top; }
+.shopee-copy-table th > span { display: block; margin-bottom: 10px; white-space: nowrap; }
+.shopee-copy-table th button { white-space: nowrap; padding: 9px 13px; }
+.shopee-copy-table small { display: block; margin-top: 5px; color: var(--muted); }
+.shopee-copy-value { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 1rem; }
+.shopee-copy-manual { display: block; margin: 16px 0; }
+.shopee-copy-manual textarea { display: block; width: 100%; margin-top: 10px; padding: 14px; font-family: ui-monospace, Consolas, monospace; }
+.shopee-copy-issues { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.shopee-copy-issues li { margin: 12px 0; }
+.shopee-copy-issues li span, .shopee-copy-issues li small { display: block; margin-top: 4px; }
+.shopee-copy-evidence { margin-top: 20px; }
+.shopee-copy-evidence summary { cursor: pointer; padding: 8px 0; }
+.shopee-copy-evidence code { overflow-wrap: anywhere; }
+@media (max-width: 650px) {
+  .shopee-copy-totals { grid-template-columns: 1fr; }
+  .shopee-copy-totals > div { padding: 12px; }
+}
+
 .shopee-sales-bundle-legend {
   display: flex;
   align-items: center;
