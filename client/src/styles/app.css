@@ -1377,6 +1377,28 @@ button:disabled {
 .shopee-copy-table th { vertical-align: top; }
 .shopee-copy-table th > span { display: block; margin-bottom: 10px; white-space: nowrap; }
 .shopee-copy-table th button { white-space: nowrap; padding: 9px 13px; }
+.shopee-copy-table th button[data-copy-state="copied"] {
+  background: #0a5f43;
+  border-color: #0a5f43;
+  color: #fff;
+}
+.shopee-copy-feedback:empty { display: none; }
+.shopee-copy-feedback {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 80;
+  max-width: min(480px, calc(100vw - 48px));
+  margin: 0;
+  padding: 16px 20px;
+  border: 1px solid var(--success);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--success);
+  box-shadow: var(--shadow);
+  font-weight: 700;
+}
+.shopee-copy-feedback[data-state="error"] { border-color: var(--error); color: var(--error); }
 .shopee-copy-table small { display: block; margin-top: 5px; color: var(--muted); }
 .shopee-copy-value { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 1rem; }
 .shopee-copy-manual { display: block; margin: 16px 0; }
