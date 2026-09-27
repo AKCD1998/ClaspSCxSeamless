@@ -367,6 +367,7 @@ export function ShopeeSalesSummaryView({
   copyPlan,
   copyError,
   isStale = false,
+  loadingFilters = filters,
 }) {
   const products = summary?.products || [];
   const accounting = summary?.accounting;
@@ -375,7 +376,8 @@ export function ShopeeSalesSummaryView({
   const reconciliation = summary?.reconciliation;
   const hasBundleProducts = products.some((product) => product.isBundle === true);
   return (
-    <section className="panel shopee-sales-summary-panel">
+    <>
+    <section className="panel shopee-sales-summary-panel" aria-busy={isLoading} inert={isLoading ? true : undefined}>
       <div className="shopee-order-heading">
         <div>
           <p className="panel-eyebrow">Shopee Product Sales Summary</p>
@@ -643,6 +645,17 @@ export function ShopeeSalesSummaryView({
         </>
       ) : null}
     </section>
+    {isLoading ? (
+      <div className="shopee-sales-loading-overlay" role="status" aria-live="polite" aria-atomic="true">
+        <div className="shopee-sales-loading-card">
+          <span className="shopee-sales-loading-spinner" aria-hidden="true" />
+          <strong>กำลังโหลดและสรุปยอดขาย</strong>
+          <p>{SHOP_LABELS[loadingFilters.shopCode] || loadingFilters.shopCode} · {formatShopeeReportDate(loadingFilters.startDate)} ถึง {formatShopeeReportDate(loadingFilters.endDate || loadingFilters.startDate)}</p>
+          <p>โปรดรอสักครู่ ระบบกำลังประมวลผลข้อมูลที่เลือก</p>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
 
@@ -727,6 +740,7 @@ export default function ShopeeSalesSummaryPanel() {
       return;
     }
     const effectiveFilters = { ...filters, endDate };
+    setIsLoading(viewMode === 'products' || copyScopeIsValid(effectiveFilters));
     setFilters(effectiveFilters);
     setSubmittedFilters(effectiveFilters);
     setRefresh(value => value + 1);
@@ -767,6 +781,7 @@ export default function ShopeeSalesSummaryPanel() {
       filters={filters}
       isExporting={isExporting}
       isLoading={isLoading}
+      loadingFilters={submittedFilters}
       onExport={handleExport}
       onFilterChange={handleFilterChange}
       onSubmit={handleSubmit}
