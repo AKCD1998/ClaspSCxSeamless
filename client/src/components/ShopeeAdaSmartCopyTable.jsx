@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { copyScopeIsValid, verifiedCopyColumns } from './shopeeAdaSmartCopy.js';
 
 const LABELS = { sku: 'รหัส IC/SKU', quantity: 'จำนวนสินค้า', unitPrice: 'ราคาต่อหน่วย' };
@@ -9,23 +9,43 @@ const money = cents => cents == null ? 'ยังสรุปไม่ได้'
 const dateLabel = date => date?.split('-').reverse().join('/') || '-';
 
 export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, error, isStale }) {
-  const [copyStatus, setCopyStatus] = useState('');
+  const [copyFeedback, setCopyFeedback] = useState(null);
   const [manualColumn, setManualColumn] = useState('');
-  useEffect(() => { setCopyStatus(''); setManualColumn(''); }, [plan, isStale, isLoading]);
+  const copyRequest = useRef(0);
+  const copyBusy = useRef(false);
+  useEffect(() => {
+    copyRequest.current += 1;
+    copyBusy.current = false;
+    setCopyFeedback(null);
+    setManualColumn('');
+    return () => { copyRequest.current += 1; };
+  }, [plan, isStale, isLoading]);
+  useEffect(() => {
+    if (copyFeedback?.state !== 'copied') return undefined;
+    const timer = setTimeout(() => setCopyFeedback(current => current === copyFeedback ? null : current), 2500);
+    return () => clearTimeout(timer);
+  }, [copyFeedback]);
   const columns = !isLoading && !isStale ? verifiedCopyColumns(plan, filters) : null;
   const emptyVerified = !isLoading && !isStale && plan?.status === 'ready'
     && plan.targetCents === 0 && plan.orderCount === 0 && plan.rows.length === 0;
 
   async function copyColumn(key) {
-    if (!columns) return;
+    if (!columns || copyBusy.current) return;
+    const id = ++copyRequest.current;
+    copyBusy.current = true;
+    setCopyFeedback({ key, state: 'copying' });
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(columns[key]);
+      if (id !== copyRequest.current) return;
       setManualColumn('');
-      setCopyStatus(`คัดลอก${LABELS[key]}แล้ว ${plan.rowCount} แถว`);
+      setCopyFeedback({ key, state: 'copied', message: `✓ คัดลอก${LABELS[key]}แล้ว · ${plan.rowCount} แถว พร้อมวาง` });
     } catch {
+      if (id !== copyRequest.current) return;
       setManualColumn(key);
-      setCopyStatus('เบราว์เซอร์ไม่อนุญาตให้คัดลอกอัตโนมัติ เลือกข้อความด้านล่างแล้วกด Ctrl+C');
+      setCopyFeedback({ key, state: 'error', message: 'คัดลอกอัตโนมัติไม่สำเร็จ เลือกข้อความด้านล่างแล้วกด Ctrl+C' });
+    } finally {
+      if (id === copyRequest.current) copyBusy.current = false;
     }
   }
 
@@ -61,8 +81,11 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
             <thead><tr>
               {Object.entries(LABELS).map(([key, label]) => <th key={key}>
                 <span>{label}</span>
-                <button type="button" className="secondary" disabled={!columns} onClick={() => copyColumn(key)}>
-                  คัดลอก{label}
+                <button type="button" className="secondary" aria-label={`คัดลอก${label}`}
+                  data-copy-state={copyFeedback?.key === key ? copyFeedback.state : undefined}
+                  disabled={!columns || copyFeedback?.state === 'copying'} onClick={() => copyColumn(key)}>
+                  {copyFeedback?.key === key && copyFeedback.state === 'copied' ? '✓ คัดลอกแล้ว'
+                    : copyFeedback?.key === key && copyFeedback.state === 'copying' ? 'กำลังคัดลอก...' : `คัดลอก${label}`}
                 </button>
               </th>)}
               <th>สินค้า / หน่วย ERP</th><th>จำนวนเงิน</th>
@@ -77,7 +100,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           </table>
         </div>
         {!plan.rows.length ? <p>ไม่มีแถวสินค้าที่เตรียมได้ในวันที่เลือก</p> : null}
-        <p role="status" aria-live="polite">{copyStatus}</p>
+        <p className="shopee-copy-feedback" data-state={copyFeedback?.state} role="status" aria-live="polite" aria-atomic="true">{copyFeedback?.message}</p>
         {manualColumn && columns ? <label className="shopee-copy-manual">
           <span>{LABELS[manualColumn]} — เลือกทั้งหมดแล้วคัดลอก</span>
           <textarea readOnly value={columns[manualColumn]} onFocus={event => event.target.select()} rows={Math.min(plan.rowCount, 12)} />
