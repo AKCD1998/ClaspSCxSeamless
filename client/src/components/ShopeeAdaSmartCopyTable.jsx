@@ -109,7 +109,12 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           <h4>รายการที่ต้องตรวจสอบ ({plan.issues.length})</h4>
           <ul>{plan.issues.map((issue, index) => <li key={index}>
             <strong>{issue.reason}</strong>
-            {issue.productName ? <span>{issue.sku || 'ยังไม่มีรหัส'} · {issue.productName} {issue.variant}</span> : null}
+            {issue.productName ? <span>
+              {issue.components?.length
+                ? `จับคู่แล้ว: ${issue.components.map(component => `${component.sku} ×${component.factor} ${component.unit}`).join(' + ')} ต่อชุด`
+                : issue.sku || 'ยังไม่มีรหัส'}
+              {' · '}{issue.productName} {issue.variant}
+            </span> : null}
             {issue.orderNumber ? <small>ออเดอร์ {issue.orderNumber}{issue.sourceRow ? ` · แถวต้นทาง ${issue.sourceRow}` : ''}</small> : null}
           </li>)}</ul>
         </div> : null}
@@ -119,6 +124,9 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
             {source.sourceFilename}<br /><code>{source.sourceSha256}</code>
           </p>)}
           <p>หน่วย ERP: {plan.masterEvidence?.filename} · ตรวจหลักฐาน {plan.masterEvidence?.verifiedOn}</p>
+          {(plan.additionalMasterEvidence || []).map(source => <p key={source.id}>
+            หน่วย ERP เพิ่มเติม: {source.filename} · ตรวจหลักฐาน {source.verifiedOn}<br /><code>{source.sha256}</code>
+          </p>)}
           {plan.rows.map((row, index) => <details key={`${row.sku}:${index}`}>
             <summary>{row.sku} · {row.quantity} × {row.unitPrice}</summary>
             <ul>{row.sources.map((source, sourceIndex) => <li key={sourceIndex}>
