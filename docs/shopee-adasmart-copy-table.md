@@ -12,7 +12,7 @@ plain-text column instead of claiming success. Changing shop/date disables copyi
 matching response is loaded. Superseded requests cannot replace the current result.
 
 The page shows independent Business Insights gross confirmed sales, prepared-row total,
-variance, paid-order count, and actual merchandise/support components. Unresolved product,
+variance, cohort order count, and actual merchandise/support components. Unresolved product,
 ERP-unit, financial or report evidence prevents copying every column. For a review plan,
 the displayed table is explicitly partial; the complete order amount and excluded issues
 are shown separately. Evidence details retain order IDs, source rows, hashes and pack factors.
@@ -29,3 +29,13 @@ are shown separately. Evidence details retain order IDs, source rows, hashes and
 Deploy the shared backend before the frontend. No database migration or AdaSmart document
 write is introduced. Roll back by reverting this frontend change and the matching backend
 feature; the original table still uses its existing API.
+
+## Verified business-date and line evidence (2026-09-28)
+
+The copy API can now supply private, source-bound business-date corrections and
+product-level financial attribution. Its backend requires migrations 029 and 030
+before deployment. The copy panel labels a corrected cohort as the Business
+Insights date and shows the original paid date, exact affected orders and hashed
+product-report references in its evidence section. A correction's source drift or
+unresolved allocation keeps copying disabled. Original product views and AdaSmart
+documents are not changed.

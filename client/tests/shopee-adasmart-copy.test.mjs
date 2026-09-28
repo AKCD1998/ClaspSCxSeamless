@@ -40,6 +40,17 @@ test('toggle preserves original table while copy mode renders independent BI amo
     assert.match(copy, /คัดลอกรหัส IC\/SKU/u);
     assert.match(copy, /คัดลอกจำนวนสินค้า/u);
     assert.match(copy, /คัดลอกราคาต่อหน่วย/u);
+    const dated = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode: 'adasmart', copyPlan: {
+      ...plan,businessDateCorrections:[{shopCode:filters.shopCode,orderNumber:'SYNTHETIC01',paidBusinessDate:'2026-09-02',
+        businessDate:'2026-09-01',applied:true,evidence:{sources:[{sourceFilename:'synthetic-product-report.xlsx',sourceSha256:'d'.repeat(64)}]}}],
+      lineFinancialEvidence:[{shopCode:filters.shopCode,orderNumber:'SYNTHETIC02',applied:true,lineFinancials:[{},{}],
+        evidence:{sources:[{sourceFilename:'synthetic-line-report.xlsx',sourceSha256:'e'.repeat(64)}]}}],
+    } })).replace(/<!-- -->/gu,'');
+    assert.match(dated,/วันที่ตาม Business Insights/u);
+    assert.match(dated,/SYNTHETIC01[\s\S]*02\/09\/2026[\s\S]*01\/09\/2026/u);
+    assert.match(dated,/synthetic-product-report\.xlsx/u);
+    assert.match(dated,/หลักฐานส่วนลด Shopee แยกตามสินค้า[\s\S]*SYNTHETIC02/u);
+    assert.match(dated,/synthetic-line-report\.xlsx/u);
     const stale = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode: 'adasmart', copyPlan: plan, isStale: true }));
     assert.equal((stale.match(/disabled=""/gu) || []).length, 4);
     assert.match(stale, /วันที่เปลี่ยนแล้ว/u);
