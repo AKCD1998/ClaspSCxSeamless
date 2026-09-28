@@ -175,7 +175,16 @@ export function ShopeeDocumentSyncStatusView({
             ))}
           </div>
 
-          <div className="shopee-sync-table-wrap">
+          <p className="shopee-sync-scroll-hint" id="shopee-sync-scroll-hint">
+            เลื่อนขึ้นลงเพื่อดูเอกสารทั้งหมด และเลื่อนซ้ายขวาเพื่อดูวันย้อนหลัง · คลิกตารางแล้วใช้ปุ่มลูกศรได้
+          </p>
+          <div
+            aria-describedby="shopee-sync-scroll-hint"
+            aria-label="ตารางสถานะเอกสาร Shopee"
+            className="shopee-sync-table-wrap"
+            role="region"
+            tabIndex={0}
+          >
             <table className="shopee-sync-table">
               <thead>
                 <tr>

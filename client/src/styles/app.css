@@ -2568,6 +2568,7 @@ a.history-view-button.secondary:hover {
 
 .shopee-document-sync-shell {
   width: min(2200px, 100%);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .shopee-sync-panel {
@@ -2657,10 +2658,26 @@ a.history-view-button.secondary:hover {
 }
 
 .shopee-sync-table-wrap {
+  min-width: 0;
   max-width: 100%;
+  /* Keep both scrollbars reachable and give sticky dates a vertical scrollport. */
+  max-height: min(65vh, 720px);
+  max-height: min(65dvh, 720px);
   overflow: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--border);
   border-radius: 16px;
+}
+
+.shopee-sync-table-wrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.shopee-sync-scroll-hint {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: .82rem;
 }
 
 .shopee-sync-table {
@@ -2706,6 +2723,10 @@ a.history-view-button.secondary:hover {
   min-width: 310px;
   text-align: left;
   background: var(--panel);
+}
+
+.shopee-sync-table thead th:first-child {
+  z-index: 4;
 }
 
 .shopee-sync-table tbody th span,
@@ -2764,6 +2785,6 @@ a.history-view-button.secondary:hover {
   .shopee-sync-shop-cards { grid-template-columns: 1fr; }
   .shopee-sync-asof { text-align: left; }
   .shopee-sync-table thead th:first-child,
-  .shopee-sync-table tbody th { width: 230px; min-width: 230px; }
+  .shopee-sync-table tbody th { width: 180px; min-width: 180px; }
 }
 
