@@ -28,6 +28,8 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
   const columns = !isLoading && !isStale ? verifiedCopyColumns(plan, filters) : null;
   const emptyVerified = !isLoading && !isStale && plan?.status === 'ready'
     && plan.targetCents === 0 && plan.orderCount === 0 && plan.rows.length === 0;
+  const dateCorrections = (plan?.businessDateCorrections || []).filter(correction => correction.applied);
+  const lineEvidence = (plan?.lineFinancialEvidence || []).filter(evidence => evidence.applied);
 
   async function copyColumn(key) {
     if (!columns || copyBusy.current) return;
@@ -60,7 +62,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
       {plan && !isLoading ? <>
         <div className="shopee-copy-context">
           <strong>{SHOPS[plan.shopCode] || plan.shopCode} · {dateLabel(plan.startDate)}</strong>
-          <span>วันที่ชำระสินค้า · เวลาไทย</span>
+          <span>{dateCorrections.length ? 'วันที่ตาม Business Insights' : 'วันที่ชำระสินค้า'} · เวลาไทย</span>
         </div>
         <div className="shopee-copy-totals">
           <div><span>Business Insights · ยอดขายยืนยันแล้ว</span><strong>฿{money(plan.targetCents)}</strong></div>
@@ -68,6 +70,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           <div><span>ส่วนต่าง</span><strong>฿{money(plan.varianceCents)}</strong></div>
         </div>
         <p>{plan.orderCount} / {plan.confirmedSales?.orderCount ?? '-'} ออเดอร์ · {plan.sourceLineCount} รายการต้นทาง · {plan.rowCount} แถวคัดลอก</p>
+        {dateCorrections.length ? <p>จัดวันที่ให้ {dateCorrections.length} ออเดอร์ตามรายงานสินค้า Business Insights ที่ตรวจแล้ว ดูรายละเอียดในหลักฐานด้านล่าง</p> : null}
         {plan.issues.length ? <p><strong>ยอดออเดอร์ทั้งหมด ฿{money(plan.cohortTotalCents)}</strong> · ตารางด้านล่างแสดงเฉพาะรายการที่เตรียมได้ ยังขาดรายการที่ต้องตรวจสอบ</p> : null}
         <p>ค่าสินค้า ฿{money(plan.merchandiseCents)} − ส่วนลดผู้ขาย ฿{money(plan.sellerCents)} + ส่วนลดสินค้าที่ Shopee สนับสนุน ฿{money(plan.supportCents)}</p>
         <p className="status" data-state={columns || emptyVerified ? 'success' : 'error'}>
@@ -119,7 +122,28 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           </li>)}</ul>
         </div> : null}
         <details className="shopee-copy-evidence"><summary>หลักฐานและออเดอร์ที่ใช้คำนวณ</summary>
-          <p>รวมคำสั่งซื้อที่ชำระสินค้าวันนี้ แม้ยกเลิกหรือคืนภายหลัง ตามยอดขายยืนยันแล้วตั้งต้นของ Business Insights</p>
+          <p>ใช้กลุ่มออเดอร์ของวันที่เลือกตามยอดขายยืนยันแล้วตั้งต้นของ Business Insights รวมคำสั่งซื้อที่ยกเลิกหรือคืนภายหลัง</p>
+          {dateCorrections.length ? <div>
+            <h4>ออเดอร์ที่จัดวันที่ตามหลักฐาน Business Insights</h4>
+            <ul>{dateCorrections.map(correction => <li key={`${correction.shopCode}:${correction.orderNumber}`}>
+              {correction.orderNumber} · วันชำระในต้นทาง {dateLabel(correction.paidBusinessDate)}
+              {' → '}วันที่ตามรายงาน {dateLabel(correction.businessDate)}
+            </li>)}</ul>
+            {[...new Map(dateCorrections.flatMap(correction => correction.evidence?.sources || [])
+              .map(source => [source.sourceSha256, source])).values()].map(source => <p key={source.sourceSha256}>
+              {source.sourceFilename}<br /><code>{source.sourceSha256}</code>
+            </p>)}
+          </div> : null}
+          {lineEvidence.length ? <div>
+            <h4>หลักฐานส่วนลด Shopee แยกตามสินค้า</h4>
+            {lineEvidence.map(record => <p key={`${record.shopCode}:${record.orderNumber}`}>
+              ออเดอร์ {record.orderNumber} · ตรวจราคาทั้ง {record.lineFinancials.length} รายการกับรายงานสินค้า Business Insights แล้ว
+            </p>)}
+            {[...new Map(lineEvidence.flatMap(record => record.evidence?.sources || [])
+              .map(source => [source.sourceSha256,source])).values()].map(source => <p key={source.sourceSha256}>
+              {source.sourceFilename}<br /><code>{source.sourceSha256}</code>
+            </p>)}
+          </div> : null}
           {[...(plan.sourceEvidence || []), ...(plan.confirmedSales?.shops?.[0]?.sources || [])].map(source => <p key={source.sourceSha256}>
             {source.sourceFilename}<br /><code>{source.sourceSha256}</code>
           </p>)}
