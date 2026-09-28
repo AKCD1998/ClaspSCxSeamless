@@ -2566,6 +2566,12 @@ a.history-view-button.secondary:hover {
   .accounting-income-preview-sheet tr { break-inside: avoid; page-break-inside: avoid; }
 }
 
+/* This report uses the document scrollbar for vertical navigation. */
+html:has(.shopee-document-sync-shell) {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 .shopee-document-sync-shell {
   width: min(2200px, 100%);
   grid-template-columns: minmax(0, 1fr);
@@ -2660,11 +2666,7 @@ a.history-view-button.secondary:hover {
 .shopee-sync-table-wrap {
   min-width: 0;
   max-width: 100%;
-  /* Keep both scrollbars reachable and give sticky dates a vertical scrollport. */
-  max-height: min(65vh, 720px);
-  max-height: min(65dvh, 720px);
-  overflow: auto;
-  scrollbar-gutter: stable;
+  overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 16px;
 }

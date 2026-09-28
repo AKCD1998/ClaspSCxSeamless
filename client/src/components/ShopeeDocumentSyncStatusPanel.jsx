@@ -176,7 +176,7 @@ export function ShopeeDocumentSyncStatusView({
           </div>
 
           <p className="shopee-sync-scroll-hint" id="shopee-sync-scroll-hint">
-            เลื่อนขึ้นลงเพื่อดูเอกสารทั้งหมด และเลื่อนซ้ายขวาเพื่อดูวันย้อนหลัง · คลิกตารางแล้วใช้ปุ่มลูกศรได้
+            เลื่อนหน้าขึ้นลงเพื่อดูเอกสารทั้งหมด · เลื่อนตารางซ้ายขวาเพื่อดูวันย้อนหลัง
           </p>
           <div
             aria-describedby="shopee-sync-scroll-hint"
