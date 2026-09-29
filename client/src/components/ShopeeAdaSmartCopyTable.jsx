@@ -30,6 +30,8 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
     && plan.targetCents === 0 && plan.orderCount === 0 && plan.rows.length === 0;
   const dateCorrections = (plan?.businessDateCorrections || []).filter(correction => correction.applied);
   const lineEvidence = (plan?.lineFinancialEvidence || []).filter(evidence => evidence.applied);
+  const allocations = plan?.allocationPolicies || [];
+  const restoredVouchers = plan?.sellerVoucherRestorations || [];
 
   async function copyColumn(key) {
     if (!columns || copyBusy.current) return;
@@ -73,6 +75,8 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
         {dateCorrections.length ? <p>จัดวันที่ให้ {dateCorrections.length} ออเดอร์ตามรายงานสินค้า Business Insights ที่ตรวจแล้ว ดูรายละเอียดในหลักฐานด้านล่าง</p> : null}
         {plan.issues.length ? <p><strong>ยอดออเดอร์ทั้งหมด ฿{money(plan.cohortTotalCents)}</strong> · ตารางด้านล่างแสดงเฉพาะรายการที่เตรียมได้ ยังขาดรายการที่ต้องตรวจสอบ</p> : null}
         <p>ค่าสินค้า ฿{money(plan.merchandiseCents)} − ส่วนลดผู้ขาย ฿{money(plan.sellerCents)} + ส่วนลดสินค้าที่ Shopee สนับสนุน ฿{money(plan.supportCents)}</p>
+        {allocations.length ? <p>ตารางวันนี้มีรายการที่แบ่งส่วนลดหรือราคาชุดตามกติกาที่คุณอนุมัติ ดูรายละเอียดในหลักฐานด้านล่าง</p> : null}
+        {restoredVouchers.length ? <p>ใช้โค้ดในออเดอร์และหลักฐานแคมเปญร้านค้าคืนส่วนลดที่หายจากไฟล์หลังยกเลิก {restoredVouchers.length} ออเดอร์</p> : null}
         <p className="status" data-state={columns || emptyVerified ? 'success' : 'error'}>
           {emptyVerified ? 'Business Insights ยืนยันว่าไม่มีออเดอร์ในวันนี้ ไม่มีข้อมูลให้คัดลอก'
             : columns ? 'ยอดและรายการผ่านการตรวจ พร้อมคัดลอก' : 'ยังไม่พร้อมคัดลอก ต้องตรวจรายการหรือยอดที่ระบุด้านล่าง'}
@@ -97,7 +101,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
               <td className="shopee-copy-value">{row.sku}</td>
               <td className="shopee-copy-value">{row.quantity}</td>
               <td className="shopee-copy-value">{row.unitPrice}</td>
-              <td>{row.productName}<small>{row.unit}{row.splitPrice ? ' · แยกราคาเพื่อรักษาสตางค์' : ''}</small></td>
+              <td>{row.productName}<small>{row.unit}{row.freeGift ? ' · ของแถม ราคา 0.00' : ''}{row.splitPrice ? ' · แยกราคาเพื่อรักษาสตางค์' : ''}</small></td>
               <td>{money(row.amountCents)}</td>
             </tr>)}</tbody>
           </table>
@@ -123,6 +127,23 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
         </div> : null}
         <details className="shopee-copy-evidence"><summary>หลักฐานและออเดอร์ที่ใช้คำนวณ</summary>
           <p>ใช้กลุ่มออเดอร์ของวันที่เลือกตามยอดขายยืนยันแล้วตั้งต้นของ Business Insights รวมคำสั่งซื้อที่ยกเลิกหรือคืนภายหลัง</p>
+          {allocations.length ? <div>
+            <h4>กติกาแบ่งเงินที่เจ้าของร้านอนุมัติ</h4>
+            <p>ราคาแยกส่วนนี้คำนวณตามกติกาที่อนุมัติ ไม่ใช่ราคาขายแยกที่ Shopee ระบุ</p>
+            {allocations.map(record => <p key={record.policyKey}>
+              {record.policy.type === 'seller_voucher' ? 'ส่วนลดร้านค้า: แบ่งตามสัดส่วนค่าสินค้าเดิม รักษายอดถึงสตางค์'
+                : record.policy.method === 'paid_component_and_free_gift' ? 'Polar: ลงราคาทั้งชุดที่ฟ้า 2 ขวด; ขาว 1 ขวดแถม ราคา 0.00'
+                  : 'Dr.Morepen: ชุด 350 บาท → เครื่อง 175.00 + แผ่นตรวจ 175.00'}
+              {' · '}อนุมัติ {dateLabel(record.approvedAt?.slice(0,10))}
+            </p>)}
+          </div> : null}
+          {restoredVouchers.length ? <div>
+            <h4>ส่วนลดร้านค้าจากโค้ดและหลักฐานแคมเปญ</h4>
+            {restoredVouchers.map(record => <p key={record.orderNumber}>
+              {record.orderNumber} · {record.campaignEvidence.voucherId} · คืนส่วนลด ฿{money(Math.round(record.restoredAmount * 100))}
+              {' · '}<a href={record.campaignEvidence.sourceUrl} target="_blank" rel="noreferrer">หลักฐานแคมเปญ</a>
+            </p>)}
+          </div> : null}
           {dateCorrections.length ? <div>
             <h4>ออเดอร์ที่จัดวันที่ตามหลักฐาน Business Insights</h4>
             <ul>{dateCorrections.map(correction => <li key={`${correction.shopCode}:${correction.orderNumber}`}>
