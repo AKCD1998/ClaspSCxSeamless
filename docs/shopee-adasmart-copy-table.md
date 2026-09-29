@@ -39,3 +39,17 @@ Insights date and shows the original paid date, exact affected orders and hashed
 product-report references in its evidence section. A correction's source drift or
 unresolved allocation keeps copying disabled. Original product views and AdaSmart
 documents are not changed.
+## Owner-approved allocations
+
+The copy table labels free gifts at 0.00 and shows the accounting allocation
+methods approved by the shop owner in its evidence panel. These are distinct
+from per-product prices documented by Shopee. Seller discounts use proportional
+original merchandise weights, Polar bundles put the bundle price on two blue
+cans and zero on the white gift, and approved 350-baht Dr.Morepen bundles split
+175/175 between the meter and strip box. A gift is not averaged into paid sales
+of the same SKU.
+
+The table also identifies seller vouchers restored from original order codes
+and existing campaign evidence after a later cancellation. Every change still
+requires the same shop/day Business Insights total, order count and all three
+aligned columns to pass the existing copy validation.
