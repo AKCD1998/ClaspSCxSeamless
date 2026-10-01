@@ -705,7 +705,7 @@ export default function ShopeeSalesSummaryPanel() {
       setCopyError('');
       if (!copyScopeIsValid(submittedFilters)) {
         setIsLoading(false);
-        setStatus({ state: 'working', message: 'เลือกหนึ่งร้านและวันเดียวเพื่อเตรียมคอลัมน์ AdaSmart' });
+        setStatus({ state: 'working', message: 'เลือกหนึ่งร้านและวันที่หรือช่วงวันที่เพื่อเตรียมคอลัมน์ AdaSmart' });
       } else {
         setIsLoading(true);
         setStatus({ state: 'working', message: 'กำลังเตรียมคอลัมน์ AdaSmart...' });
@@ -714,7 +714,7 @@ export default function ShopeeSalesSummaryPanel() {
           setCopyPlan(payload);
           setStatus({ state: payload.status === 'ready' ? 'success' : 'error',
             message: payload.status === 'ready'
-              ? payload.rowCount ? `พร้อมคัดลอก ${payload.rowCount} แถว จาก ${payload.orderCount} ออเดอร์` : 'ไม่มีออเดอร์ที่ชำระสินค้าในวันนี้ ยอดตรงกับ Business Insights'
+              ? payload.rowCount ? `พร้อมคัดลอก ${payload.rowCount} แถว จาก ${payload.orderCount} ออเดอร์` : 'ไม่มีออเดอร์ในช่วงวันที่เลือก ยอดตรงกับ Business Insights'
               : 'มีรายการที่ต้องตรวจสอบก่อนคัดลอก' });
         }).catch(error => {
           if (id !== requestId.current) return;

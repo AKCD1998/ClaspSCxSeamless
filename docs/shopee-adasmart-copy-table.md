@@ -2,7 +2,7 @@
 
 The `/shopee/sales-summary` page offers “ตารางสินค้าเดิม” and “คัดลอกเข้า AdaSmart”.
 The existing product table and Excel export keep their existing creation-date behavior.
-Copy mode requires one shop and one Bangkok business date, and loads its own admin-only
+Copy mode requires one shop and one Bangkok business date or inclusive date range, and loads its own admin-only
 `GET /api/app/shopee/orders/sales-summary/adasmart-copy` response from the shared SC backend.
 
 The three header buttons copy IC/SKU, quantity, and two-decimal unit price separately,
@@ -53,3 +53,23 @@ The table also identifies seller vouchers restored from original order codes
 and existing campaign evidence after a later cancellation. Every change still
 requires the same shop/day Business Insights total, order count and all three
 aligned columns to pass the existing copy validation.
+
+## Inclusive date ranges (2026-10-01)
+
+Select the start and end dates for one shop, then press “แสดงยอดขาย” in copy mode.
+The table combines SKU quantities and original amounts over the complete period,
+using the existing exact-cent price split and keeping free gifts separate. Its BI
+target covers the same period; the original product view and Excel export are unchanged.
+
+Every day must independently pass BI money, order count, mapping and source-evidence
+checks. Missing BI is not treated as zero. Opposite daily errors cannot cancel out
+inside a matching range total. “ตรวจยอดรายวัน” expands the day-by-day results,
+including the date of a missing or failed report. The client also validates all
+range daily results before enabling its aligned copy columns; changes to either
+date disable stale data until a matching response arrives.
+
+Verification: 144 client tests pass, including date-range guards, missing-day
+blocking, stale end dates, period labels and daily-result rendering. Shared backend
+validation and the 122 preserved day plans are documented in
+`backend/docs/shopee-copy-date-range-20261001.md` of SC-official-website. Deploy that
+backend before this frontend; no database migration is required.

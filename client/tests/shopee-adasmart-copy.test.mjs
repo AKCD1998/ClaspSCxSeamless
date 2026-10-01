@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createServer } from 'vite';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { copyScopeIsValid, verifiedCopyColumns } from '../src/components/shopeeAdaSmartCopy.js';
+import { copyScopeIsValid, copyDailyReconciliationIsValid, verifiedCopyColumns } from '../src/components/shopeeAdaSmartCopy.js';
 const filters = { shopCode: 'sc-drug-store', startDate: '2026-09-01', endDate: '2026-09-01' };
 const plan = { ...filters, status: 'ready', issues: [], targetCents: 10000, totalCents: 10000, varianceCents: 0,
   orderCount: 1, sourceLineCount: 1, rowCount: 2, merchandiseCents: 10000, supportCents: 0, sellerCents: 0,
@@ -11,6 +11,13 @@ const plan = { ...filters, status: 'ready', issues: [], targetCents: 10000, tota
     { sku: '630010066', quantity: 1, unitPrice: '33.34', amountCents: 3334, sources: [] },
     { sku: '630010066', quantity: 2, unitPrice: '33.33', amountCents: 6666, sources: [] },
   ] };
+const rangeFilters = { ...filters, endDate: '2026-09-03' };
+const rangePlan = { ...plan, ...rangeFilters, dailyReconciliation: [
+  { date: '2026-09-01', status: 'ready', issueCount: 0, orderCount: 1, confirmedOrderCount: 1,
+    totalCents: 10000, targetCents: 10000, cohortTotalCents: 10000, varianceCents: 0 },
+  ...['2026-09-02', '2026-09-03'].map(date => ({ date, status: 'ready', issueCount: 0,
+    orderCount: 0, confirmedOrderCount: 0, totalCents: 0, targetCents: 0, cohortTotalCents: 0, varianceCents: 0 })),
+] };
 
 test('copy columns contain only aligned values including repeated numeric SKU', () => {
   assert.deepEqual(verifiedCopyColumns(plan, filters), { sku: '630010066\n630010066', quantity: '1\n2', unitPrice: '33.34\n33.33' });
@@ -24,6 +31,23 @@ test('stale filters, mismatch, unresolved units and malformed values prevent all
     { ...plan, rows: [{ ...plan.rows[0], sku: '630010066\ninvalid' }] },
     { ...plan, rows: [{ ...plan.rows[0], quantity: 0 }] },
   ]) assert.equal(verifiedCopyColumns(changed, filters), null);
+});
+
+test('ranges require every BI day, correct daily amounts and order counts before copying aligned columns', () => {
+  assert.equal(copyScopeIsValid(rangeFilters), true);
+  assert.deepEqual(verifiedCopyColumns(rangePlan, rangeFilters), verifiedCopyColumns(plan, filters));
+  for (const changed of [
+    { ...rangePlan, dailyReconciliation: undefined },
+    { ...rangePlan, dailyReconciliation: rangePlan.dailyReconciliation.slice(0, 2) },
+    { ...rangePlan, dailyReconciliation: [...rangePlan.dailyReconciliation].reverse() },
+    ...[{ targetCents: null }, { status: 'review_required' }, { varianceCents: 1 },
+      { issueCount: 1 }, { confirmedOrderCount: 2 }, { totalCents: 9999 }]
+      .map(change => ({ ...rangePlan, dailyReconciliation: rangePlan.dailyReconciliation.map((day, index) => index === 0 ? { ...day, ...change } : day) })),
+  ]) assert.equal(verifiedCopyColumns(changed, rangeFilters), null);
+  assert.equal(verifiedCopyColumns(rangePlan, { ...rangeFilters, endDate: '2026-09-02' }), null);
+  assert.equal(copyScopeIsValid({ ...rangeFilters, startDate: '2026-09-04' }), false);
+  assert.equal(copyScopeIsValid({ ...rangeFilters, startDate: '2026-02-30' }), false);
+  assert.equal(copyDailyReconciliationIsValid({ ...rangePlan, dailyReconciliation: rangePlan.dailyReconciliation.map(day => ({ ...day, orderCount: 0, confirmedOrderCount: 0 })) }), false);
 });
 test('toggle preserves original table while copy mode renders independent BI amount and buttons', async () => {
   const vite = await createServer({ root: new URL('..', import.meta.url).pathname.replace(/^\/(\w:)/u, '$1'),
@@ -57,5 +81,23 @@ test('toggle preserves original table while copy mode renders independent BI amo
     const empty = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode: 'adasmart',
       copyPlan: { ...plan, orderCount: 0, rowCount: 0, rows: [], targetCents: 0, totalCents: 0, confirmedSales: { orderCount: 0 } } }));
     assert.match(empty, /ยืนยันว่าไม่มีออเดอร์ในวันนี้/u);
+    const range = renderToString(React.createElement(ShopeeSalesSummaryView, {
+      ...props, filters: rangeFilters, viewMode: 'adasmart', copyPlan: rangePlan,
+    })).replace(/<!-- -->/gu, '');
+    assert.match(range, /01\/09\/2026 ถึง 03\/09\/2026/u);
+    assert.match(range, /ตรวจยอดรายวัน \(3 \/ 3 วันผ่าน\)/u);
+    assert.match(range, /ผลตรวจยอด Business Insights รายวัน/u);
+    assert.doesNotMatch(range, /วันเดียวกัน|เลือกหนึ่งร้านและวันเดียว/u);
+    const missing = renderToString(React.createElement(ShopeeSalesSummaryView, {
+      ...props, filters: rangeFilters, viewMode: 'adasmart', copyPlan: { ...rangePlan, status: 'review_required',
+        dailyReconciliation: rangePlan.dailyReconciliation.map((day, index) => index === 1
+          ? { ...day, status: 'review_required', targetCents: null, reasons: ['ขาดรายงาน BI'] } : day),
+        issues: [{ date: '2026-09-02', reason: 'ข้อมูลหรือยอด Business Insights รายวันยังไม่ผ่านการตรวจ' }],
+      },
+    })).replace(/<!-- -->/gu, '');
+    assert.match(missing, /ตรวจยอดรายวัน \(2 \/ 3 วันผ่าน\)/u);
+    assert.match(missing, /วันที่ 02\/09\/2026/u);
+    assert.match(missing, /ต้องตรวจ: ขาดรายงาน BI/u);
+    assert.equal((missing.match(/disabled=""/gu) || []).length, 4);
   } finally { await vite.close(); }
 });

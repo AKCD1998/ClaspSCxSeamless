@@ -1,6 +1,33 @@
+function copyDates(filters) {
+  const start = filters?.startDate; const end = filters?.endDate || start;
+  const valid = date => /^\d{4}-\d{2}-\d{2}$/u.test(date || '')
+    && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date;
+  if (!valid(start) || !valid(end)) return [];
+  const count = (Date.parse(end) - Date.parse(start)) / 86400000 + 1;
+  if (!Number.isInteger(count) || count < 1 || count > 3660) return [];
+  return Array.from({ length: count }, (_, index) => new Date(Date.parse(start) + index * 86400000).toISOString().slice(0, 10));
+}
+
 export function copyScopeIsValid(filters) {
-  return Boolean(filters?.shopCode && filters.shopCode !== 'all' && filters.startDate
-    && filters.startDate === (filters.endDate || filters.startDate));
+  return ['sc-drug-store', 'dr-morepen'].includes(filters?.shopCode) && copyDates(filters).length > 0;
+}
+
+export function copyDailyReconciliationIsValid(plan) {
+  const dates = copyDates(plan);
+  if (!dates.length) return false;
+  if (dates.length === 1) return true;
+  if (plan.dailyReconciliation?.length !== dates.length) return false;
+  let total = 0; let orders = 0;
+  for (const [index, day] of plan.dailyReconciliation.entries()) {
+    if (day.date !== dates[index] || day.status !== 'ready' || day.issueCount !== 0
+      || !Number.isSafeInteger(day.targetCents) || day.targetCents < 0
+      || day.totalCents !== day.targetCents || day.cohortTotalCents !== day.targetCents
+      || day.varianceCents !== 0 || !Number.isSafeInteger(day.orderCount) || day.orderCount < 0
+      || day.orderCount !== day.confirmedOrderCount) return false;
+    total += day.targetCents; orders += day.orderCount;
+  }
+  return Number.isSafeInteger(total) && Number.isSafeInteger(orders)
+    && total === plan.targetCents && orders === plan.orderCount;
 }
 
 export function copyFiltersMatch(left, right) {
@@ -19,7 +46,7 @@ function satang(value) {
 // Rebuild all three columns from the same immutable row order. Fail closed on
 // malformed/stale responses instead of independently sorting or trusting strings.
 export function verifiedCopyColumns(plan, filters) {
-  if (!copyScopeIsValid(filters) || !copyFiltersMatch(plan, filters) || plan.status !== 'ready'
+  if (!copyScopeIsValid(filters) || !copyFiltersMatch(plan, filters) || !copyDailyReconciliationIsValid(plan) || plan.status !== 'ready'
     || plan.issues?.length || !plan.rows?.length || plan.rows.length !== plan.rowCount
     || !Number.isSafeInteger(plan.targetCents) || plan.targetCents < 0
     || plan.orderCount !== plan.confirmedSales?.orderCount) return null;
