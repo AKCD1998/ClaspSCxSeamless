@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { copyScopeIsValid, verifiedCopyColumns } from './shopeeAdaSmartCopy.js';
+import { copyScopeIsValid, copyFiltersMatch, copyDailyReconciliationIsValid, verifiedCopyColumns } from './shopeeAdaSmartCopy.js';
 
 const LABELS = { sku: 'รหัส IC/SKU', quantity: 'จำนวนสินค้า', unitPrice: 'ราคาต่อหน่วย' };
 const SHOPS = { 'sc-drug-store': 'SC Drug Store', 'dr-morepen': 'DR.Morepen' };
@@ -7,6 +7,8 @@ const money = cents => cents == null ? 'ยังสรุปไม่ได้'
   minimumFractionDigits: 2, maximumFractionDigits: 2,
 }).format(cents / 100);
 const dateLabel = date => date?.split('-').reverse().join('/') || '-';
+const periodLabel = plan => plan.startDate === plan.endDate ? dateLabel(plan.startDate)
+  : `${dateLabel(plan.startDate)} ถึง ${dateLabel(plan.endDate)}`;
 
 export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, error, isStale }) {
   const [copyFeedback, setCopyFeedback] = useState(null);
@@ -27,7 +29,9 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
   }, [copyFeedback]);
   const columns = !isLoading && !isStale ? verifiedCopyColumns(plan, filters) : null;
   const emptyVerified = !isLoading && !isStale && plan?.status === 'ready'
-    && plan.targetCents === 0 && plan.orderCount === 0 && plan.rows.length === 0;
+    && copyScopeIsValid(filters) && copyFiltersMatch(plan, filters) && copyDailyReconciliationIsValid(plan)
+    && !plan.issues?.length && plan.targetCents === 0 && plan.totalCents === 0
+    && plan.orderCount === 0 && plan.confirmedSales?.orderCount === 0 && plan.rows.length === 0;
   const dateCorrections = (plan?.businessDateCorrections || []).filter(correction => correction.applied);
   const lineEvidence = (plan?.lineFinancialEvidence || []).filter(evidence => evidence.applied);
   const allocations = plan?.allocationPolicies || [];
@@ -56,14 +60,14 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
   return (
     <section className="shopee-adasmart-copy" aria-label="ตารางคัดลอกเข้า AdaSmart">
       <h3>คัดลอกเข้า AdaSmart</h3>
-      <p>เลือกหนึ่งร้านและวันเดียว แล้วคัดลอกทีละคอลัมน์ตามลำดับ รหัส → จำนวน → ราคา</p>
-      {!copyScopeIsValid(filters) ? <p className="status" data-state="error">เลือกชื่อร้านและวันเดียวกันในวันที่เริ่มต้นกับวันที่สิ้นสุด</p> : null}
+      <p>เลือกหนึ่งร้านและวันที่หรือช่วงวันที่ แล้วคัดลอกทีละคอลัมน์ตามลำดับ รหัส → จำนวน → ราคา</p>
+      {!copyScopeIsValid(filters) ? <p className="status" data-state="error">เลือกหนึ่งร้านและช่วงวันที่ที่ถูกต้อง วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น</p> : null}
       {isStale ? <p className="status" data-state="error">ร้านหรือวันที่เปลี่ยนแล้ว กด “แสดงยอดขาย” เพื่อโหลดข้อมูลที่ตรงกับตัวเลือก</p> : null}
       {isLoading ? <p role="status">กำลังตรวจออเดอร์และยอด Business Insights...</p> : null}
       {error ? <p role="alert" className="status" data-state="error">{error}</p> : null}
       {plan && !isLoading ? <>
         <div className="shopee-copy-context">
-          <strong>{SHOPS[plan.shopCode] || plan.shopCode} · {dateLabel(plan.startDate)}</strong>
+          <strong>{SHOPS[plan.shopCode] || plan.shopCode} · {periodLabel(plan)}</strong>
           <span>{dateCorrections.length ? 'วันที่ตาม Business Insights' : 'วันที่ชำระสินค้า'} · เวลาไทย</span>
         </div>
         <div className="shopee-copy-totals">
@@ -72,19 +76,31 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           <div><span>ส่วนต่าง</span><strong>฿{money(plan.varianceCents)}</strong></div>
         </div>
         <p>{plan.orderCount} / {plan.confirmedSales?.orderCount ?? '-'} ออเดอร์ · {plan.sourceLineCount} รายการต้นทาง · {plan.rowCount} แถวคัดลอก</p>
+        {plan.dailyReconciliation ? <details className="shopee-copy-evidence">
+          <summary>ตรวจยอดรายวัน ({plan.dailyReconciliation.filter(day => day.status === 'ready').length} / {plan.dailyReconciliation.length} วันผ่าน)</summary>
+          <p>รวมสินค้าเป็นตารางเดียวตลอดช่วงที่เลือก ทุกวันต้องมีรายงาน Business Insights และยอดกับจำนวนออเดอร์ตรงกัน วันยอดศูนย์ต้องมีรายงานยืนยันด้วย</p>
+          <div className="history-table-wrap"><table className="history-table" aria-label="ผลตรวจยอด Business Insights รายวัน">
+            <thead><tr><th>วันที่</th><th>ออเดอร์ / BI</th><th>ยอดตาราง</th><th>ยอด BI</th><th>ส่วนต่าง</th><th>ผลตรวจ</th></tr></thead>
+            <tbody>{plan.dailyReconciliation.map(day => <tr key={day.date}>
+              <td>{dateLabel(day.date)}</td><td>{day.orderCount} / {day.confirmedOrderCount ?? '-'}</td>
+              <td>{money(day.totalCents)}</td><td>{money(day.targetCents)}</td><td>{money(day.varianceCents)}</td>
+              <td>{day.status === 'ready' ? 'ผ่าน' : `ต้องตรวจ: ${(day.reasons || []).join(' · ')}`}</td>
+            </tr>)}</tbody>
+          </table></div>
+        </details> : null}
         {dateCorrections.length ? <p>จัดวันที่ให้ {dateCorrections.length} ออเดอร์ตามรายงานสินค้า Business Insights ที่ตรวจแล้ว ดูรายละเอียดในหลักฐานด้านล่าง</p> : null}
         {plan.issues.length ? <p><strong>ยอดออเดอร์ทั้งหมด ฿{money(plan.cohortTotalCents)}</strong> · ตารางด้านล่างแสดงเฉพาะรายการที่เตรียมได้ ยังขาดรายการที่ต้องตรวจสอบ</p> : null}
         <p>ค่าสินค้า ฿{money(plan.merchandiseCents)} − ส่วนลดผู้ขาย ฿{money(plan.sellerCents)} + ส่วนลดสินค้าที่ Shopee สนับสนุน ฿{money(plan.supportCents)}</p>
-        {allocations.length ? <p>ตารางวันนี้มีรายการที่แบ่งส่วนลดหรือราคาชุดตามกติกาที่คุณอนุมัติ ดูรายละเอียดในหลักฐานด้านล่าง</p> : null}
+        {allocations.length ? <p>ตารางนี้มีรายการที่แบ่งส่วนลดหรือราคาชุดตามกติกาที่คุณอนุมัติ ดูรายละเอียดในหลักฐานด้านล่าง</p> : null}
         {restoredVouchers.length ? <p>ใช้โค้ดในออเดอร์และหลักฐานแคมเปญร้านค้าคืนส่วนลดที่หายจากไฟล์หลังยกเลิก {restoredVouchers.length} ออเดอร์</p> : null}
         <p className="status" data-state={columns || emptyVerified ? 'success' : 'error'}>
-          {emptyVerified ? 'Business Insights ยืนยันว่าไม่มีออเดอร์ในวันนี้ ไม่มีข้อมูลให้คัดลอก'
+          {emptyVerified ? `Business Insights ยืนยันว่าไม่มีออเดอร์ใน${plan.startDate === plan.endDate ? 'วันนี้' : 'ช่วงวันที่เลือก'} ไม่มีข้อมูลให้คัดลอก`
             : columns ? 'ยอดและรายการผ่านการตรวจ พร้อมคัดลอก' : 'ยังไม่พร้อมคัดลอก ต้องตรวจรายการหรือยอดที่ระบุด้านล่าง'}
         </p>
         <p>รวม SKU เดียวกันแล้ว ราคาอาจแยกสองแถวเพื่อรักษายอดถึงสตางค์ ให้คัดลอกครบทุกแถวตามลำดับ</p>
         <div className="history-table-wrap">
           <table className="history-table shopee-copy-table">
-            <caption>รหัส จำนวน และราคาของ {SHOPS[plan.shopCode]} วันที่ {dateLabel(plan.startDate)}</caption>
+            <caption>รหัส จำนวน และราคาของ {SHOPS[plan.shopCode]} วันที่ {periodLabel(plan)}</caption>
             <thead><tr>
               {Object.entries(LABELS).map(([key, label]) => <th key={key}>
                 <span>{label}</span>
@@ -106,7 +122,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
             </tr>)}</tbody>
           </table>
         </div>
-        {!plan.rows.length ? <p>ไม่มีแถวสินค้าที่เตรียมได้ในวันที่เลือก</p> : null}
+        {!plan.rows.length ? <p>ไม่มีแถวสินค้าที่เตรียมได้ในช่วงวันที่เลือก</p> : null}
         <p className="shopee-copy-feedback" data-state={copyFeedback?.state} role="status" aria-live="polite" aria-atomic="true">{copyFeedback?.message}</p>
         {manualColumn && columns ? <label className="shopee-copy-manual">
           <span>{LABELS[manualColumn]} — เลือกทั้งหมดแล้วคัดลอก</span>
@@ -116,6 +132,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           <h4>รายการที่ต้องตรวจสอบ ({plan.issues.length})</h4>
           <ul>{plan.issues.map((issue, index) => <li key={index}>
             <strong>{issue.reason}</strong>
+            {issue.date ? <span>วันที่ {dateLabel(issue.date)}</span> : null}
             {issue.productName ? <span>
               {issue.components?.length
                 ? `จับคู่แล้ว: ${issue.components.map(component => `${component.sku} ×${component.factor} ${component.unit}`).join(' + ')} ต่อชุด`
@@ -126,7 +143,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           </li>)}</ul>
         </div> : null}
         <details className="shopee-copy-evidence"><summary>หลักฐานและออเดอร์ที่ใช้คำนวณ</summary>
-          <p>ใช้กลุ่มออเดอร์ของวันที่เลือกตามยอดขายยืนยันแล้วตั้งต้นของ Business Insights รวมคำสั่งซื้อที่ยกเลิกหรือคืนภายหลัง</p>
+          <p>ใช้กลุ่มออเดอร์ของช่วงวันที่เลือกตามยอดขายยืนยันแล้วตั้งต้นของ Business Insights รวมคำสั่งซื้อที่ยกเลิกหรือคืนภายหลัง</p>
           {allocations.length ? <div>
             <h4>กติกาแบ่งเงินที่เจ้าของร้านอนุมัติ</h4>
             <p>ราคาแยกส่วนนี้คำนวณตามกติกาที่อนุมัติ ไม่ใช่ราคาขายแยกที่ Shopee ระบุ</p>
