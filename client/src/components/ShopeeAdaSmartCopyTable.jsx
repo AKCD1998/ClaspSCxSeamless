@@ -117,7 +117,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
               <td className="shopee-copy-value">{row.sku}</td>
               <td className="shopee-copy-value">{row.quantity}</td>
               <td className="shopee-copy-value">{row.unitPrice}</td>
-              <td>{row.productName}<small>{row.unit}{row.freeGift ? ' · ของแถม ราคา 0.00' : ''}{row.splitPrice ? ' · แยกราคาเพื่อรักษาสตางค์' : ''}</small></td>
+              <td>{row.productName}<small>{row.unit}{row.freeGift ? ' · ของแถม' : ''}{row.splitPrice ? ' · แยกราคาเพื่อรักษาสตางค์' : ''}</small></td>
               <td>{money(row.amountCents)}</td>
             </tr>)}</tbody>
           </table>
