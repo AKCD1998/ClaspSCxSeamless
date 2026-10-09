@@ -2790,3 +2790,7 @@ html:has(.shopee-document-sync-shell) {
   .shopee-sync-table tbody th { width: 180px; min-width: 180px; }
 }
 
+.shopee-live-status { margin-top: 0.45rem; min-width: 10rem; }
+.shopee-live-status > div { margin-top: 0.4rem; }
+.shopee-live-status strong, .shopee-live-status small { display: block; }
+.shopee-live-status small { opacity: 0.75; font-size: 0.72rem; }

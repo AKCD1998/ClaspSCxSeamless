@@ -150,7 +150,7 @@ test('Shopee orders route renders the privacy-safe order timeline', async () => 
 
   assert.match(html, /ไทม์ไลน์คำสั่งซื้อ Shopee/);
   assert.match(html, /Shopee Order Timeline/);
-  assert.match(html, /ไม่เก็บหัวเรื่อง เนื้อหาอีเมล หรือข้อมูลผู้ซื้อ/);
+  assert.match(html, /การชำระของผู้ซื้อแยกจากรายรับที่โอนให้ร้านและการคืนเงิน/);
   assert.doesNotMatch(html, /ตรวจร้านของข้อมูล Shopee เก่า/);
 });
 
