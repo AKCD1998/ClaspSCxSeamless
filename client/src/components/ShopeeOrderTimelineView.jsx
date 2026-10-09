@@ -9,6 +9,7 @@ import {
   DEFAULT_USER_FINANCIAL_VISIBILITY,
   normalizeShopeeFinancialVisibility,
 } from './shopeeFinancialVisibility.js';
+import { liveStatusRows } from './shopeeLiveStatus.js';
 
 const STATUS_OPTIONS = Object.entries(SHOPEE_ORDER_STATUS_LABELS);
 const SHOP_OPTIONS = [
@@ -44,6 +45,20 @@ function StatusBadge({ status }) {
       {SHOPEE_ORDER_STATUS_LABELS[status] || status || '-'}
     </span>
   );
+}
+function LiveStatus({ order }) {
+  const rows = liveStatusRows(order.liveStatus).filter(row => row.axis !== 'payment' || !order.officialPaymentProof || order.liveStatus?.paidEvidence);
+  return <div className="shopee-live-status">
+    {order.officialPaymentProof && !order.liveStatus?.paidEvidence ? <div>
+      <strong>มีหลักฐานชำระเงิน</strong>
+      <small>ชำระ {formatShopeeEmailReceivedAt(order.officialPaymentProof.paidAt)}</small>
+      <small>{order.officialPaymentProof.sourceFilename}</small>
+    </div> : null}
+    {rows.length ? rows.map(row => <div key={row.axis}>
+      <strong>{row.text}</strong>
+      <small>ตรวจพบ {formatShopeeEmailReceivedAt(row.observedAt)}{row.stale ? ' · ควรตรวจซ้ำ' : ''}</small>
+    </div>) : !order.officialPaymentProof ? <small>ยังไม่มีหลักฐานชำระเงินจาก Seller Centre</small> : null}
+  </div>;
 }
 
 export function formatShopeeProductMatch(productMatch) {
@@ -264,7 +279,7 @@ export default function ShopeeOrderTimelineView({
         <div>
           <p className="panel-eyebrow">Shopee Order Timeline</p>
           <p className="panel-copy">
-            แยกข้อมูลด้วยร้านและเลขคำสั่งซื้อ พร้อมกันอีเมลซ้ำข้ามกล่องด้วย canonical hash — ไม่เก็บหัวเรื่อง เนื้อหาอีเมล หรือข้อมูลผู้ซื้อ
+            ตรวจสถานะแต่ละร้านและเลขคำสั่งซื้อ แยกการชำระเงินของผู้ซื้อ การจัดส่ง การคืนเงิน และรายรับของร้าน พร้อมเวลาที่ตรวจพบหลักฐาน
           </p>
         </div>
         {appRole === 'admin' ? (
@@ -409,7 +424,7 @@ export default function ShopeeOrderTimelineView({
                   <tr key={orderKey}>
                     <td>{SHOP_LABELS[order.shopCode] || order.shopCode || '-'}</td>
                     <td><strong>{order.orderNumber}</strong></td>
-                    <td><StatusBadge status={order.currentStatus} /></td>
+                    <td>{order.currentStatus !== 'seller_center' ? <StatusBadge status={order.currentStatus} /> : null}<LiveStatus order={order} /></td>
                     <td>{order.items?.[0]?.name || '-'}{order.itemCount > 1 ? ` +${order.itemCount - 1}` : ''}</td>
                     <td>{formatShopeeProductMatch(order.items?.[0]?.productMatch)}</td>
                     <td>{order.totalQuantity || 0}</td>

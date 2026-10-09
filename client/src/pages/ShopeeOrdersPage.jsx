@@ -6,7 +6,7 @@ export default function ShopeeOrdersPage() {
     <main className="shell shell-single-column">
       <Hero
         title="ไทม์ไลน์คำสั่งซื้อ Shopee"
-        intro="เชื่อมเหตุการณ์จากอีเมลเป็นสถานะของแต่ละคำสั่งซื้อ โดยเก็บเฉพาะข้อมูลธุรกิจที่จำเป็นและไม่แสดงข้อมูลผู้ซื้อ"
+        intro="สถานะจาก Seller Centre พร้อมเวลาที่ตรวจพบและเหตุการณ์จากอีเมล การชำระของผู้ซื้อแยกจากรายรับที่โอนให้ร้านและการคืนเงิน"
       />
       <ShopeeOrderTimelinePanel />
     </main>

@@ -9,6 +9,8 @@ export const SHOPEE_EMAIL_CATEGORY_LABELS = {
 };
 
 export const SHOPEE_ORDER_STATUS_LABELS = {
+  seller_center: 'พบใน Seller Centre',
+  official_report: 'เอกสารคำสั่งซื้อ',
   order_confirmed: 'ยืนยันคำสั่งซื้อ COD',
   shipment_due: 'ถึงเวลาจัดส่ง',
   seller_return_delivery: 'พัสดุส่งคืนผู้ขาย',

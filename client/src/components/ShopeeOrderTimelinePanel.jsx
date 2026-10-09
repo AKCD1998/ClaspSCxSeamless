@@ -63,8 +63,8 @@ export function shopeeOrderReducer(state, action) {
       return {
         ...state,
         generation: action.generation,
-        isLoading: true,
-        orders: [],
+        isLoading: !action.background,
+        orders: action.background ? state.orders : [],
         status: { message: 'กำลังโหลดไทม์ไลน์คำสั่งซื้อ...', state: 'working' },
       };
     case 'replacement_succeeded': {
@@ -190,14 +190,14 @@ export default function ShopeeOrderTimelinePanel() {
     setDetailStatus({ message: '', state: 'idle' });
   }
 
-  async function loadOrders(activeFilters) {
+  async function loadOrders(activeFilters, { background = false } = {}) {
     const generation = requestSequenceRef.current + 1;
     requestSequenceRef.current = generation;
     if (!activeFilters.shopCode) {
       dispatch({ type: 'shop_required', generation });
       return;
     }
-    dispatch({ type: 'replacement_started', generation });
+    dispatch({ type: 'replacement_started', generation, background });
 
     try {
       const response = await getShopeeOrders(activeFilters);
@@ -304,6 +304,15 @@ export default function ShopeeOrderTimelinePanel() {
     loadOrders(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && !selectedOrderRef.current) {
+        loadOrders(filtersRef.current, { background: true });
+      }
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
