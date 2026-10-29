@@ -123,6 +123,45 @@ test('renders an order summary with distinct status color hooks and no admin syn
   assert.match(html, /IC-001849/u);
 });
 
+test('the order screen shows canonical stock factors without changing the sale quantity or price', async () => {
+  const item = { ...order.items[0], stockProductMatch: { status: 'verified', branchCode: '004',
+    components: [{ companySku: 'IC-001510', quantityPerSale: 24, quantityUnit: 'ซอง' }] } };
+  const next = { ...order, items: [item] };
+  const html = await renderView({ orders: [next], selectedOrderKey: `${next.shopCode}:${next.orderNumber}`,
+    orderDetail: { order: next, events: [] } });
+  assert.match(html, /IC-001510 ×24 ซอง/u);
+  assert.match(html, /สต็อก 004/u);
+  assert.doesNotMatch(html, /IC-001849/u);
+  assert.equal(item.quantity, 2);
+  assert.equal(item.unitPrice, 84);
+  assert.equal(item.productMatch.companySku, 'IC-001849');
+});
+
+test('blocked or unavailable stock matching does not fall back to an accounting SKU or zero quantity', async () => {
+  for (const status of ['blocked', 'unavailable']) {
+    const next = { ...order, totalQuantity: null, items: [{ ...order.items[0], quantity: null,
+      stockProductMatch: { status, branchCode: '004', components: [] } }] };
+    const html = await renderView({ orders: [next], selectedOrderKey: `${next.shopCode}:${next.orderNumber}`,
+      orderDetail: { order: next, events: [] } });
+    assert.doesNotMatch(html, /IC-001849/u);
+    assert.match(html, /ยังไม่ทราบ/u);
+    assert.match(html, status === 'blocked' ? /รอตรวจสอบ SKU\/หน่วยสต็อก 004/u : /ไม่ได้ชั่วคราว/u);
+  }
+});
+
+test('shared-stock and bundle components use each evidenced unit; malformed factors stay unknown', async () => {
+  const { formatShopeeOrderItemMatch: format } = await vite.ssrLoadModule('/src/components/ShopeeOrderTimelineView.jsx');
+  const stockProductMatch = { status: 'verified', branchCode: '004', components: [
+    { companySku: 'MASTER-A', quantityPerSale: 2, quantityUnit: 'กล่อง' },
+    { companySku: 'MASTER-B', quantityPerSale: 1, quantityUnit: 'ชิ้น' },
+  ] };
+  assert.match(format({ stockProductMatch }), /MASTER-A ×2 กล่อง \+ MASTER-B ×1 ชิ้น/u);
+  for (const quantityPerSale of [0, null, -1, 1.5]) assert.match(format({ stockProductMatch: {
+    ...stockProductMatch, components: [{ ...stockProductMatch.components[0], quantityPerSale }],
+  } }), /รอตรวจสอบ/u);
+  assert.equal(format(order.items[0]), 'IC-001849');
+});
+
 test('regular-user detail shows item subtotal only even if hidden values are supplied', async () => {
   const html = await renderView({
     orders: [order],
