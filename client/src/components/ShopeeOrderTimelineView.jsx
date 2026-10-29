@@ -76,11 +76,24 @@ export function formatShopeeProductMatch(productMatch) {
   return '-';
 }
 
-function ProductMatchBadge({ productMatch }) {
+export function formatShopeeOrderItemMatch(item) {
+  const stock = item?.stockProductMatch;
+  if (!stock) return formatShopeeProductMatch(item?.productMatch);
+  if (stock.status === 'unavailable') return 'อ่าน SKU/หน่วยสต็อก 004 ไม่ได้ชั่วคราว';
+  if (stock.status !== 'verified' || stock.branchCode !== '004' || !stock.components?.length
+    || stock.components.some(c => !c.companySku || !c.quantityUnit
+      || !Number.isSafeInteger(c.quantityPerSale) || c.quantityPerSale < 1)) {
+    return 'รอตรวจสอบ SKU/หน่วยสต็อก 004';
+  }
+  return `${stock.components.map(c => `${c.companySku} ×${c.quantityPerSale} ${c.quantityUnit}`).join(' + ')} (สต็อก 004)`;
+}
+
+function ProductMatchBadge({ item }) {
+  const productMatch = item?.stockProductMatch || item?.productMatch;
   if (!productMatch) return null;
   return (
     <span className="shopee-product-match" data-match-status={productMatch.status}>
-      {formatShopeeProductMatch(productMatch)}
+      {formatShopeeOrderItemMatch(item)}
     </span>
   );
 }
@@ -120,10 +133,10 @@ function ShopeeOrderDetail({ detail, detailStatus, financialVisibility, onRetry 
                 <strong>{item.name}</strong>
                 {item.variant ? <span>ตัวเลือก: {item.variant}</span> : null}
                 <span>
-                  จำนวน {item.quantity || 0}
+                  จำนวน {item.quantity ?? 'ยังไม่ทราบ'}
                   {visibleFinancials.unitPrice ? ` × ${formatShopeeMoney(item.unitPrice)}` : ''}
                 </span>
-                <ProductMatchBadge productMatch={item.productMatch} />
+                <ProductMatchBadge item={item} />
               </li>
             ))}
           </ol>
@@ -426,8 +439,8 @@ export default function ShopeeOrderTimelineView({
                     <td><strong>{order.orderNumber}</strong></td>
                     <td>{order.currentStatus !== 'seller_center' ? <StatusBadge status={order.currentStatus} /> : null}<LiveStatus order={order} /></td>
                     <td>{order.items?.[0]?.name || '-'}{order.itemCount > 1 ? ` +${order.itemCount - 1}` : ''}</td>
-                    <td>{formatShopeeProductMatch(order.items?.[0]?.productMatch)}</td>
-                    <td>{order.totalQuantity || 0}</td>
+                    <td>{formatShopeeOrderItemMatch(order.items?.[0])}</td>
+                    <td>{order.totalQuantity ?? 'ยังไม่ทราบ'}</td>
                     <td>{formatShopeeMoney(order.itemSubtotal)}</td>
                     {visibleFinancials.shippingFee ? (
                       <td>{formatShopeeMoney(order.shippingFee)}</td>
