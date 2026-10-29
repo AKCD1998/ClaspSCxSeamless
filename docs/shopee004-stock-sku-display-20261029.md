@@ -22,8 +22,10 @@ The backend uses one bounded read-only snapshot from the existing canonical
 identityStore and stock-line validator. It does not change `productMatch`,
 prices, financial visibility, AdaSmart copy/export, reservations or lifecycle
 proof. There is no frontend registry, new credential, migration or background
-task. The existing accounting search index is unchanged; this patch does not
-add search by canonical stock SKU.
+task. The companion backend resolves exact company SKU searches through these
+same validated aliases before all-page pagination. Ordinary name/date/amount
+search and the accounting search text remain unchanged. An unavailable canonical
+SKU lookup returns a temporary error rather than a false empty search result.
 
 Validation: all 148 client tests pass and Vite production build succeeds.
 Coverage includes factors 24 and 1, bundles/shared master components, unknown
