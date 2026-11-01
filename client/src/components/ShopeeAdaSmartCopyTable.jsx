@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { copyScopeIsValid, copyFiltersMatch, copyDailyReconciliationIsValid, verifiedCopyColumns } from './shopeeAdaSmartCopy.js';
+import { allocationPolicyLabel, copyScopeIsValid, copyFiltersMatch, copyDailyReconciliationIsValid, verifiedCopyColumns } from './shopeeAdaSmartCopy.js';
 
 const LABELS = { sku: 'รหัส IC/SKU', quantity: 'จำนวนสินค้า', unitPrice: 'ราคาต่อหน่วย' };
 const SHOPS = { 'sc-drug-store': 'SC Drug Store', 'dr-morepen': 'DR.Morepen' };
@@ -148,9 +148,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
             <h4>กติกาแบ่งเงินที่เจ้าของร้านอนุมัติ</h4>
             <p>ราคาแยกส่วนนี้คำนวณตามกติกาที่อนุมัติ ไม่ใช่ราคาขายแยกที่ Shopee ระบุ</p>
             {allocations.map(record => <p key={record.policyKey}>
-              {record.policy.type === 'seller_voucher' ? 'ส่วนลดร้านค้า: แบ่งตามสัดส่วนค่าสินค้าเดิม รักษายอดถึงสตางค์'
-                : record.policy.method === 'paid_component_and_free_gift' ? 'Polar: ลงราคาทั้งชุดที่ฟ้า 2 ขวด; ขาว 1 ขวดแถม ราคา 0.00'
-                  : 'Dr.Morepen: ชุด 350 บาท → เครื่อง 175.00 + แผ่นตรวจ 175.00'}
+              {allocationPolicyLabel(record)}
               {' · '}อนุมัติ {dateLabel(record.approvedAt?.slice(0,10))}
             </p>)}
           </div> : null}
