@@ -491,6 +491,11 @@ export function ShopeeSalesSummaryView({
             </>
           ) : null}
           <FinancialReconciliation reconciliation={reconciliation} />
+          {summary.reconciliationDeferred ? (
+            <p className="status" role="status">
+              {summary.reconciliationDeferred.message}
+            </p>
+          ) : null}
           <h3>รายละเอียดสินค้าและคำสั่งซื้อจากไฟล์คำสั่งซื้อ</h3>
           <div className="shopee-sales-summary-metrics">
             <SummaryMetric label="ชนิดสินค้า" value={summary.productCount} />

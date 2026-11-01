@@ -73,6 +73,19 @@ async function renderSummary(openProductId = '') {
   }));
 }
 
+test('large reports show source products and an explicit unevaluated financial-history notice', async () => {
+  const { ShopeeSalesSummaryView } = await vite.ssrLoadModule('/src/components/ShopeeSalesSummaryPanel.jsx');
+  const message = 'รายงานหลักแสดงครบตามช่วงวันที่ แต่ยังไม่ได้สืบย้อนการเงินรายออเดอร์ กรุณาเลือกช่วงไม่เกิน 7 วันเพื่อตรวจส่วนนี้';
+  const html = renderToString(React.createElement(ShopeeSalesSummaryView, {
+    filters: { startDate: '2026-10-01', endDate: '2026-10-31', shopCode: 'sc-drug-store' },
+    onFilterChange: () => {}, onSubmit: () => {}, onToggleProduct: () => {},
+    status: { state: 'success', message: 'พร้อม' },
+    summary: { ...summary, reconciliation: null, reconciliationDeferred: { message } },
+  }));
+  assert.ok(html.includes(message));assert.match(html, /สินค้าทดสอบ/u);
+  assert.doesNotMatch(html, /ตรงกัน ส่วนต่าง ฿0\.00/u);
+});
+
 test('renders totals and keeps order rows collapsed initially', async () => {
   const html = await renderSummary();
 
