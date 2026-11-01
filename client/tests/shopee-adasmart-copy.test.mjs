@@ -64,6 +64,16 @@ test('toggle preserves original table while copy mode renders independent BI amo
     assert.match(copy, /คัดลอกรหัส IC\/SKU/u);
     assert.match(copy, /คัดลอกจำนวนสินค้า/u);
     assert.match(copy, /คัดลอกราคาต่อหน่วย/u);
+    const allocated = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode: 'adasmart', copyPlan: {
+      ...plan, allocationPolicies: [{ policyKey: 'synthetic-main-kit', approvedAt: '2026-11-01T00:00:00Z', policy: {
+        type: 'bundle', method: 'primary_component_with_nominal_secondary_lines', primarySku: 'METER', components: [
+          { sku: 'NEEDLES', factor: 2, weight: 0, nominalLineCentsPerSale: 10 },
+          { sku: 'METER', factor: 1, weight: 1 },
+        ],
+      } }],
+    } })).replace(/<!-- -->/gu, '');
+    assert.match(allocated, /METER ×1 หน่วย POS รับยอดคงเหลือ; NEEDLES ×2 หน่วย POS รวม ฿0\.10 ต่อชุด/u);
+    assert.doesNotMatch(allocated, /Dr\.Morepen: ชุด 350|เครื่อง 175\.00/u);
     const dated = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode: 'adasmart', copyPlan: {
       ...plan,businessDateCorrections:[{shopCode:filters.shopCode,orderNumber:'SYNTHETIC01',paidBusinessDate:'2026-09-02',
         businessDate:'2026-09-01',applied:true,evidence:{sources:[{sourceFilename:'synthetic-product-report.xlsx',sourceSha256:'d'.repeat(64)}]}}],
