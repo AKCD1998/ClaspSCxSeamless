@@ -129,17 +129,34 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           <textarea readOnly value={columns[manualColumn]} onFocus={event => event.target.select()} rows={Math.min(plan.rowCount, 12)} />
         </label> : null}
         {plan.issues.length ? <div className="shopee-copy-issues" role="alert">
-          <h4>รายการที่ต้องตรวจสอบ ({plan.issues.length})</h4>
-          <ul>{plan.issues.map((issue, index) => <li key={index}>
-            <strong>{issue.reason}</strong>
-            {issue.date ? <span>วันที่ {dateLabel(issue.date)}</span> : null}
-            {issue.productName ? <span>
-              {issue.components?.length
-                ? `จับคู่แล้ว: ${issue.components.map(component => `${component.sku} ×${component.factor} ${component.unit}`).join(' + ')} ต่อชุด`
-                : issue.sku || 'ยังไม่มีรหัส'}
-              {' · '}{issue.productName} {issue.variant}
-            </span> : null}
-            {issue.orderNumber ? <small>ออเดอร์ {issue.orderNumber}{issue.sourceRow ? ` · แถวต้นทาง ${issue.sourceRow}` : ''}</small> : null}
+          <h4>รายการที่ต้องตรวจสอบ ({(plan.issueGroups ?? plan.issues).length})</h4>
+          <ul>{(plan.issueGroups ?? plan.issues).map((issue, index) => <li key={index}>
+            {issue.affectedLines?.length ? <>
+              <strong>{issue.productName} {issue.variant}</strong>
+              <span>{issue.reasons.join(' · ')}</span>
+              <details>
+                <summary>{issue.affectedLines.length} บรรทัด{issue.option?.variationId
+                  ? ` · รหัสตัวเลือก ${issue.option.variationId}` : ''}</summary>
+                <ul>{issue.affectedLines.map((line, lineIndex) => <li key={lineIndex}>
+                  <small>ออเดอร์ {line.orderNumber}{line.sourceRow ? ` · แถวต้นทาง ${line.sourceRow}` : ''}
+                    {' · '}{line.reason}
+                    {line.sku ? ` · ${line.sku}` : ''}
+                    {line.components?.length ? ` · ${line.components.map(component =>
+                      `${component.sku} ×${component.factor} ${component.unit}`).join(' + ')} ต่อชุด` : ''}
+                  </small>
+                </li>)}</ul>
+              </details>
+            </> : <>
+              <strong>{issue.reason}</strong>
+              {issue.date ? <span>วันที่ {dateLabel(issue.date)}</span> : null}
+              {issue.productName ? <span>
+                {issue.components?.length
+                  ? `จับคู่แล้ว: ${issue.components.map(component => `${component.sku} ×${component.factor} ${component.unit}`).join(' + ')} ต่อชุด`
+                  : issue.sku || 'ยังไม่มีรหัส'}
+                {' · '}{issue.productName} {issue.variant}
+              </span> : null}
+              {issue.orderNumber ? <small>ออเดอร์ {issue.orderNumber}{issue.sourceRow ? ` · แถวต้นทาง ${issue.sourceRow}` : ''}</small> : null}
+            </>}
           </li>)}</ul>
         </div> : null}
         <details className="shopee-copy-evidence"><summary>หลักฐานและออเดอร์ที่ใช้คำนวณ</summary>
