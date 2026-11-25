@@ -109,5 +109,20 @@ test('toggle preserves original table while copy mode renders independent BI amo
     assert.match(missing, /วันที่ 02\/09\/2026/u);
     assert.match(missing, /ต้องตรวจ: ขาดรายงาน BI/u);
     assert.equal((missing.match(/disabled=""/gu) || []).length, 4);
+    const affectedLines = [
+      { orderNumber:'TEST-ORDER-A',sourceRow:12,reason:'SKU conflict',sku:'TEST-SKU' },
+      { orderNumber:'TEST-ORDER-B',sourceRow:23,reason:'pack conflict' },
+    ];
+    const grouped = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode:'adasmart',
+      copyPlan:{...plan,status:'review_required',issues:affectedLines,issueGroups:[{
+        productName:'Reviewed item',variant:'One box',option:{variationId:'200'},
+        reasons:['SKU conflict','pack conflict'],affectedLines,
+      }]},
+    })).replace(/<!-- -->/gu, '');
+    assert.match(grouped,/รายการที่ต้องตรวจสอบ \(1\)/u);
+    assert.match(grouped,/2 บรรทัด · รหัสตัวเลือก 200/u);
+    assert.match(grouped,/TEST-ORDER-A · แถวต้นทาง 12/u);
+    assert.match(grouped,/TEST-ORDER-B · แถวต้นทาง 23/u);
+    assert.equal((grouped.match(/disabled=""/gu) || []).length,4);
   } finally { await vite.close(); }
 });
