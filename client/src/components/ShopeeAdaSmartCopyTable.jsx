@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { allocationPolicyLabel, copyScopeIsValid, copyFiltersMatch, copyDailyReconciliationIsValid, verifiedCopyColumns } from './shopeeAdaSmartCopy.js';
+import { creditSaleDateDefaults, prepareCreditSaleFile } from './shopeeCreditSaleFile.js';
 
 const LABELS = { sku: 'รหัส IC/SKU', quantity: 'จำนวนสินค้า', unitPrice: 'ราคาต่อหน่วย' };
 const SHOPS = { 'sc-drug-store': 'SC Drug Store', 'dr-morepen': 'DR.Morepen' };
@@ -9,6 +10,51 @@ const money = cents => cents == null ? 'ยังสรุปไม่ได้'
 const dateLabel = date => date?.split('-').reverse().join('/') || '-';
 const periodLabel = plan => plan.startDate === plan.endDate ? dateLabel(plan.startDate)
   : `${dateLabel(plan.startDate)} ถึง ${dateLabel(plan.endDate)}`;
+
+function CreditSaleDownload({ plan, filters }) {
+  const defaults = creditSaleDateDefaults(plan.endDate);
+  const [documentDate, setDocumentDate] = useState(defaults.documentDate);
+  const [status, setStatus] = useState(null);
+  const pending = useRef(null);
+  useEffect(() => () => { pending.current = null; }, [plan]);
+
+  async function download(event) {
+    event.preventDefault();
+    if (pending.current) return;
+    const request = {};
+    pending.current = request;
+    setStatus({ state: 'working', message: 'กำลังสร้างไฟล์ SR...' });
+    try {
+      const { file, filename } = await prepareCreditSaleFile(plan, filters, documentDate);
+      if (pending.current !== request) return;
+      const url = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2), '\n'], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setStatus({ state: 'success', message: 'สร้างไฟล์ SR แล้ว เปิดไฟล์ด้วย SC Connect 004' });
+    } catch (error) {
+      if (pending.current === request) setStatus({ state: 'error', message: error.message });
+    } finally {
+      if (pending.current === request) pending.current = null;
+    }
+  }
+
+  return <>
+    <form className="shopee-copy-context" onSubmit={download}>
+      <label>วันที่เอกสาร SR <input type="date" required value={documentDate} min={plan.endDate}
+        max={defaults.lastDocumentDate} disabled={status?.state === 'working'}
+        onChange={event => { setDocumentDate(event.target.value); setStatus(null); }} /></label>
+      <button type="submit" className="secondary" disabled={status?.state === 'working'}>
+        ดาวน์โหลดไฟล์ SR (.scconnect.json)
+      </button>
+    </form>
+    {status ? <p className="status" data-state={status.state} role="status">{status.message}</p> : null}
+  </>;
+}
 
 export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, error, isStale }) {
   const [copyFeedback, setCopyFeedback] = useState(null);
@@ -76,6 +122,7 @@ export default function ShopeeAdaSmartCopyTable({ filters, plan, isLoading, erro
           <div><span>ส่วนต่าง</span><strong>฿{money(plan.varianceCents)}</strong></div>
         </div>
         <p>{plan.orderCount} / {plan.confirmedSales?.orderCount ?? '-'} ออเดอร์ · {plan.sourceLineCount} รายการต้นทาง · {plan.rowCount} แถวคัดลอก</p>
+        {columns ? <CreditSaleDownload key={`${plan.shopCode}:${plan.startDate}:${plan.endDate}`} plan={plan} filters={filters} /> : null}
         {plan.dailyReconciliation ? <details className="shopee-copy-evidence">
           <summary>ตรวจยอดรายวัน ({plan.dailyReconciliation.filter(day => day.status === 'ready').length} / {plan.dailyReconciliation.length} วันผ่าน)</summary>
           <p>รวมสินค้าเป็นตารางเดียวตลอดช่วงที่เลือก ทุกวันต้องมีรายงาน Business Insights และยอดกับจำนวนออเดอร์ตรงกัน วันยอดศูนย์ต้องมีรายงานยืนยันด้วย</p>

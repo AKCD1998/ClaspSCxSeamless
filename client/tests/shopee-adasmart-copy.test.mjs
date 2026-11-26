@@ -64,6 +64,7 @@ test('toggle preserves original table while copy mode renders independent BI amo
     assert.match(copy, /คัดลอกรหัส IC\/SKU/u);
     assert.match(copy, /คัดลอกจำนวนสินค้า/u);
     assert.match(copy, /คัดลอกราคาต่อหน่วย/u);
+    assert.match(copy, /ดาวน์โหลดไฟล์ SR \(\.scconnect\.json\)/u);
     const allocated = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode: 'adasmart', copyPlan: {
       ...plan, allocationPolicies: [{ policyKey: 'synthetic-main-kit', approvedAt: '2026-11-01T00:00:00Z', policy: {
         type: 'bundle', method: 'primary_component_with_nominal_secondary_lines', primarySku: 'METER', components: [
@@ -88,6 +89,7 @@ test('toggle preserves original table while copy mode renders independent BI amo
     const stale = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode: 'adasmart', copyPlan: plan, isStale: true }));
     assert.equal((stale.match(/disabled=""/gu) || []).length, 4);
     assert.match(stale, /วันที่เปลี่ยนแล้ว/u);
+    assert.doesNotMatch(stale, /ดาวน์โหลดไฟล์ SR/u);
     const empty = renderToString(React.createElement(ShopeeSalesSummaryView, { ...props, viewMode: 'adasmart',
       copyPlan: { ...plan, orderCount: 0, rowCount: 0, rows: [], targetCents: 0, totalCents: 0, confirmedSales: { orderCount: 0 } } }));
     assert.match(empty, /ยืนยันว่าไม่มีออเดอร์ในวันนี้/u);
